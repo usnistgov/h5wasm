@@ -1,0 +1,1 @@
+h5wasm is in the public domain.
