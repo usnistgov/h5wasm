@@ -1,3 +1,0 @@
-[submodule "wasm"]
-	path = wasm
-	url = git@github.com:bmaranville/wasm
