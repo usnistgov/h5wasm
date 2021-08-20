@@ -11,64 +11,62 @@
 
 using namespace emscripten;
 
-// EM_JS(void, throw_error, (const char *string_error), {
-//     throw(UTF8ToString(string_error));
-// });
+EM_JS(void, throw_error, (const char *string_error), {
+    throw(UTF8ToString(string_error));
+});
 
-void throw_error(const char *string_error) {
-    throw std::runtime_error(string_error);
-}
+// void throw_error(const char *string_error) {
+//     throw std::runtime_error(string_error);
+// }
 
 // void throw_error(const char * string_error) {
 //     // pass
 // }
 
-herr_t name_callback(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata)
+herr_t link_name_callback(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata)
 {
     std::vector<std::string> *namelist = reinterpret_cast<std::vector<std::string> *>(opdata);
     (*namelist).push_back(name);
     return 0;
 }
 
-std::vector<std::string> get_keys_vector(hid_t group_id)
+std::vector<std::string> get_keys_vector(hid_t group_id, H5_index_t index = H5_INDEX_NAME)
 {
     //val output = val::array();
     std::vector<std::string> namelist;
-    herr_t idx = H5Literate(group_id, H5_INDEX_NAME, H5_ITER_INC, NULL, name_callback, &namelist);
+    herr_t idx = H5Literate(group_id, index, H5_ITER_INC, NULL, link_name_callback, &namelist);
     return namelist;
 }
 
-val get_child_names(hid_t loc_id, std::string group_name)
+val get_child_names(hid_t loc_id, const std::string group_name_string)
 {
     hid_t gcpl_id;
     unsigned crt_order_flags;
     size_t namesize;
     herr_t status;
+    const char *group_name = group_name_string.c_str();
 
-    hid_t grp = H5Gopen2(loc_id, group_name.c_str(), H5P_DEFAULT);
+    hid_t grp = H5Gopen2(loc_id, group_name, H5P_DEFAULT);
     if (grp < 0)
     {
         throw_error("error - name not defined!");
         return val::null();
     }
 
-    val names = val::array();
-    H5G_info_t grp_info;
-    status = H5Gget_info(grp, &grp_info);
-    hsize_t numObjs = grp_info.nlinks;
-
     gcpl_id = H5Gget_create_plist(grp);
     status = H5Pget_link_creation_order(gcpl_id, &crt_order_flags);
     H5_index_t index = (crt_order_flags & H5P_CRT_ORDER_INDEXED) ? H5_INDEX_CRT_ORDER : H5_INDEX_NAME;
 
-    for (hsize_t i = 0; i < numObjs; i++)
+    std::vector<std::string> names_vector;
+    herr_t idx = H5Literate(grp, index, H5_ITER_INC, NULL, link_name_callback, &names_vector);
+
+    val names = val::array();
+    size_t numObjs = names_vector.size();
+    for (size_t i = 0; i < numObjs; i++)
     {
-        namesize = H5Lget_name_by_idx(loc_id, group_name.c_str(), index, H5_ITER_INC, i, nullptr, namesize, H5P_DEFAULT);
-        char *name = new char[namesize + 1];
-        H5Lget_name_by_idx(loc_id, group_name.c_str(), H5_INDEX_NAME, H5_ITER_INC, i, name, namesize + 1, H5P_DEFAULT);
-        names.set(i, std::string(name));
-        delete[] name;
+        names.set(i, names_vector.at(i));
     }
+
     H5Gclose(grp);
     return names;
 }
@@ -115,14 +113,25 @@ val get_child_types(hid_t loc_id, const std::string group_name_string)
 val get_type(hid_t loc_id, const std::string obj_name_string)
 {
     H5O_info_t oinfo;
-    const char * obj_name = obj_name_string.c_str();
+    const char *obj_name = obj_name_string.c_str();
     herr_t status = H5Oget_info_by_name(loc_id, obj_name, &oinfo, H5O_INFO_BASIC, H5P_DEFAULT);
+    // if (status < 0) {
+    //     throw_error(obj_name);
+    //     return val::null();
+    // }
     return val((int)oinfo.type);
+}
+
+herr_t attribute_name_callback(hid_t loc_id, const char *name, const H5A_info_t *ainfo, void *opdata)
+{
+    std::vector<std::string> *namelist = reinterpret_cast<std::vector<std::string> *>(opdata);
+    (*namelist).push_back(name);
+    return 0;
 }
 
 val get_attribute_names(hid_t loc_id, const std::string obj_name_string)
 {
-    hid_t gcpl_id;
+    hid_t ocpl_id;
     unsigned crt_order_flags;
     size_t namesize;
     herr_t status;
@@ -130,7 +139,6 @@ val get_attribute_names(hid_t loc_id, const std::string obj_name_string)
     //H5T_cset_t cset;
     const char *obj_name = obj_name_string.c_str();
 
-    val names = val::array();
     hid_t obj_id = H5Oopen(loc_id, obj_name, H5P_DEFAULT);
     if (obj_id < 0)
     {
@@ -139,23 +147,32 @@ val get_attribute_names(hid_t loc_id, const std::string obj_name_string)
     }
 
     H5O_info_t oinfo;
-    status = H5Oget_info(obj_id, &oinfo, H5O_INFO_NUM_ATTRS);
+    status = H5Oget_info(obj_id, &oinfo, H5O_INFO_BASIC | H5O_INFO_NUM_ATTRS);
     hsize_t numAttrs = oinfo.num_attrs;
+    H5O_type_t obj_type = oinfo.type;
 
-    gcpl_id = H5Gget_create_plist(obj_id);
-    status = H5Pget_attr_creation_order(gcpl_id, &crt_order_flags);
+    if (obj_type == H5O_TYPE_GROUP)
+    {
+        ocpl_id = H5Gget_create_plist(obj_id);
+    }
+    else
+    {
+        ocpl_id = H5Dget_create_plist(obj_id);
+    }
+
+    status = H5Pget_attr_creation_order(ocpl_id, &crt_order_flags);
     H5_index_t index = (crt_order_flags & H5P_CRT_ORDER_INDEXED) ? H5_INDEX_CRT_ORDER : H5_INDEX_NAME;
 
-    for (hsize_t i = 0; i < numAttrs; i++)
+    std::vector<std::string> names_vector;
+    herr_t idx = H5Aiterate(obj_id, index, H5_ITER_INC, 0, attribute_name_callback, &names_vector);
+
+    val names = val::array();
+    size_t numObjs = names_vector.size();
+    for (size_t i = 0; i < numObjs; i++)
     {
-        //status = H5Aget_info_by_idx(loc_id, group_name.c_str(), index, H5_ITER_INC, i, ainfo, H5P_DEFAULT);
-        //cset = ainfo->cset;
-        namesize = H5Aget_name_by_idx(obj_id, ".", index, H5_ITER_INC, i, NULL, 0, H5P_DEFAULT);
-        char *name = new char[namesize + 1];
-        namesize = H5Aget_name_by_idx(obj_id, ".", index, H5_ITER_INC, i, name, namesize + 1, H5P_DEFAULT);
-        names.set(i, std::string(name));
-        delete[] name;
+        names.set(i, names_vector.at(i));
     }
+
     status = H5Oclose(obj_id);
     return names;
 }
@@ -357,15 +374,17 @@ val get_attribute_data(hid_t loc_id, const std::string group_name_string, const 
 
     thread_local const val Uint8Array = val::global("Uint8Array");
 
-    void * buffer = malloc(size * total_size);
+    void *buffer = malloc(size * total_size);
     status = H5Aread(attr_id, dtype, buffer);
     val output = val::null();
 
-    if (is_vlstr) {
+    if (is_vlstr)
+    {
         output = val::array();
-        char * bp = (char *) buffer;
-        char * onestring = NULL;
-        for (int i=0; i<total_size; i++) {
+        char *bp = (char *)buffer;
+        char *onestring = NULL;
+        for (int i = 0; i < total_size; i++)
+        {
             onestring = *(char **)((void *)bp);
             output.set(i, val(std::string(onestring)));
             bp += size;
@@ -373,16 +392,18 @@ val get_attribute_data(hid_t loc_id, const std::string group_name_string, const 
         if (onestring)
             free(onestring);
     }
-    else {
+    else
+    {
         output = Uint8Array.new_(typed_memory_view(
             total_size * size, (uint8_t *)buffer));
     }
 
-    if (buffer) {
+    if (buffer)
+    {
         if (is_vlstr)
             H5Treclaim(dtype, dspace, H5P_DEFAULT, buffer);
         free(buffer);
-    }            
+    }
 
     free(buffer);
 
@@ -390,6 +411,183 @@ val get_attribute_data(hid_t loc_id, const std::string group_name_string, const 
     H5Sclose(dspace);
     H5Tclose(dtype);
     return output;
+}
+
+int create_group(hid_t loc_id, std::string grp_name_string)
+{
+    hid_t grp_id = H5Gcreate2(loc_id, grp_name_string.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    herr_t status = H5Gclose(grp_id);
+    return (int)status;
+}
+
+herr_t setup_dataset(val dims_in, int dtype, int dsize, bool is_signed, bool is_vlstr, hid_t *filetype, hid_t *space)
+{
+    herr_t status;
+
+    std::vector<hsize_t> dims_vec = vecFromJSArray<hsize_t>(dims_in);
+    int ndims = dims_vec.size();
+    hsize_t *dims = dims_vec.data();
+    /*
+    * Create dataspace.  Setting maximum size to NULL sets the maximum
+    * size to be the current size.
+    */
+    *space = H5Screate_simple(ndims, dims, NULL);
+
+    if (dtype == H5T_STRING)
+    {
+        size_t str_size = (is_vlstr) ? H5T_VARIABLE : dsize;
+
+        *filetype = H5Tcopy(H5T_FORTRAN_S1);
+        // assume that dsize for strings is non-null-padded
+        status = H5Tset_size(*filetype, str_size);
+        status = H5Tset_cset(*filetype, H5T_CSET_UTF8);
+    }
+    else if (dtype == H5T_INTEGER)
+    {
+        *filetype = H5Tcopy(H5T_NATIVE_INT);
+        status = H5Tset_size(*filetype, dsize);
+        status = H5Tset_sign(*filetype, (H5T_sign_t)is_signed);
+    }
+    else if (dtype == H5T_FLOAT)
+    {
+        *filetype = H5Tcopy(H5T_NATIVE_FLOAT);
+        status = H5Tset_size(*filetype, dsize);
+    }
+    else
+    {
+        throw_error("data type not supported");
+    }
+    return status;
+}
+
+int create_attribute(hid_t loc_id, std::string obj_name_string, std::string attr_name_string, uint64_t wdata_uint64, val dims_in, int dtype, int dsize, bool is_signed, bool is_vlstr)
+{
+    hid_t filetype, space, dset, attr, obj_id;
+    herr_t status;
+    // data is pointer to raw bytes
+    void *wdata = (void *)wdata_uint64;
+
+    const char *attr_name = attr_name_string.c_str();
+
+    // std::vector<hsize_t> dims_vec = vecFromJSArray<hsize_t>(dims_in);
+    // int ndims = dims_vec.size();
+    // hsize_t *dims = dims_vec.data();
+    // /*
+    // * Create dataspace.  Setting maximum size to NULL sets the maximum
+    // * size to be the current size.
+    // */
+    // space = H5Screate_simple(ndims, dims, NULL);
+
+    // if (dtype == H5T_STRING)
+    // {
+    //     size_t str_size = (is_vlstr) ? H5T_VARIABLE : dsize;
+
+    //     filetype = H5Tcopy(H5T_FORTRAN_S1);
+    //     // assume that dsize for strings is non-null-padded
+    //     status = H5Tset_size(filetype, str_size);
+    //     status = H5Tset_cset(filetype, H5T_CSET_UTF8);
+    // }
+    // else if (dtype == H5T_INTEGER)
+    // {
+    //     filetype = H5Tcopy(H5T_NATIVE_INT);
+    //     status = H5Tset_size(filetype, dsize);
+    //     status = H5Tset_sign(filetype, (H5T_sign_t)is_signed);
+    //     //memtype = H5Tcopy(filetype);
+    // }
+    // else if (dtype == H5T_FLOAT)
+    // {
+    //     filetype = H5Tcopy(H5T_NATIVE_FLOAT);
+    //     status = H5Tset_size(filetype, dsize);
+    //     //memtype = H5Tcopy(filetype);
+    // }
+    // else
+    // {
+    //     throw_error("data type not supported");
+    // }
+
+    status = setup_dataset(dims_in, dtype, dsize, is_signed, is_vlstr, &filetype, &space);
+    /*
+    * Create the attribute and write the data to it.
+    */
+    obj_id = H5Oopen(loc_id, obj_name_string.c_str(), H5P_DEFAULT);
+    attr = H5Acreate(obj_id, attr_name, filetype, space, H5P_DEFAULT,
+                     H5P_DEFAULT);
+    status = H5Awrite(attr, filetype, wdata);
+
+    /*
+    * Close and release resources.
+    */
+    status = H5Aclose(attr);
+
+    status = H5Sclose(space);
+    status = H5Tclose(filetype);
+    //status = H5Tclose(memtype);
+    status = H5Oclose(obj_id);
+    return (int)status;
+}
+
+int create_vlen_str_attribute(hid_t loc_id, std::string obj_name_string, std::string attr_name_string, val data, val dims_in, int dtype, int dsize, bool is_signed, bool is_vlstr)
+{
+    uint64_t wdata_uint64; // ptr as uint64_t (webassembly will be 64-bit someday)
+
+    std::vector<std::string> data_string_vec = vecFromJSArray<std::string>(data);
+    std::vector<const char *> data_char_vec;
+    data_char_vec.reserve(data_string_vec.size());
+
+    // // alternative initialization of wdata, with "new const char *":
+    // const char ** wdata = new const char * [data_string_vec.size()];
+    // for (hsize_t i=0; i<data_string_vec.size(); i++) {
+    //     wdata.push_back(data_string_vec.at(i).c_str());
+    //     wdata[i] = data_string_vec.at(i).c_str();
+    // }
+    // // followed by "delete [] (wdata);" at the end of the block
+
+    for (hsize_t i = 0; i < data_string_vec.size(); i++)
+    {
+        data_char_vec.push_back(data_string_vec.at(i).c_str());
+    }
+
+    // pass the pointer as an int...
+    wdata_uint64 = (uint64_t)data_char_vec.data();
+    return create_attribute(loc_id, obj_name_string, attr_name_string, wdata_uint64, dims_in, dtype, dsize, is_signed, is_vlstr);
+}
+
+int create_dataset(hid_t loc_id, std::string dset_name_string, uint64_t wdata_uint64, val dims_in, int dtype, int dsize, bool is_signed, bool is_vlstr)
+{
+    hid_t filetype, space, dset;
+    herr_t status;
+    // data is pointer to raw bytes
+    void *wdata = (void *)wdata_uint64;
+    const char *dset_name = dset_name_string.c_str();
+
+    status = setup_dataset(dims_in, dtype, dsize, is_signed, is_vlstr, &filetype, &space);
+    dset = H5Dcreate2(loc_id, dset_name, filetype, space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    status = H5Dwrite(dset, filetype, space, space, H5P_DEFAULT, wdata);
+
+    status = H5Dclose(dset);
+    status = H5Sclose(space);
+    status = H5Tclose(filetype);
+    return (int)status;
+}
+
+int create_vlen_str_dataset(hid_t loc_id, std::string dset_name_string, val data, val dims_in, int dtype, int dsize, bool is_signed, bool is_vlstr) {
+    uint64_t wdata_uint64; // ptr as uint64_t (webassembly will be 64-bit someday)
+
+    std::vector<std::string> data_string_vec = vecFromJSArray<std::string>(data);
+    std::vector<const char *> data_char_vec;
+    data_char_vec.reserve(data_string_vec.size());
+    for (hsize_t i = 0; i < data_string_vec.size(); i++)
+    {
+        data_char_vec.push_back(data_string_vec.at(i).c_str());
+    }
+    // pass the pointer as an int...
+    wdata_uint64 = (uint64_t)data_char_vec.data();
+    return create_dataset(loc_id, dset_name_string, wdata_uint64, dims_in, dtype, dsize, is_signed, is_vlstr);
+}
+
+int flush(hid_t file_id) {
+    herr_t status = H5Fflush(file_id, H5F_SCOPE_GLOBAL);
+    return (int)status;
 }
 
 EMSCRIPTEN_BINDINGS(hdf5)
@@ -403,6 +601,12 @@ EMSCRIPTEN_BINDINGS(hdf5)
     function("get_dataset_metadata", &get_dataset_metadata);
     function("get_dataset_data", &get_dataset_data);
     function("get_attribute_data", &get_attribute_data);
+    function("create_group", &create_group);
+    function("create_dataset", &create_dataset);
+    function("create_attribute", &create_attribute, allow_raw_pointers());
+    function("create_vlen_str_attribute", &create_vlen_str_attribute);
+    function("create_vlen_str_dataset", &create_vlen_str_dataset);
+    function("flush", &flush);
 
     class_<H5L_info2_t>("H5L_info2_t")
         .constructor<>()
@@ -455,3 +659,4 @@ EMSCRIPTEN_BINDINGS(hdf5)
 
     register_vector<std::string>("vector<string>");
 }
+

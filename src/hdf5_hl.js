@@ -1,31 +1,10 @@
 import ModuleFactory from './hdf5_util.js';
 
 export var Module = null;
-export const ready = ModuleFactory({noInitialRun: true}).then((result) => { Module = result });
+export var FS = null;
+export const ready = ModuleFactory({ noInitialRun: true }).then((result) => { Module = result; FS = Module.FS });
 
-export const UPLOADED_FILES = [];
-
-export function upload_file() {
-    let file = this.files[0]; // only one file allowed
-    let datafilename = file.name;
-    let reader = new FileReader();
-    reader.onloadend = function (evt) {
-        let data = evt.target.result;
-        FS.writeFile(datafilename, new Uint8Array(data));
-        if (!UPLOADED_FILES.includes(datafilename)) {
-            UPLOADED_FILES.push(datafilename);
-            console.log("file loaded:", datafilename);
-        }
-        else {
-            console.log("file updated: ", datafilename)
-        }
-    }
-    reader.readAsArrayBuffer(file);
-    this.value = "";
-}
-
-
-export const ACCESS_MODES = {
+const ACCESS_MODES = {
     "r": "H5F_ACC_RDONLY",
     "a": "H5F_ACC_RDWR",
     "w": "H5F_ACC_TRUNC",
@@ -53,7 +32,7 @@ class Attribute {
 
     get value() {
         return get_attr(this._file_id, this._path, this._name);
-    } 
+    }
 }
 
 function get_attr(file_id, obj_name, attr_name) {
@@ -63,6 +42,7 @@ function get_attr(file_id, obj_name, attr_name) {
 }
 
 function process_data(data, metadata) {
+    // for data coming out of Module
     var data;
     if (metadata.type == Module.H5T_class_t.H5T_STRING.value) {
         // if (metadata.vlen) {
@@ -76,12 +56,12 @@ function process_data(data, metadata) {
         // }
         //return data;
         if (!metadata.vlen) {
-            let decoder = new TextDecoder();
+            let decoder = new TextDecoder('utf-8');
             let size = metadata.size;
             let slices = [];
-            for (let i=0; i<metadata.total_size; i++) {
-                let s = data.slice(i*size, (i+1)*size);
-                slices.push(decoder.decode(s).replace(/\u0000+$/,''));
+            for (let i = 0; i < metadata.total_size; i++) {
+                let s = data.slice(i * size, (i + 1) * size);
+                slices.push(decoder.decode(s).replace(/\u0000+$/, ''));
             }
             data = slices;
         }
@@ -97,19 +77,87 @@ function process_data(data, metadata) {
         let accessor = "Float" + ((metadata.size) * 8).toFixed() + "Array";
         data = new globalThis[accessor](data.buffer);
     }
-    
-    return (metadata.shape.length == 0 && data.length) ? data[0] : data;
 
+    return (metadata.shape.length == 0 && data.length) ? data[0] : data;
 }
 
+export function prepare_data(data, metadata, shape = null) {
+    // for data being sent to Module
+
+    // set shape to size of array if it is not specified:
+    var shape = shape ?? ((Array.isArray(data) || ArrayBuffer.isView(data)) ? [data.length] : []);
+    var data = (Array.isArray(data) || ArrayBuffer.isView(data)) ? data : [data];
+    let total_size = shape.reduce((previous, current) => current * previous, 1);
+
+    if (data.length != total_size) {
+        throw `Error: shape ${shape} does not match number of elements in data`;
+    }
+    //assert(data.length == total_size)
+    var output;
+
+    if (metadata.type == Module.H5T_class_t.H5T_STRING.value) {
+        if (!metadata.vlen) {
+            output = new Uint8Array(total_size * metadata.size);
+            let encoder = new TextEncoder('utf-8');
+            output.fill(0);
+            let offset = 0;
+            for (let s of data) {
+                let encoded = encoder.encode(s);
+                output.set(encoded.slice(0, metadata.size), offset);
+                offset += metadata.size;
+            }
+        }
+        else {
+            output = data;
+        }
+    }
+    else if (metadata.type == Module.H5T_class_t.H5T_INTEGER.value) {
+        let accessor_name = (metadata.size > 4) ? "Big" : "";
+        accessor_name += (metadata.signed) ? "Int" : "Uint";
+        accessor_name += ((metadata.size) * 8).toFixed() + "Array";
+        // check to see if data is already in the right form:
+        let accessor = globalThis[accessor_name];
+        let typed_array;
+        if (data instanceof accessor) {
+            typed_array = data;
+        }
+        else {
+            // convert...
+            if (metadata.size > 4) {
+                data = data.map(BigInt);
+            }
+            typed_array = new accessor(data);
+        }
+        output = new Uint8Array(typed_array.buffer);
+    }
+    else if (metadata.type == Module.H5T_class_t.H5T_FLOAT.value) {
+        let accessor_name = "Float" + ((metadata.size) * 8).toFixed() + "Array";
+        // check to see if data is already in the right form:
+        let accessor = globalThis[accessor_name];
+        let typed_array = (data instanceof accessor) ? data : new accessor(data);
+        output = new Uint8Array(typed_array.buffer);
+    }
+
+    return [output, shape]
+}
+
+/**
+ * @param {Map} map
+ * @returns Map
+ */
+function map_reverse(map) {
+    return new Map(Array.from(map.entries()).map(([k, v]) => [v, k]));
+}
 
 const int_fmts = new Map([[1, 'b'], [2, 'h'], [4, 'i'], [8, 'q']]);
 const float_fmts = new Map([[2, 'e'], [4, 'f'], [8, 'd']]);
+const fmts_float = map_reverse(float_fmts);
+const fmts_int = map_reverse(int_fmts);
 
 function metadata_to_dtype(metadata) {
     if (metadata.type == Module.H5T_class_t.H5T_STRING.value) {
         let length_str = metadata.vlen ? "" : String(metadata.size);
-        return `${length_str}S`;
+        return `S${length_str}`;
     }
     else if (metadata.type == Module.H5T_class_t.H5T_INTEGER.value) {
         let fmt = int_fmts.get(metadata.size);
@@ -125,30 +173,111 @@ function metadata_to_dtype(metadata) {
     else {
         return "unknown";
     }
-}   
+}
+
+function dtype_to_metadata(dtype_str) {
+    let match = dtype_str.match(/^([<>|]?)([bhiqefdsBHIQS])([0-9]*)$/);
+    if (match == null) {
+        throw dtype_str + " is not a recognized dtype"
+    }
+    let [full, endianness, typestr, length] = match;
+    let metadata = { vlen: false, signed: false };
+    metadata.littleEndian = (endianness != '>');
+    if (fmts_int.has(typestr.toLowerCase())) {
+        metadata.type = Module.H5T_class_t.H5T_INTEGER.value;
+        metadata.size = fmts_int.get(typestr.toLowerCase());
+        metadata.signed = (typestr.toLowerCase() == typestr);
+    }
+    else if (fmts_float.has(typestr)) {
+        metadata.type = Module.H5T_class_t.H5T_FLOAT.value;
+        metadata.size = fmts_float.get(typestr);
+    }
+    else if (typestr.toUpperCase() == 'S') {
+        metadata.type = Module.H5T_class_t.H5T_STRING.value;
+        metadata.size = (length == "") ? 4 : parseInt(length, 10);
+        metadata.vlen = (length == "");
+    }
+    else {
+        throw "should never happen"
+    }
+    return metadata
+}
+
+function guess_dtype(data) {
+    var data = (Array.isArray(data) || ArrayBuffer.isView(data)) ? data : [data];
+    if (data.every(Number.isInteger)) {
+        return '<i'; // default integer type: Int32
+    }
+    else if (data.every((d) => (typeof d == 'number'))) {
+        return '<d'; // default float type: Float64
+    }
+    else if (data.every((d) => (typeof d == 'string'))) {
+        return 'S'
+    }
+    else {
+        throw "unguessable type for data";
+    }
+}
 
 class HasAttrs {
     get attrs() {
         let attr_names = Module.get_attribute_names(this.file_id, this.path);
         let attrs = {};
         for (let name of attr_names) {
-            //let metadata = Module.get_attribute_metadata(this.file_id, this.path, name);
-            /*Object.defineProperty(attrs, name, {
+            let metadata = Module.get_attribute_metadata(this.file_id, this.path, name);
+            Object.defineProperty(attrs, name, {
                 get: () => ({
-                    value: get_attr(this.file_id, this.path, name)
-                    //dtype: metadata_to_dtype(metadata)
+                    value: get_attr(this.file_id, this.path, name),
+                    shape: metadata.shape,
+                    dtype: metadata_to_dtype(metadata)
                 }),
                 enumerable: true
             });
-            */
-           attrs[name] = get_attr(this.file_id, this.path, name);
+
+            //attrs[name] = get_attr(this.file_id, this.path, name);
         }
         return attrs;
-        
+
     }
 
     get_attribute(name) {
         get_attr(this.file_id, this.path, name);
+    }
+
+    create_attribute(name, data, shape = null, dtype = null) {
+        var dtype = dtype ?? guess_dtype(data);
+        let metadata = dtype_to_metadata(dtype);
+        let [prepared_data, guessed_shape] = prepare_data(data, metadata, shape);
+        var shape = shape ?? guessed_shape;
+        if (metadata.vlen) {
+            Module.create_vlen_str_attribute(
+                this.file_id,
+                this.path,
+                name,
+                prepared_data,
+                shape.map(BigInt),
+                metadata.type,
+                metadata.size,
+                metadata.signed,
+                metadata.vlen
+            );
+        }
+        else {
+            let data_ptr = Module._malloc(prepared_data.byteLength);
+            Module.HEAPU8.set(prepared_data, data_ptr);
+            Module.create_attribute(
+                this.file_id,
+                this.path,
+                name,
+                BigInt(data_ptr),
+                shape.map(BigInt),
+                metadata.type,
+                metadata.size,
+                metadata.signed,
+                metadata.vlen
+            );
+            Module._free(data_ptr);
+        }
     }
 
 }
@@ -195,6 +324,44 @@ export class Group extends HasAttrs {
         }
     }
 
+    create_group(name) {
+        Module.create_group(this.file_id, this.path + "/" + name);
+    }
+
+    create_dataset(name, data, shape = null, dtype = null) {
+        var dtype = dtype ?? guess_dtype(data);
+        let metadata = dtype_to_metadata(dtype);
+        let [prepared_data, guessed_shape] = prepare_data(data, metadata, shape);
+        var shape = shape ?? guessed_shape;
+        if (metadata.vlen) {
+            Module.create_vlen_dataset(
+                this.file_id,
+                this.path,
+                name,
+                prepared_data,
+                shape.map(BigInt),
+                metadata.type,
+                metadata.size,
+                metadata.signed,
+                metadata.vlen
+            );
+        }
+        else {
+            let data_ptr = Module._malloc(prepared_data.byteLength);
+            Module.HEAPU8.set(prepared_data, data_ptr);
+            Module.create_dataset(
+                this.file_id,
+                this.path + "/" + name,
+                BigInt(data_ptr),
+                shape.map(BigInt),
+                metadata.type,
+                metadata.size,
+                metadata.signed,
+                metadata.vlen
+            );
+            Module._free(data_ptr);
+        }
+    }
     toString() {
         return `Group(file_id=${this.file_id}, path=${this.path})`;
     }
@@ -203,17 +370,36 @@ export class Group extends HasAttrs {
 export class File extends Group {
     constructor(filename, mode = "r") {
         super(null, "/");
-        let h5_mode = Module[ACCESS_MODES[mode]];
-        this.file_id = Module.ccall("H5Fopen", "bigint", ["string", "number", "bigint"], [filename, h5_mode, 0n]);
+        let access_mode = ACCESS_MODES[mode];
+        let h5_mode = Module[access_mode];
+        if (['H5F_ACC_RDWR', 'H5F_ACC_RDONLY'].includes(access_mode)) {
+            // then it's an existing file...
+            this.file_id = Module.ccall("H5Fopen", "bigint", ["string", "number", "bigint"], [filename, h5_mode, 0n]);
+        }
+        else {
+            this.file_id = Module.ccall("H5Fcreate", "bigint", ["string", "number", "bigint", "bigint"], [filename, h5_mode, 0n, 0n]);
+        }
         this.filename = filename;
+
         this.mode = mode;
+    }
+
+    download(downloader) {
+        // useful only in the browser
+        Module.flush(this.file_id);
+        let b = new Blob([Module.FS.readFile(this.filename)], {type: 'application/x-hdf5'});
+        downloader(b, this.filename);
+    }
+
+    blob() {
+        Module.flush(this.file_id);
+        return new Blob([Module.FS.readFile(this.filename)], {type: 'application/x-hdf5'});
     }
 
     close() {
         return Module.ccall("H5Fclose", "number", ["bigint"], [this.file_id]);
     }
 }
-
 
 
 export class Dataset extends HasAttrs {
@@ -264,3 +450,4 @@ export class Dataset extends HasAttrs {
         return process_data(data, metadata);
     }
 }
+
