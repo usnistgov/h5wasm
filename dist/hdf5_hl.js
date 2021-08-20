@@ -1,4 +1,4 @@
-import ModuleFactory from './hdf5_util.js';
+import ModuleFactory from './esm/hdf5_util.js';
 
 export var Module = null;
 export var FS = null;
