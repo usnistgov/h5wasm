@@ -11,7 +11,7 @@ HDF5_DOWNLOAD_URL = https://github.com/HDFGroup/hdf5/archive/refs/tags/$(HDF5_VE
 HDF5_DOWNLOAD_HASH = e6dde173c2d243551922d23a0387a79961205b018502e6a742acb30b61bc2d5f
 SRC = src
 APP_DIR = dist
-APP = $(APP_DIR)/h5js_util.js
+APP = $(APP_DIR)/esm/hdf5_util.js $(APP_DIR)/node/hdf5_util.js
 LIBHDF5 = $(APP_DIR)/libhdf5.js
 
 app: $(APP)
@@ -66,7 +66,8 @@ $(LIBHDF5): $(WASM_LIBS)
 #	  -s EXTRA_EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap', 'FS']"
 
 $(APP): $(SRC)/hdf5_util.cc $(WASM_LIBS)
-	emcc -O3 $(WASM_LIBS) $(SRC)/hdf5_util.cc -o $(APP_DIR)/hdf5_util.js \
+	mkdir -p dist/esm dist/node;
+	emcc -O3 $(WASM_LIBS) $(SRC)/hdf5_util.cc -o $(APP_DIR)/esm/hdf5_util.js \
         -I$(WASM_INCLUDE_DIR) \
         --bind  \
         -s ALLOW_TABLE_GROWTH=1 \
@@ -78,7 +79,7 @@ $(APP): $(SRC)/hdf5_util.cc $(WASM_LIBS)
 		-s USE_ZLIB=1 \
 		-s EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap', 'FS']" \
 		-s EXPORTED_FUNCTIONS="['_H5Fopen', '_H5Fclose', '_H5Fcreate']";
-	emcc -O3 $(WASM_LIBS) $(SRC)/hdf5_util.cc -o $(APP_DIR)/hdf5_node.js \
+	emcc -O3 $(WASM_LIBS) $(SRC)/hdf5_util.cc -o $(APP_DIR)/node/hdf5_util.js \
         -I$(WASM_INCLUDE_DIR) \
         --bind  \
         -s ALLOW_TABLE_GROWTH=1 \
@@ -92,7 +93,6 @@ $(APP): $(SRC)/hdf5_util.cc $(WASM_LIBS)
 		-s EXPORTED_FUNCTIONS="['_H5Fopen', '_H5Fclose', '_H5Fcreate']";
 	  
 clean:
-	rm -rf $(NATIVE_BUILD_DIR);
 	rm -rf $(WASM_BUILD_DIR);
-	rm -f $(APP_DIR)/h5js_util.*;
-	rm -f $(APP_DIR)/libhdf5.*;
+	rm -rf $(APP_DIR)/esm/;
+	rm -f $(APP_DIR)/node/;
