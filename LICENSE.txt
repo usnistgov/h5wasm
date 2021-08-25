@@ -1,1 +1,9 @@
 h5wasm is in the public domain.
+
+Some elements of the build procedure for libhdf5 were adapted from 
+  - https://github.com/aertslab/webhdf5
+  - https://github.com/attilaolah/wasm (lib/hdf and lib/hdf5)
+
+Some access patterns for using the HDF5 C API were copied from
+  - https://support.hdfgroup.org/HDF5/examples/api-c.html
+  - https://github.com/HDFGroup/hdf5/blob/develop/tools/src/h5dump/h5dump_xml.c
