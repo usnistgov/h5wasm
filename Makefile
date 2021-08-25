@@ -96,7 +96,7 @@ $(APP): $(SRC)/hdf5_util.cc $(WASM_LIBS)
 	cat $(SRC)/hdf5_hl_esm_header.js > $(APP_DIR)/hdf5_hl.js;
 	cat $(SRC)/hdf5_hl_base.js >> $(APP_DIR)/hdf5_hl.js;
 	cat $(SRC)/hdf5_hl_base.js > $(APP_DIR)/hdf5_hl_node.js;
-	cat $(SRC)/hdf5_hl_footer.js >> $(APP_DIR)/hdf5_hl_node.js;
+	cat $(SRC)/hdf5_hl_node_footer.js >> $(APP_DIR)/hdf5_hl_node.js;
 	
 	  
 clean:
