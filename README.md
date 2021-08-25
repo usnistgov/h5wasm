@@ -164,7 +164,7 @@ f.close()
 Optional, to support uploads and downloads
 
 ```js
-import {uploader, downloader, UPLOADED_FILES} from "https://cdn.jsdelivr.net/gh/bmaranville/h5wasm@master/dist/file_handlers.js";
+import {uploader, downloader, UPLOADED_FILES} from "https://cdn.jsdelivr.net/gh/bmaranville/h5wasm@publish/dist/file_handlers.js";
 // 
 // Attach to a file input element:
 // will save to hdf5.FS (memfs) with the name of the uploaded file
