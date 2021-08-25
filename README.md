@@ -1,5 +1,5 @@
 # h5wasm
-a WebAssembly-powered library for [reading](#reading) and [writing](#writing) HDF5 files from javascript
+a zero-dependency WebAssembly-powered library for [reading](#reading) and [writing](#writing) HDF5 files from javascript
 
 (built on the [HDF5 C API](http://portal.hdfgroup.org/pages/viewpage.action?pageId=50073943))
 
