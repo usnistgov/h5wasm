@@ -1,5 +1,3 @@
-const Module = require("./node/hdf5_util.js");
-
 const ACCESS_MODES = {
     "r": "H5F_ACC_RDONLY",
     "a": "H5F_ACC_RDWR",
@@ -38,7 +36,9 @@ function get_attr(file_id, obj_name, attr_name) {
 }
 
 function process_data(data, metadata) {
-    // for data coming out of Module
+    // (for data coming out of Module)
+    // If an appropriate TypedArray container can be constructed, it will
+    // but otherwise returns Uint8Array raw bytes as loaded.    
     var data;
     if (metadata.type == Module.H5T_class_t.H5T_STRING.value) {
         // if (metadata.vlen) {
@@ -63,15 +63,18 @@ function process_data(data, metadata) {
         }
     }
     else if (metadata.type == Module.H5T_class_t.H5T_INTEGER.value) {
-        let accessor = (metadata.size > 4) ? "Big" : "";
-        accessor += (metadata.signed) ? "Int" : "Uint";
-        accessor += ((metadata.size) * 8).toFixed() + "Array";
-        data = new globalThis[accessor](data.buffer);
-
+        let accessor_name = (metadata.size > 4) ? "Big" : "";
+        accessor_name += (metadata.signed) ? "Int" : "Uint";
+        accessor_name += ((metadata.size) * 8).toFixed() + "Array";
+        if (accessor_name in globalThis) {
+            data = new globalThis[accessor_name](data.buffer);
+        }
     }
     else if (metadata.type == Module.H5T_class_t.H5T_FLOAT.value) {
-        let accessor = "Float" + ((metadata.size) * 8).toFixed() + "Array";
-        data = new globalThis[accessor](data.buffer);
+        let accessor_name = "Float" + ((metadata.size) * 8).toFixed() + "Array";
+        if (accessor_name in globalThis) {
+            data = new globalThis[accessor_name](data.buffer);
+        }
     }
 
     return (metadata.shape.length == 0 && data.length) ? data[0] : data;
@@ -165,6 +168,9 @@ function metadata_to_dtype(metadata) {
     else if (metadata.type == Module.H5T_class_t.H5T_FLOAT.value) {
         let fmt = float_fmts.get(metadata.size);
         return ((metadata.littleEndian) ? "<" : ">") + fmt;
+    }
+    else if (metadata.type == Module.H5T_class_t.H5T_COMPOUND.value) {
+        return {compound: metadata.compound_type};
     }
     else {
         return "unknown";
@@ -380,6 +386,18 @@ class File extends Group {
         this.mode = mode;
     }
 
+    download(downloader) {
+        // useful only in the browser
+        Module.flush(this.file_id);
+        let b = new Blob([Module.FS.readFile(this.filename)], {type: 'application/x-hdf5'});
+        downloader(b, this.filename);
+    }
+
+    blob() {
+        Module.flush(this.file_id);
+        return new Blob([Module.FS.readFile(this.filename)], {type: 'application/x-hdf5'});
+    }
+
     close() {
         return Module.ccall("H5Fclose", "number", ["bigint"], [this.file_id]);
     }
@@ -407,8 +425,13 @@ class Dataset extends HasAttrs {
 
     get value() {
         let metadata = this.metadata;
-        let data = Module.get_dataset_data(this.file_id, this.path, null, null);
-        return process_data(data, metadata);
+        let nbytes = metadata.size * metadata.total_size;
+        let data_ptr = Module._malloc(nbytes);
+        Module.get_dataset_data(this.file_id, this.path, null, null, BigInt(data_ptr));
+        let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
+        let processed = process_data(data, metadata);
+        Module._free(data_ptr);
+        return processed;
     }
 
     slice(ranges) {
@@ -418,22 +441,15 @@ class Dataset extends HasAttrs {
         let ndims = shape.length;
         let count = shape.map((s, i) => BigInt(Math.min(s, ranges?.[i]?.[1] ?? s) - Math.max(0, ranges?.[i]?.[0] ?? 0)));
         let offset = shape.map((s, i) => BigInt(Math.min(s, Math.max(0, ranges?.[i]?.[0] ?? 0))));
-        //let count_array = new BigUint64Array(count);
-        //let offset_array = new BigUint64Array(offset);
-        //let count_ptr = Module._malloc(count_array.byteLength);
-        //let offset_ptr = Module._malloc(offset_array.byteLength);
-        //Module.HEAPU8.set(new Uint8Array(count_array.buffer), count_ptr);
-        //Module.HEAPU8.set(new Uint8Array(offset_array.buffer), offset_ptr);
-        //console.log(count, count_array, count_ptr);
-        //console.log(offset, offset_array, offset_ptr);
-        //let data = Module.get_dataset_data(this.file_id, this.path, count_ptr, offset_ptr);
         console.log(count, offset);
-        let data = Module.get_dataset_data(this.file_id, this.path, count, offset);
-        //Module._free(count_ptr);
-        //Module._free(offset_ptr);
-        return process_data(data, metadata);
+        let total_size = count.reduce((previous, current) => current * previous, 1n);
+        let nbytes = metadata.size * Number(total_size);
+        let data_ptr = Module._malloc(nbytes);
+        Module.get_dataset_data(this.file_id, this.path, count, offset, BigInt(data_ptr));
+        let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
+        let processed = process_data(data, metadata);
+        Module._free(data_ptr);
+        return processed;
     }
 }
-
-module.exports = {File, Dataset, Group};
 
