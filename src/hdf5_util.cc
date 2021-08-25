@@ -298,7 +298,7 @@ val get_dataset_metadata(hid_t loc_id, const std::string dataset_name_string)
     return metadata;
 }
 
-val get_dataset_data(hid_t loc_id, const std::string dataset_name_string, val count_out = val::null(), val offset_out = val::null())
+int get_dataset_data(hid_t loc_id, const std::string dataset_name_string, val count_out, val offset_out, uint64_t rdata_uint64)
 {
     hid_t ds_id;
     hid_t dspace;
@@ -306,12 +306,13 @@ val get_dataset_data(hid_t loc_id, const std::string dataset_name_string, val co
     hid_t memspace;
     herr_t status;
     const char *dataset_name = dataset_name_string.c_str();
+    void *rdata = (void *)rdata_uint64;
 
     ds_id = H5Dopen2(loc_id, dataset_name, H5P_DEFAULT);
     if (ds_id < 0)
     {
         throw_error("error - name not defined!");
-        return val::null();
+        return -1;
     }
     dspace = H5Dget_space(ds_id);
     if (count_out != val::null() && offset_out != val::null())
@@ -332,20 +333,13 @@ val get_dataset_data(hid_t loc_id, const std::string dataset_name_string, val co
     int total_size = H5Sget_simple_extent_npoints(memspace);
     size_t size = H5Tget_size(dtype);
 
-    thread_local const val Uint8Array = val::global("Uint8Array");
-    uint8_t *buffer = (uint8_t *)malloc(size * total_size);
-
-    status = H5Dread(ds_id, dtype, memspace, dspace, H5P_DEFAULT, buffer);
-    val output = Uint8Array.new_(typed_memory_view(
-        total_size * size, buffer));
-
-    free(buffer);
-
+    status = H5Dread(ds_id, dtype, memspace, dspace, H5P_DEFAULT, rdata);
+    
     H5Dclose(ds_id);
     H5Sclose(dspace);
     H5Sclose(memspace);
     H5Tclose(dtype);
-    return output;
+    return (int)status;
 }
 
 val get_attribute_data(hid_t loc_id, const std::string group_name_string, const std::string attribute_name_string)
