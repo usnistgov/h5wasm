@@ -1,6 +1,8 @@
 # h5wasm
 a WebAssembly-powered library for [reading](#reading) and [writing](#writing) HDF5 files from javascript
 
+(built on the [HDF5 C API](http://portal.hdfgroup.org/pages/viewpage.action?pageId=50073943))
+
 ## Browser
 ```js
 import * as hdf5 from "https://cdn.jsdelivr.net/gh/bmaranville/h5wasm@publish/dist/hdf5_hl.js";
