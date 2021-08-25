@@ -20,7 +20,7 @@ The host filesystem is made available through Emscripten "NODERAWFS=1".
 
 Enabling BigInt support may be required.
 ```bash
-npm i git+https://github.com/bmaranville/h5wasm
+npm i github:bmaranville/h5wasm.git#publish
 node --experimental-wasm-bigint
 
 ```
