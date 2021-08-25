@@ -3,7 +3,7 @@ a WebAssembly-powered library for [reading](#reading) and [writing](#writing) HD
 
 ## Browser
 ```js
-import * as hdf5 from "https://cdn.jsdelivr.net/gh/bmaranville/h5wasm@master/dist/hdf5_hl.js";
+import * as hdf5 from "https://cdn.jsdelivr.net/gh/bmaranville/h5wasm@publish/dist/hdf5_hl.js";
 
 let response = await fetch("https://ncnr.nist.gov/pub/ncnrdata/vsans/202003/24845/data/sans59510.nxs.ngv");
 let ab = await response.arrayBuffer();
