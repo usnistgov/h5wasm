@@ -266,19 +266,22 @@ class HasAttrs {
         }
         else {
             let data_ptr = Module._malloc(prepared_data.byteLength);
-            Module.HEAPU8.set(prepared_data, data_ptr);
-            Module.create_attribute(
-                this.file_id,
-                this.path,
-                name,
-                BigInt(data_ptr),
-                shape.map(BigInt),
-                metadata.type,
-                metadata.size,
-                metadata.signed,
-                metadata.vlen
-            );
-            Module._free(data_ptr);
+            try {
+                Module.HEAPU8.set(prepared_data, data_ptr);
+                Module.create_attribute(
+                    this.file_id,
+                    this.path,
+                    name,
+                    BigInt(data_ptr),
+                    shape.map(BigInt),
+                    metadata.type,
+                    metadata.size,
+                    metadata.signed,
+                    metadata.vlen
+                );
+            } finally {
+                Module._free(data_ptr);
+            }
         }
     }
 
@@ -328,6 +331,7 @@ class Group extends HasAttrs {
 
     create_group(name) {
         Module.create_group(this.file_id, this.path + "/" + name);
+        return this.get(name);
     }
 
     create_dataset(name, data, shape = null, dtype = null) {
@@ -350,19 +354,23 @@ class Group extends HasAttrs {
         }
         else {
             let data_ptr = Module._malloc(prepared_data.byteLength);
-            Module.HEAPU8.set(prepared_data, data_ptr);
-            Module.create_dataset(
-                this.file_id,
-                this.path + "/" + name,
-                BigInt(data_ptr),
-                shape.map(BigInt),
-                metadata.type,
-                metadata.size,
-                metadata.signed,
-                metadata.vlen
-            );
-            Module._free(data_ptr);
+            try {
+                Module.HEAPU8.set(prepared_data, data_ptr);
+                Module.create_dataset(
+                    this.file_id,
+                    this.path + "/" + name,
+                    BigInt(data_ptr),
+                    shape.map(BigInt),
+                    metadata.type,
+                    metadata.size,
+                    metadata.signed,
+                    metadata.vlen
+                );
+            } finally {
+                Module._free(data_ptr);
+            }
         }
+        return this.get(name);
     }
     toString() {
         return `Group(file_id=${this.file_id}, path=${this.path})`;
@@ -427,10 +435,14 @@ class Dataset extends HasAttrs {
         let metadata = this.metadata;
         let nbytes = metadata.size * metadata.total_size;
         let data_ptr = Module._malloc(nbytes);
-        Module.get_dataset_data(this.file_id, this.path, null, null, BigInt(data_ptr));
-        let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
-        let processed = process_data(data, metadata);
-        Module._free(data_ptr);
+        var processed;
+        try {
+            Module.get_dataset_data(this.file_id, this.path, null, null, BigInt(data_ptr));
+            let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
+            processed = process_data(data, metadata);
+        } finally {
+            Module._free(data_ptr);
+        }
         return processed;
     }
 
@@ -445,10 +457,14 @@ class Dataset extends HasAttrs {
         let total_size = count.reduce((previous, current) => current * previous, 1n);
         let nbytes = metadata.size * Number(total_size);
         let data_ptr = Module._malloc(nbytes);
-        Module.get_dataset_data(this.file_id, this.path, count, offset, BigInt(data_ptr));
-        let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
-        let processed = process_data(data, metadata);
-        Module._free(data_ptr);
+        var processed;
+        try {
+            Module.get_dataset_data(this.file_id, this.path, count, offset, BigInt(data_ptr));
+            let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
+            processed = process_data(data, metadata);
+        } finally {
+            Module._free(data_ptr);
+        }
         return processed;
     }
 }
