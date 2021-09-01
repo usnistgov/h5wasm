@@ -5,7 +5,7 @@ a zero-dependency WebAssembly-powered library for [reading](#reading) and [writi
 
 ## Browser
 ```js
-import * as hdf5 from "https://cdn.jsdelivr.net/gh/bmaranville/h5wasm@publish/dist/hdf5_hl.js";
+import * as hdf5 from "https://cdn.jsdelivr.net/npm/h5wasm@latest/dist/hdf5_hl.js";
 
 let response = await fetch("https://ncnr.nist.gov/pub/ncnrdata/vsans/202003/24845/data/sans59510.nxs.ngv");
 let ab = await response.arrayBuffer();
@@ -164,7 +164,7 @@ f.close()
 Optional, to support uploads and downloads
 
 ```js
-import {uploader, downloader, UPLOADED_FILES} from "https://cdn.jsdelivr.net/gh/bmaranville/h5wasm@publish/dist/file_handlers.js";
+import {uploader, downloader, UPLOADED_FILES} from "https://cdn.jsdelivr.net/npm/h5wasm@latest/dist/file_handlers.js";
 // 
 // Attach to a file input element:
 // will save to hdf5.FS (memfs) with the name of the uploaded file
