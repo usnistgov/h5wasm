@@ -1,6 +1,6 @@
 {
   "name": "h5wasm",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A high-level library for reading and writing HDF5 files from Javascript, using a wasm-compiled version of the HDF5 C library",
   "main": "./dist/hdf5_hl_node.js",
   "module": "./dist/hdf5_hl.js",
@@ -11,6 +11,13 @@
     "type": "git",
     "url": "https://github.com/usnistgov/h5wasm.git"
   },
+  "keywords": [
+    "hdf5",
+    "javascript",
+    "es6",
+    "browser",
+    "webassembly"
+  ],
   "author": "Brian B. Maranville",
   "license": "SEE LICENSE IN LICENSE.txt"
 }
