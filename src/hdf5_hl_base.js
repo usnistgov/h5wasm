@@ -394,16 +394,8 @@ class File extends Group {
         this.mode = mode;
     }
 
-    download(downloader) {
-        // useful only in the browser
+    flush() {
         Module.flush(this.file_id);
-        let b = new Blob([Module.FS.readFile(this.filename)], {type: 'application/x-hdf5'});
-        downloader(b, this.filename);
-    }
-
-    blob() {
-        Module.flush(this.file_id);
-        return new Blob([Module.FS.readFile(this.filename)], {type: 'application/x-hdf5'});
     }
 
     close() {

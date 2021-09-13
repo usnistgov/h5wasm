@@ -3,6 +3,10 @@ a zero-dependency WebAssembly-powered library for [reading](#reading) and [writi
 
 (built on the [HDF5 C API](http://portal.hdfgroup.org/pages/viewpage.action?pageId=50073943))
 
+See [dist branch](../../tree/dist) for built binaries.
+
+See [libhdf5 branch](../../tree/libhdf5) if you have a use for wasm-compiled  ```libhdf5.a``` and ```include``` files (in wasm_build/hdf5 subfolder)
+
 ## Browser
 ```js
 import * as hdf5 from "https://cdn.jsdelivr.net/npm/h5wasm@latest/dist/hdf5_hl.js";
@@ -164,7 +168,7 @@ f.close()
 Optional, to support uploads and downloads
 
 ```js
-import {uploader, downloader, UPLOADED_FILES} from "https://cdn.jsdelivr.net/npm/h5wasm@latest/dist/file_handlers.js";
+import {uploader, download, UPLOADED_FILES} from "https://cdn.jsdelivr.net/npm/h5wasm@latest/dist/file_handlers.js";
 // 
 // Attach to a file input element:
 // will save to hdf5.FS (memfs) with the name of the uploaded file
@@ -172,7 +176,7 @@ document.getElementById("upload_selector").onchange = uploader;
 // file can be found with 
 let f = new hdf5.File(UPLOADED_FILES[UPLOADED_FILES.length -1], "r");
 
-let new_file = hdf5.File("myfile.h5", "w");
+let new_file = new hdf5.File("myfile.h5", "w");
 
 new_file.create_group("entry");
 
@@ -181,6 +185,6 @@ new_file.get("entry").create_dataset("auto", [3.1, 4.1, 0.0, -1.0]);
 
 // this will download a snapshot of the HDF5 in its current state, with the same name
 // (in this case, a file named "myfile.h5" would be downloaded)
-new_file.download(downloader);
+download(new_file);
 
 ```

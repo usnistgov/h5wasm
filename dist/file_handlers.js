@@ -46,3 +46,13 @@ function create_downloader() {
 };
 
 export const downloader = create_downloader();
+
+export function to_blob(hdf5_file) {
+    hdf5_file.flush();
+    return new Blob([FS.readFile(hdf5_file.filename)], {type: 'application/x-hdf5'});
+}
+
+export function download(hdf5_file) {
+    let b = to_blob(hdf5_file);
+    downloader(b, hdf5_file.filename);
+}
