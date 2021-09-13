@@ -1,0 +1,90 @@
+        SUMMARY OF THE HDF5 CONFIGURATION
+        =================================
+
+General Information:
+-------------------
+                   HDF5 Version: 1.12.1
+                  Configured on: 2021-09-12
+                  Configured by: Unix Makefiles
+                    Host system: Linux-4.15.0-153-generic
+              Uname information: Emscripten
+                       Byte sex: little-endian
+             Installation point: /home/bbm/dev/h5wasm/wasm_build/hdf5
+
+Compiling Options:
+------------------
+                     Build Mode: RelWithDebInfo
+              Debugging Symbols: OFF
+                        Asserts: OFF
+                      Profiling: OFF
+             Optimization Level: OFF
+
+Linking Options:
+----------------
+                      Libraries: 
+  Statically Linked Executables: OFF
+                        LDFLAGS: -s NODERAWFS=1 -s USE_ZLIB=1
+                     H5_LDFLAGS: 
+                     AM_LDFLAGS: 
+                Extra libraries: m;dl
+                       Archiver: /home/bbm/dev/emsdk/upstream/emscripten/emar
+                         Ranlib: /home/bbm/dev/emsdk/upstream/emscripten/emranlib
+
+Languages:
+----------
+                              C: YES
+                     C Compiler: /home/bbm/dev/emsdk/upstream/emscripten/emcc 13.0.0
+                       CPPFLAGS: 
+                    H5_CPPFLAGS: 
+                    AM_CPPFLAGS: 
+                         CFLAGS:  -std=c99 -Wno-incompatible-pointer-types-discards-qualifiers
+                      H5_CFLAGS: -Wall;-Warray-bounds;-Wcast-qual;-Wconversion;-Wdouble-promotion;-Wextra;-Wformat=2;-Wframe-larger-than=16384;-Wimplicit-fallthrough;-Wno-c++-compat;-Wno-format-nonliteral;-Wnull-dereference;-Wunused-const-variable;-Wwrite-strings;-Wpedantic;-Wvolatile-register-var;-Wbad-function-cast;-Wimplicit-function-declaration;-Wincompatible-pointer-types;-Wmissing-declarations;-Wpacked;-Wshadow;-Wswitch;-Wno-error=incompatible-pointer-types-discards-qualifiers;-Wunused-function;-Wunused-variable;-Wunused-parameter;-Wcast-align;-Wformat
+                      AM_CFLAGS: 
+               Shared C Library: NO
+               Static C Library: YES
+
+                        Fortran: OFF
+               Fortran Compiler:  
+                  Fortran Flags: 
+               H5 Fortran Flags: 
+               AM Fortran Flags: 
+         Shared Fortran Library: NO
+         Static Fortran Library: YES
+
+                            C++: OFF
+                   C++ Compiler: /home/bbm/dev/emsdk/upstream/emscripten/em++ 13.0.0
+                      C++ Flags:  
+                   H5 C++ Flags: 
+                   AM C++ Flags: 
+             Shared C++ Library: NO
+             Static C++ Library: YES
+
+                            JAVA: OFF
+                 JAVA Compiler:  
+
+Features:
+---------
+                   Parallel HDF5: OFF
+Parallel Filtered Dataset Writes: 
+              Large Parallel I/O: 
+              High-level library: ON
+                Build HDF5 Tests: 0
+                Build HDF5 Tools: 0
+                    Threadsafety: OFF (recursive RW locks: OFF) 
+             Default API mapping: v112
+  With deprecated public symbols: ON
+          I/O filters (external):  DEFLATE
+                             MPE: 
+                      Direct VFD: 
+                      Mirror VFD: 
+              (Read-Only) S3 VFD: 
+            (Read-Only) HDFS VFD: 
+                         dmalloc: 
+  Packages w/ extra debug output: 
+                     API Tracing: OFF
+            Using memory checker: OFF
+ Memory allocation sanity checks: OFF
+          Function Stack Tracing: OFF
+                Use file locking: best-effort
+       Strict File Format Checks: OFF
+    Optimization Instrumentation: 

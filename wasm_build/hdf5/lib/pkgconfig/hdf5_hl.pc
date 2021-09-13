@@ -1,0 +1,14 @@
+prefix=/home/bbm/dev/h5wasm/wasm_build/hdf5
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: hdf5_hl
+Description: HDF5 (Hierarchical Data Format 5) Software Library
+Version: 1.12.1
+
+Cflags: -I${includedir}
+Libs: -L${libdir} 
+Requires: hdf5-1.12.1
+Libs.private:   -lhdf5_hl
+Requires.private: hdf5-1.12.1
