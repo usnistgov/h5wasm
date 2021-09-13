@@ -95,7 +95,7 @@ Int32Array(1280) [0, 0, 0, 2, 2, 2, 3, 1, 1, 7, 3, 5, 7, 8, 9, 21, 43, 38, 47, 
 
 ### Writing
 ```js
-let new_file = hdf5.File("myfile.h5", "w");
+let new_file = new hdf5.File("myfile.h5", "w");
 
 new_file.create_group("entry");
 
