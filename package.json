@@ -1,6 +1,6 @@
 {
   "name": "h5wasm",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "A high-level library for reading and writing HDF5 files from Javascript, using a wasm-compiled version of the HDF5 C library",
   "main": "./dist/hdf5_hl_node.js",
   "module": "./dist/hdf5_hl.js",
