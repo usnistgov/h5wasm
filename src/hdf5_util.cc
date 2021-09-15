@@ -2,6 +2,7 @@
 #include <string>
 
 #include "hdf5.h"
+#include "hdf5_hl.h"
 #include <emscripten/bind.h>
 #include <emscripten.h>
 
@@ -114,12 +115,14 @@ val get_type(hid_t loc_id, const std::string obj_name_string)
 {
     H5O_info_t oinfo;
     const char *obj_name = obj_name_string.c_str();
-    herr_t status = H5Oget_info_by_name(loc_id, obj_name, &oinfo, H5O_INFO_BASIC, H5P_DEFAULT);
-    // if (status < 0) {
-    //     throw_error(obj_name);
-    //     return val::null();
-    // }
-    return val((int)oinfo.type);
+    htri_t exists = H5LTpath_valid(loc_id, obj_name, true);
+    if (exists) {
+        herr_t status = H5Oget_info_by_name(loc_id, obj_name, &oinfo, H5O_INFO_BASIC, H5P_DEFAULT);
+        return val((int)oinfo.type);
+    }
+    else {
+        return val::null();
+    }
 }
 
 herr_t attribute_name_callback(hid_t loc_id, const char *name, const H5A_info_t *ainfo, void *opdata)
