@@ -333,8 +333,6 @@ int get_dataset_data(hid_t loc_id, const std::string dataset_name_string, val co
     }
 
     dtype = H5Dget_type(ds_id);
-    int total_size = H5Sget_simple_extent_npoints(memspace);
-    size_t size = H5Tget_size(dtype);
 
     status = H5Dread(ds_id, dtype, memspace, dspace, H5P_DEFAULT, rdata);
     
@@ -345,7 +343,39 @@ int get_dataset_data(hid_t loc_id, const std::string dataset_name_string, val co
     return (int)status;
 }
 
-val get_attribute_data(hid_t loc_id, const std::string group_name_string, const std::string attribute_name_string)
+int reclaim_vlen_memory(hid_t loc_id, const std::string object_name_string, const std::string attribute_name_string, uint64_t rdata_uint64)
+{
+    hid_t ds_id;
+    hid_t attr_id;
+    hid_t dspace;
+    hid_t dtype;
+    herr_t status;
+    const char *object_name = object_name_string.c_str();
+    const char *attribute_name = attribute_name_string.c_str();
+    void *rdata = (void *)rdata_uint64;
+
+    if (attribute_name_string == "") {
+        // then it's a dataset!
+        ds_id = H5Dopen2(loc_id, object_name, H5P_DEFAULT);
+        dspace = H5Dget_space(ds_id);
+        dtype = H5Dget_type(ds_id);
+        H5Dclose(ds_id);
+    }
+    else {
+        attr_id = H5Aopen_by_name(loc_id, object_name, attribute_name, H5P_DEFAULT, H5P_DEFAULT);
+        dtype = H5Aget_type(attr_id);
+        dspace = H5Aget_space(attr_id);
+        H5Aclose(attr_id);
+    }
+
+    status = H5Treclaim(dtype, dspace, H5P_DEFAULT, rdata);
+
+    H5Sclose(dspace);
+    H5Tclose(dtype);
+    return (int)status;
+}
+
+int get_attribute_data(hid_t loc_id, const std::string group_name_string, const std::string attribute_name_string, uint64_t rdata_uint64)
 {
     hid_t attr_id;
     hid_t dspace;
@@ -353,61 +383,25 @@ val get_attribute_data(hid_t loc_id, const std::string group_name_string, const 
     herr_t status;
     const char *group_name = &group_name_string[0];
     const char *attribute_name = &attribute_name_string[0];
+    void *rdata = (void *)rdata_uint64;
 
     htri_t exists = H5Aexists_by_name(loc_id, group_name, attribute_name, H5P_DEFAULT);
     if (exists < 1)
     {
         throw_error("error - name not defined!");
-        return val::null();
+        return -1;
     }
     attr_id = H5Aopen_by_name(loc_id, group_name, attribute_name, H5P_DEFAULT, H5P_DEFAULT);
     dtype = H5Aget_type(attr_id);
     dspace = H5Aget_space(attr_id);
 
-    int total_size = H5Sget_simple_extent_npoints(dspace);
-    //std::cout << H5Sget_simple_extent_ndims(dspace) << std::endl;
-    size_t size = H5Tget_size(dtype);
-    htri_t is_vlstr = H5Tis_variable_str(dtype);
-
-    thread_local const val Uint8Array = val::global("Uint8Array");
-
-    void *buffer = malloc(size * total_size);
-    status = H5Aread(attr_id, dtype, buffer);
-    val output = val::null();
-
-    if (is_vlstr)
-    {
-        output = val::array();
-        char *bp = (char *)buffer;
-        char *onestring = NULL;
-        for (int i = 0; i < total_size; i++)
-        {
-            onestring = *(char **)((void *)bp);
-            output.set(i, val(std::string(onestring)));
-            bp += size;
-        }
-        if (onestring)
-            free(onestring);
-    }
-    else
-    {
-        output = Uint8Array.new_(typed_memory_view(
-            total_size * size, (uint8_t *)buffer));
-    }
-
-    if (buffer)
-    {
-        if (is_vlstr)
-            H5Treclaim(dtype, dspace, H5P_DEFAULT, buffer);
-        free(buffer);
-    }
-
-    free(buffer);
+    status = H5Sselect_all(dspace);
+    status = H5Aread(attr_id, dtype, rdata);
 
     H5Aclose(attr_id);
     H5Sclose(dspace);
     H5Tclose(dtype);
-    return output;
+    return (int)status;
 }
 
 int create_group(hid_t loc_id, std::string grp_name_string)
@@ -510,7 +504,9 @@ int create_attribute(hid_t loc_id, std::string obj_name_string, std::string attr
     attr = H5Acreate(obj_id, attr_name, filetype, space, H5P_DEFAULT,
                      H5P_DEFAULT);
     status = H5Awrite(attr, filetype, wdata);
-
+    if (is_vlstr) {
+        status = H5Treclaim(filetype, space, H5P_DEFAULT, wdata);
+    }
     /*
     * Close and release resources.
     */
@@ -560,7 +556,9 @@ int create_dataset(hid_t loc_id, std::string dset_name_string, uint64_t wdata_ui
     status = setup_dataset(dims_in, dtype, dsize, is_signed, is_vlstr, &filetype, &space);
     dset = H5Dcreate2(loc_id, dset_name, filetype, space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     status = H5Dwrite(dset, filetype, space, space, H5P_DEFAULT, wdata);
-
+    if (is_vlstr) {
+        status = H5Treclaim(filetype, space, H5P_DEFAULT, wdata);
+    }
     status = H5Dclose(dset);
     status = H5Sclose(space);
     status = H5Tclose(filetype);
@@ -569,7 +567,7 @@ int create_dataset(hid_t loc_id, std::string dset_name_string, uint64_t wdata_ui
 
 int create_vlen_str_dataset(hid_t loc_id, std::string dset_name_string, val data, val dims_in, int dtype, int dsize, bool is_signed, bool is_vlstr) {
     uint64_t wdata_uint64; // ptr as uint64_t (webassembly will be 64-bit someday)
-
+    
     std::vector<std::string> data_string_vec = vecFromJSArray<std::string>(data);
     std::vector<const char *> data_char_vec;
     data_char_vec.reserve(data_string_vec.size());
@@ -598,6 +596,7 @@ EMSCRIPTEN_BINDINGS(hdf5)
     function("get_dataset_metadata", &get_dataset_metadata);
     function("get_dataset_data", &get_dataset_data);
     function("get_attribute_data", &get_attribute_data);
+    function("reclaim_vlen_memory", &reclaim_vlen_memory);
     function("create_group", &create_group);
     function("create_dataset", &create_dataset);
     function("create_attribute", &create_attribute, allow_raw_pointers());
