@@ -77,7 +77,7 @@ $(APP): $(SRC)/hdf5_util.cc $(WASM_LIBS)
 		-s MODULARIZE=1 \
 		-s FORCE_FILESYSTEM=1 \
 		-s USE_ZLIB=1 \
-		-s EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap', 'FS']" \
+		-s EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap', 'FS', 'AsciiToString', 'UTF8ToString']" \
 		-s EXPORTED_FUNCTIONS="['_H5Fopen', '_H5Fclose', '_H5Fcreate']";
 		
 	emcc -O3 $(WASM_LIBS) $(SRC)/hdf5_util.cc -o $(APP_DIR)/node/hdf5_util.js \
@@ -90,7 +90,7 @@ $(APP): $(SRC)/hdf5_util.cc $(WASM_LIBS)
 		-s FORCE_FILESYSTEM=1 \
 		-s USE_ZLIB=1 \
 		-s ASSERTIONS=1 \
-		-s EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap', 'FS']" \
+		-s EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap', 'FS', 'AsciiToString', 'UTF8ToString']" \
 		-s EXPORTED_FUNCTIONS="['_H5Fopen', '_H5Fclose', '_H5Fcreate']";
 		
 	cat $(SRC)/hdf5_hl_esm_header.js > $(APP_DIR)/hdf5_hl.js;
