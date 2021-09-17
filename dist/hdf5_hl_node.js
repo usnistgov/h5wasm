@@ -31,8 +31,20 @@ class Attribute {
 
 function get_attr(file_id, obj_name, attr_name) {
     let metadata = Module.get_attribute_metadata(file_id, obj_name, attr_name);
-    let data = Module.get_attribute_data(file_id, obj_name, attr_name);
-    return process_data(data, metadata)
+    let nbytes = metadata.size * metadata.total_size;
+    let data_ptr = Module._malloc(nbytes);
+    var processed;
+    try {
+        Module.get_attribute_data(file_id, obj_name, attr_name, BigInt(data_ptr));
+        let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
+        processed = process_data(data, metadata);
+    } finally {
+        if (metadata.vlen) {
+            Module.reclaim_vlen_memory(file_id, obj_name, attr_name, BigInt(data_ptr));
+        }
+        Module._free(data_ptr);
+    }
+    return processed;
 }
 
 function process_data(data, metadata) {
@@ -41,18 +53,18 @@ function process_data(data, metadata) {
     // but otherwise returns Uint8Array raw bytes as loaded.    
     var data;
     if (metadata.type == Module.H5T_class_t.H5T_STRING.value) {
-        // if (metadata.vlen) {
-        //     let output = [];
-        //     let ptrs = new Uint32Array(data.buffer);
-        //     for (let ptr of ptrs) {
-        //         output.push(AsciiToString(ptr));
-        //         //Module._H5Treclaim(BigInt(ptr));
-        //     }
-        //     return output;
-        // }
-        //return data;
-        if (!metadata.vlen) {
-            let decoder = new TextDecoder('utf-8');
+        if (metadata.vlen) {
+            let output = [];
+            let reader = (metadata.cset == 1) ? Module.UTF8ToString : Module.AsciiToString;
+            let ptrs = new Uint32Array(data.buffer);
+            for (let ptr of ptrs) {
+                output.push(reader(ptr));
+            }
+            data = output;
+        }
+        else {
+            let encoding = (metdata.cset == 1) ? 'utf-8' : 'ascii';
+            let decoder = new TextDecoder(encoding);
             let size = metadata.size;
             let slices = [];
             for (let i = 0; i < metadata.total_size; i++) {
@@ -340,10 +352,9 @@ class Group extends HasAttrs {
         let [prepared_data, guessed_shape] = prepare_data(data, metadata, shape);
         var shape = shape ?? guessed_shape;
         if (metadata.vlen) {
-            Module.create_vlen_dataset(
+            Module.create_vlen_str_dataset(
                 this.file_id,
-                this.path,
-                name,
+                this.path + "/" + name,
                 prepared_data,
                 shape.map(BigInt),
                 metadata.type,
@@ -433,6 +444,9 @@ class Dataset extends HasAttrs {
             let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
             processed = process_data(data, metadata);
         } finally {
+            if (metadata.vlen) {
+                Module.reclaim_vlen_memory(this.file_id, this.path, "", BigInt(data_ptr));
+            }
             Module._free(data_ptr);
         }
         return processed;
@@ -453,13 +467,15 @@ class Dataset extends HasAttrs {
         try {
             Module.get_dataset_data(this.file_id, this.path, count, offset, BigInt(data_ptr));
             let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
-            processed = process_data(data, metadata);
+            processed = process_data(data, metadata, this.file_id, this.path, "");
         } finally {
+            if (metadata.vlen) {
+                Module.reclaim_vlen_memory(this.file_id, this.path, "", BigInt(data_ptr));
+            }
             Module._free(data_ptr);
         }
         return processed;
     }
 }
-
 const Module = require("./node/hdf5_util.js");
 module.exports = {File, Dataset, Group, ACCESS_MODES};
