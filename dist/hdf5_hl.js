@@ -71,7 +71,7 @@ function process_data(data, metadata) {
             data = output;
         }
         else {
-            let encoding = (metdata.cset == 1) ? 'utf-8' : 'ascii';
+            let encoding = (metadata.cset == 1) ? 'utf-8' : 'ascii';
             let decoder = new TextDecoder(encoding);
             let size = metadata.size;
             let slices = [];
