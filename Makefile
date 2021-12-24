@@ -20,7 +20,7 @@ wasm: $(WASM_LIBS)
 
 $(HDF5_SRC):
 	curl -L $(HDF5_DOWNLOAD_URL) -o hdf5_src.tgz;
-	echo "$(HDF5_DOWNLOAD_HASH) hdf5_src.tgz" | sha256sum --check;
+	echo "$(HDF5_DOWNLOAD_HASH)  hdf5_src.tgz" | shasum -a 256 --check -;
 	tar -xzf hdf5_src.tgz;
 
 C_FLAGS = \
@@ -73,8 +73,8 @@ $(APP): $(SRC)/hdf5_util.cc $(WASM_LIBS)
         -s ALLOW_TABLE_GROWTH=1 \
         -s ALLOW_MEMORY_GROWTH=1 \
 		-s WASM_BIGINT \
+		-s ENVIRONMENT=web \
 		-s EXPORT_ES6=1 \
-		-s MODULARIZE=1 \
 		-s FORCE_FILESYSTEM=1 \
 		-s USE_ZLIB=1 \
 		-s EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap', 'FS', 'AsciiToString', 'UTF8ToString']" \
