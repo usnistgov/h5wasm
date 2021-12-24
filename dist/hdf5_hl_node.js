@@ -304,6 +304,7 @@ class Group extends HasAttrs {
         super();
         this.path = path;
         this.file_id = file_id;
+        this.type = "Group";
     }
 
     keys() {
@@ -420,6 +421,7 @@ class Dataset extends HasAttrs {
         super();
         this.path = path;
         this.file_id = file_id;
+        this.type = "Dataset";
     }
 
     get metadata() {
