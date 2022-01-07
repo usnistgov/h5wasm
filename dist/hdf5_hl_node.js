@@ -50,8 +50,7 @@ function get_attr(file_id, obj_name, attr_name) {
 function process_data(data, metadata) {
     // (for data coming out of Module)
     // If an appropriate TypedArray container can be constructed, it will
-    // but otherwise returns Uint8Array raw bytes as loaded.    
-    var data;
+    // but otherwise returns Uint8Array raw bytes as loaded.
     if (metadata.type == Module.H5T_class_t.H5T_STRING.value) {
         if (metadata.vlen) {
             let output = [];
@@ -66,12 +65,13 @@ function process_data(data, metadata) {
             let encoding = (metadata.cset == 1) ? 'utf-8' : 'ascii';
             let decoder = new TextDecoder(encoding);
             let size = metadata.size;
-            let slices = [];
-            for (let i = 0; i < metadata.total_size; i++) {
+            let n = Math.floor(data.byteLength / size);
+            let output = [];
+            for (let i = 0; i < n; i++) {
                 let s = data.slice(i * size, (i + 1) * size);
-                slices.push(decoder.decode(s).replace(/\u0000+$/, ''));
+                output.push(decoder.decode(s).replace(/\u0000+$/, ''));
             }
-            data = slices;
+            data = output;
         }
     }
     else if (metadata.type == Module.H5T_class_t.H5T_INTEGER.value) {
@@ -89,7 +89,23 @@ function process_data(data, metadata) {
         }
     }
 
-    return (metadata.shape.length == 0 && data.length) ? data[0] : data;
+    else if (metadata.type == Module.H5T_class_t.H5T_COMPOUND.value) {
+        let n = Math.floor(data.byteLength / metadata.size);
+        let size = metadata.size;
+        let output = [];
+        for (let i = 0; i < n; i++) {
+            let row = [];
+            let row_data = data.slice(i * size, (i + 1) * size);
+            for (let member of metadata.compound_type.members) {
+                let member_data = row_data.slice(member.offset, member.offset + member.size);
+                row.push(process_data(member_data, member))
+            }
+            output.push(row);
+        }
+        data = output;
+    }
+
+    return ((!metadata.shape || metadata.shape.length == 0) && data.length == 1) ? data[0] : data;
 }
 
 function prepare_data(data, metadata, shape = null) {
@@ -461,7 +477,7 @@ class Dataset extends HasAttrs {
         let ndims = shape.length;
         let count = shape.map((s, i) => BigInt(Math.min(s, ranges?.[i]?.[1] ?? s) - Math.max(0, ranges?.[i]?.[0] ?? 0)));
         let offset = shape.map((s, i) => BigInt(Math.min(s, Math.max(0, ranges?.[i]?.[0] ?? 0))));
-        console.log(count, offset);
+        // console.log(count, offset);
         let total_size = count.reduce((previous, current) => current * previous, 1n);
         let nbytes = metadata.size * Number(total_size);
         let data_ptr = Module._malloc(nbytes);
