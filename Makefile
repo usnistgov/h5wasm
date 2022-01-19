@@ -89,6 +89,7 @@ $(APP_WASM): $(SRC)/hdf5_util.cc $(WASM_LIBS)
 		-s WASM_BIGINT \
 		-s NODERAWFS=1 \
 		-s FORCE_FILESYSTEM=1 \
+		-s EXPORT_ES6=1 \
 		-s USE_ZLIB=1 \
 		-s ASSERTIONS=1 \
 		-s EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap', 'FS', 'AsciiToString', 'UTF8ToString']" \
