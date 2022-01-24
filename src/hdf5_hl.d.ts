@@ -1,6 +1,7 @@
-/// <reference path="hdf5_util.d.ts" />
-import { Status, Metadata, H5Module } from "./hdf5_util_helpers";
+import type { Status, Metadata, H5Module } from "./hdf5_util_helpers";
 export declare var Module: H5Module;
+export default Module;
+export declare var FS: FS.FileSystemType;
 declare const ready: Promise<void>;
 export { ready };
 export declare const ACCESS_MODES: {
