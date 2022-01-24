@@ -1,4 +1,5 @@
 /// <reference path="./emscripten.d.ts" />
+
 export type Status = number;
 
 export interface H5T_class_t {
@@ -55,7 +56,7 @@ export interface H5Module extends EmscriptenModule {
     H5T_class_t: H5T_class_t,
     reclaim_vlen_memory(file_id: BigInt, obj_name: string, attr_name: string, data_ptr: bigint): Status;
     get_attribute_data(file_id: BigInt, obj_name: string, attr_name: string, arg3: bigint): Status;
-    FS: Emscripten.FileSystemType,
+    FS: FS.FileSystemType,
     get_keys_vector(group_id: bigint, H5_index_t: number): Array<string>,
     get_attribute_metadata(loc_id: bigint, group_name_string: string, attribute_name_string: string): Metadata
 }
