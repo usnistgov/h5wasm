@@ -3,14 +3,17 @@
   "version": "0.1.8",
   "description": "A high-level library for reading and writing HDF5 files from Javascript, using a wasm-compiled version of the HDF5 C library",
   "main": "./dist/node/hdf5_hl.js",
+  "types": "./src/hdf5_hl.d.ts",
   "module": "./dist/esm/hdf5_hl.js",
   "exports": {
     "import": "./dist/esm/hdf5_hl.js",
     "require": "./dist/node/hdf5_hl.js"
   },
   "scripts": {
-    "build": "./esbuild.mjs",
-    "generate_types": "tsc -d --emitDeclarationOnly src/hdf5_hl.ts --target es2020",
+    "build": "npm run build_esm && npm run build_node && npm run build_types",
+    "build_esm": "tsc src/hdf5_hl.ts --outDir dist/esm --target es2020",
+    "build_node": "tsc src/hdf5_hl.ts --outDir dist/node --target es2020 --module commonjs --allowJs --esModuleInterop",
+    "build_types": "tsc -d --emitDeclarationOnly src/hdf5_hl.ts --target es2020",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -27,7 +30,6 @@
   "author": "Brian B. Maranville",
   "license": "SEE LICENSE IN LICENSE.txt",
   "devDependencies": {
-    "esbuild": "^0.13.15",
     "typescript": "^4.5.4"
   }
 }
