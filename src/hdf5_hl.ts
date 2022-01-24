@@ -1,9 +1,10 @@
 /// <reference path="./hdf5_util.d.ts" />
+import {Status, Metadata, H5Module} from "./hdf5_util_helpers";
 
 import ModuleFactory from './hdf5_util.js';
 //export {File, Group, Dataset, FS, Module, ACCESS_MODES};
 
-export var Module: Module = null;
+export var Module: H5Module; //: H5WasmModule = null;
 var FS: Emscripten.FileSystemType = null;
 
 const ready = ModuleFactory({ noInitialRun: true }).then(result => { Module = result; FS = Module.FS });
@@ -346,7 +347,7 @@ export class Group extends HasAttrs {
     this.type = OBJECT_TYPE.GROUP;
   }
 
-  keys() {
+  keys(): Array<string> {
     return Module.get_names(this.file_id, this.path);
   }
 
@@ -381,9 +382,9 @@ export class Group extends HasAttrs {
     }
   }
 
-  create_group(name: string) {
+  create_group(name: string): Group {
     Module.create_group(this.file_id, this.path + "/" + name);
-    return this.get(name);
+    return this.get(name) as Group;
   }
 
   create_dataset(name: string, data, shape: Array<number> = null, dtype: string = null) {
@@ -494,7 +495,7 @@ export class Dataset extends HasAttrs {
     return processed;
   }
 
-  slice(ranges) {
+  slice(ranges: Array<Array<number>>) {
     // interpret ranges as [start, stop], with one per dim.
     let metadata = this.metadata;
     let shape = metadata.shape;
