@@ -1,0 +1,6 @@
+node_modules
+hdf5-hdf5**
+wasm_build**
+.cache
+hdf5_src.tgz
+h5wasm*.tgz

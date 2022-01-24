@@ -3,11 +3,11 @@ import {FS} from "./hdf5_hl.js";
 export const UPLOADED_FILES = [];
 
 export function uploader() {
-    let file = this.files[0]; // only one file allowed
+    let file = this.files[0] as File; // only one file allowed
     let datafilename = file.name;
     let reader = new FileReader();
     reader.onloadend = function (evt) {
-        let data = evt.target.result;
+        let data = evt.target.result as ArrayBuffer;
         FS.writeFile(datafilename, new Uint8Array(data));
         if (!UPLOADED_FILES.includes(datafilename)) {
             UPLOADED_FILES.push(datafilename);
@@ -24,13 +24,14 @@ export function uploader() {
 function create_downloader() {
     var a = document.createElement("a");
     document.body.appendChild(a);
-    a.style = "display: none";
+    a.style.display = "none";
     a.id = "savedata";
     return function (data, fileName) {
         var blob = (data instanceof Blob) ? data : new Blob([data], { type: 'application/x-hdf5' });
-        // IE 10 / 11 
-        if (window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(blob, fileName);
+        // IE 10 / 11
+        const nav = (window.navigator as any);
+        if (nav.msSaveOrOpenBlob) {
+            nav.msSaveOrOpenBlob(blob, fileName);
         } else {
             var url = window.URL.createObjectURL(blob);
             a.href = url;
