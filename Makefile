@@ -69,10 +69,10 @@ $(LIBHDF5): $(WASM_LIBS)
 $(APP_WASM): $(SRC)/hdf5_util.cc $(WASM_LIBS)
 	mkdir -p dist/esm dist/node;
 	emcc -O3 $(WASM_LIBS) $(SRC)/hdf5_util.cc -o $(APP_DIR)/esm/hdf5_util.js \
-        -I$(WASM_INCLUDE_DIR) \
-        --bind  \
-        -s ALLOW_TABLE_GROWTH=1 \
-        -s ALLOW_MEMORY_GROWTH=1 \
+		-I$(WASM_INCLUDE_DIR) \
+		--bind  \
+		-s ALLOW_TABLE_GROWTH=1 \
+		-s ALLOW_MEMORY_GROWTH=1 \
 		-s WASM_BIGINT \
 		-s ENVIRONMENT=web \
 		-s EXPORT_ES6=1 \
@@ -82,10 +82,10 @@ $(APP_WASM): $(SRC)/hdf5_util.cc $(WASM_LIBS)
 		-s EXPORTED_FUNCTIONS="['_H5Fopen', '_H5Fclose', '_H5Fcreate']";
 		
 	emcc -O3 $(WASM_LIBS) $(SRC)/hdf5_util.cc -o $(APP_DIR)/node/hdf5_util.js \
-        -I$(WASM_INCLUDE_DIR) \
-        --bind  \
-        -s ALLOW_TABLE_GROWTH=1 \
-        -s ALLOW_MEMORY_GROWTH=1 \
+		-I$(WASM_INCLUDE_DIR) \
+		--bind  \
+		-s ALLOW_TABLE_GROWTH=1 \
+		-s ALLOW_MEMORY_GROWTH=1 \
 		-s WASM_BIGINT \
 		-s NODERAWFS=1 \
 		-s FORCE_FILESYSTEM=1 \
