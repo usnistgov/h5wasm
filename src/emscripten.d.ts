@@ -13,7 +13,6 @@ declare namespace WebAssembly {
 }
 
 declare namespace Emscripten {
-    interface FileSystemType {}
     type EnvironmentType = 'WEB' | 'NODE' | 'SHELL' | 'WORKER';
 
     type JSType = 'number' | 'string' | 'array' | 'boolean' | 'bigint';
@@ -125,133 +124,136 @@ declare namespace FS {
     interface FSNode {}
     interface ErrnoError {}
 
-    let ignorePermissions: boolean;
-    let trackingDelegate: any;
-    let tracking: any;
-    let genericErrors: any;
+    interface FileSystemType {
+        ignorePermissions: boolean,
+        trackingDelegate: any,
+        tracking: any,
+        genericErrors: any,
 
-    //
-    // paths
-    //
-    function lookupPath(path: string, opts: any): Lookup;
-    function getPath(node: FSNode): string;
 
-    //
-    // nodes
-    //
-    function isFile(mode: number): boolean;
-    function isDir(mode: number): boolean;
-    function isLink(mode: number): boolean;
-    function isChrdev(mode: number): boolean;
-    function isBlkdev(mode: number): boolean;
-    function isFIFO(mode: number): boolean;
-    function isSocket(mode: number): boolean;
+        //
+        // paths
+        //
+        lookupPath(path: string, opts: any): Lookup,
+        getPath(node: FSNode): string,
 
-    //
-    // devices
-    //
-    function major(dev: number): number;
-    function minor(dev: number): number;
-    function makedev(ma: number, mi: number): number;
-    function registerDevice(dev: number, ops: any): void;
+        //
+        // nodes
+        //
+        isFile(mode: number): boolean,
+        isDir(mode: number): boolean,
+        isLink(mode: number): boolean,
+        isChrdev(mode: number): boolean,
+        isBlkdev(mode: number): boolean,
+        isFIFO(mode: number): boolean,
+        isSocket(mode: number): boolean,
 
-    //
-    // core
-    //
-    function syncfs(populate: boolean, callback: (e: any) => any): void;
-    function syncfs(callback: (e: any) => any, populate?: boolean): void;
-    function mount(type: Emscripten.FileSystemType, opts: any, mountpoint: string): any;
-    function unmount(mountpoint: string): void;
+        //
+        // devices
+        //
+        major(dev: number): number,
+        minor(dev: number): number,
+        makedev(ma: number, mi: number): number,
+        registerDevice(dev: number, ops: any): void,
 
-    function mkdir(path: string, mode?: number): any;
-    function mkdev(path: string, mode?: number, dev?: number): any;
-    function symlink(oldpath: string, newpath: string): any;
-    function rename(old_path: string, new_path: string): void;
-    function rmdir(path: string): void;
-    function readdir(path: string): any;
-    function unlink(path: string): void;
-    function readlink(path: string): string;
-    function stat(path: string, dontFollow?: boolean): any;
-    function lstat(path: string): any;
-    function chmod(path: string, mode: number, dontFollow?: boolean): void;
-    function lchmod(path: string, mode: number): void;
-    function fchmod(fd: number, mode: number): void;
-    function chown(path: string, uid: number, gid: number, dontFollow?: boolean): void;
-    function lchown(path: string, uid: number, gid: number): void;
-    function fchown(fd: number, uid: number, gid: number): void;
-    function truncate(path: string, len: number): void;
-    function ftruncate(fd: number, len: number): void;
-    function utime(path: string, atime: number, mtime: number): void;
-    function open(path: string, flags: string, mode?: number, fd_start?: number, fd_end?: number): FSStream;
-    function close(stream: FSStream): void;
-    function llseek(stream: FSStream, offset: number, whence: number): any;
-    function read(stream: FSStream, buffer: ArrayBufferView, offset: number, length: number, position?: number): number;
-    function write(
-        stream: FSStream,
-        buffer: ArrayBufferView,
-        offset: number,
-        length: number,
-        position?: number,
-        canOwn?: boolean,
-    ): number;
-    function allocate(stream: FSStream, offset: number, length: number): void;
-    function mmap(
-        stream: FSStream,
-        buffer: ArrayBufferView,
-        offset: number,
-        length: number,
-        position: number,
-        prot: number,
-        flags: number,
-    ): any;
-    function ioctl(stream: FSStream, cmd: any, arg: any): any;
-    function readFile(path: string, opts: { encoding: 'binary'; flags?: string | undefined }): Uint8Array;
-    function readFile(path: string, opts: { encoding: 'utf8'; flags?: string | undefined }): string;
-    function readFile(path: string, opts?: { flags?: string | undefined }): Uint8Array;
-    function writeFile(path: string, data: string | ArrayBufferView, opts?: { flags?: string | undefined }): void;
+        //
+        // core
+        //
+        syncfs(populate: boolean, callback: (e: any) => any): void,
+        syncfs(callback: (e: any) => any, populate?: boolean): void,
+        mount(type: FileSystemType, opts: any, mountpoint: string): any,
+        unmount(mountpoint: string): void,
 
-    //
-    // module-level FS code
-    //
-    function cwd(): string;
-    function chdir(path: string): void;
-    function init(
-        input: null | (() => number | null),
-        output: null | ((c: number) => any),
-        error: null | ((c: number) => any),
-    ): void;
+        mkdir(path: string, mode?: number): any,
+        mkdev(path: string, mode?: number, dev?: number): any,
+        symlink(oldpath: string, newpath: string): any,
+        rename(old_path: string, new_path: string): void,
+        rmdir(path: string): void,
+        readdir(path: string): any,
+        unlink(path: string): void,
+        readlink(path: string): string,
+        stat(path: string, dontFollow?: boolean): any,
+        lstat(path: string): any,
+        chmod(path: string, mode: number, dontFollow?: boolean): void,
+        lchmod(path: string, mode: number): void,
+        fchmod(fd: number, mode: number): void,
+        chown(path: string, uid: number, gid: number, dontFollow?: boolean): void,
+        lchown(path: string, uid: number, gid: number): void,
+        fchown(fd: number, uid: number, gid: number): void,
+        truncate(path: string, len: number): void,
+        ftruncate(fd: number, len: number): void,
+        utime(path: string, atime: number, mtime: number): void,
+        open(path: string, flags: string, mode?: number, fd_start?: number, fd_end?: number): FSStream,
+        close(stream: FSStream): void,
+        llseek(stream: FSStream, offset: number, whence: number): any,
+        read(stream: FSStream, buffer: ArrayBufferView, offset: number, length: number, position?: number): number,
+        write(
+            stream: FSStream,
+            buffer: ArrayBufferView,
+            offset: number,
+            length: number,
+            position?: number,
+            canOwn?: boolean,
+        ): number,
+        allocate(stream: FSStream, offset: number, length: number): void,
+        mmap(
+            stream: FSStream,
+            buffer: ArrayBufferView,
+            offset: number,
+            length: number,
+            position: number,
+            prot: number,
+            flags: number,
+        ): any,
+        ioctl(stream: FSStream, cmd: any, arg: any): any,
+        readFile(path: string, opts: { encoding: 'binary'; flags?: string | undefined }): Uint8Array,
+        readFile(path: string, opts: { encoding: 'utf8'; flags?: string | undefined }): string,
+        readFile(path: string, opts?: { flags?: string | undefined }): Uint8Array,
+        writeFile(path: string, data: string | ArrayBufferView, opts?: { flags?: string | undefined }): void,
 
-    function createLazyFile(
-        parent: string | FSNode,
-        name: string,
-        url: string,
-        canRead: boolean,
-        canWrite: boolean,
-    ): FSNode;
-    function createPreloadedFile(
-        parent: string | FSNode,
-        name: string,
-        url: string,
-        canRead: boolean,
-        canWrite: boolean,
-        onload?: () => void,
-        onerror?: () => void,
-        dontCreateFile?: boolean,
-        canOwn?: boolean,
-    ): void;
-    function createDataFile(
-        parent: string | FSNode,
-        name: string,
-        data: ArrayBufferView,
-        canRead: boolean,
-        canWrite: boolean,
-        canOwn: boolean,
-    ): FSNode;
+        //
+        // module-level FS code
+        //
+        cwd(): string,
+        chdir(path: string): void,
+        init(
+            input: null | (() => number | null),
+            output: null | ((c: number) => any),
+            error: null | ((c: number) => any),
+        ): void,
+
+        createLazyFile(
+            parent: string | FSNode,
+            name: string,
+            url: string,
+            canRead: boolean,
+            canWrite: boolean,
+        ): FSNode,
+        createPreloadedFile(
+            parent: string | FSNode,
+            name: string,
+            url: string,
+            canRead: boolean,
+            canWrite: boolean,
+            onload?: () => void,
+            onerror?: () => void,
+            dontCreateFile?: boolean,
+            canOwn?: boolean,
+        ): void,
+        createDataFile(
+            parent: string | FSNode,
+            name: string,
+            data: ArrayBufferView,
+            canRead: boolean,
+            canWrite: boolean,
+            canOwn: boolean,
+        ): FSNode;
+    }
 }
 
-declare var MEMFS: Emscripten.FileSystemType;
-declare var NODEFS: Emscripten.FileSystemType;
-declare var IDBFS: Emscripten.FileSystemType;
+declare var MEMFS: FS.FileSystemType;
+declare var NODEFS: FS.FileSystemType;
+declare var IDBFS: FS.FileSystemType;
 
 // https://emscripten.org/docs/porting/connecting_cpp_and_javascript/Interacting-with-code.html
 type StringToType<R extends any> = R extends Emscripten.JSType
