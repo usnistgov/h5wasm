@@ -2,5 +2,6 @@ node_modules
 hdf5-hdf5**
 wasm_build**
 .cache
+.vscode
 hdf5_src.tgz
 h5wasm*.tgz
