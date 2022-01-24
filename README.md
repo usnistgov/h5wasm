@@ -7,7 +7,7 @@ See [dist branch](../../tree/dist) for built binaries.
 
 See [libhdf5 branch](../../tree/libhdf5) if you have a use for wasm-compiled  ```libhdf5.a``` and ```include``` files (in wasm_build/hdf5 subfolder)
 
-## Browser
+## Browser (no-build)
 ```js
 import * as hdf5 from "https://cdn.jsdelivr.net/npm/h5wasm@latest/dist/hdf5_hl.js";
 
@@ -20,6 +20,19 @@ hdf5.FS.writeFile("sans59510.nxs.ngv", new Uint8Array(ab));
 let f = new hdf5.File("sans59510.nxs.ngv", "r");
 // File {path: "/", file_id: 72057594037927936n, filename: "data.h5", mode: "r"}
 ```
+
+## Browser target (build system)
+```npm i h5wasm``` or ```yarn add h5wasm```
+then in your file
+```js
+// index.js
+import * as hdf5 from "h5wasm";
+
+let f = new hdf5.File("test.h5", "w");
+f.create_dataset("text_data", ["this", "that"]);
+// ...
+```
+__note__: you must configure your build system to target >= ES2020 (for bigint support)
 
 ## nodejs
 The host filesystem is made available through Emscripten "NODERAWFS=1".
