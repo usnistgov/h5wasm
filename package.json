@@ -2,9 +2,15 @@
   "name": "h5wasm",
   "version": "0.1.8",
   "description": "A high-level library for reading and writing HDF5 files from Javascript, using a wasm-compiled version of the HDF5 C library",
-  "main": "./dist/hdf5_hl_node.js",
-  "module": "./dist/hdf5_hl.js",
+  "main": "./dist/node/hdf5_hl.js",
+  "module": "./dist/esm/hdf5_hl.js",
+  "exports": {
+    "import": "./dist/esm/hdf5_hl.js",
+    "require": "./dist/node/hdf5_hl.js"
+  },
   "scripts": {
+    "build": "./esbuild.mjs",
+    "generate_types": "tsc -d --emitDeclarationOnly src/hdf5_hl.ts --target es2020",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -22,8 +28,6 @@
   "license": "SEE LICENSE IN LICENSE.txt",
   "devDependencies": {
     "esbuild": "^0.13.15",
-    "esbuild-plugin-alias": "^0.2.1",
-    "esbuild-plugin-wasm": "^1.0.0",
     "typescript": "^4.5.4"
   }
 }
