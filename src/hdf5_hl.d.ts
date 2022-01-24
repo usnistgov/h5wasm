@@ -1,6 +1,7 @@
-/// <reference path="../dist/esm/hdf5_util.d.ts" />
-export declare var Module: Module;
-declare const ready: any;
+/// <reference path="hdf5_util.d.ts" />
+import { Status, Metadata, H5Module } from "./hdf5_util_helpers";
+export declare var Module: H5Module;
+declare const ready: Promise<void>;
 export { ready };
 export declare const ACCESS_MODES: {
     readonly r: "H5F_ACC_RDONLY";
@@ -26,12 +27,12 @@ declare class HasAttrs {
 }
 export declare class Group extends HasAttrs {
     constructor(file_id: any, path: any);
-    keys(): any;
+    keys(): Array<string>;
     values(): Generator<Group | Dataset, void, unknown>;
-    items(): Generator<any[], void, unknown>;
-    get_type(obj_path: string): any;
+    items(): Generator<(string | Group | Dataset)[], void, unknown>;
+    get_type(obj_path: string): number;
     get(obj_name: string): Group | Dataset;
-    create_group(name: string): Group | Dataset;
+    create_group(name: string): Group;
     create_dataset(name: string, data: any, shape?: Array<number>, dtype?: string): Group | Dataset;
     toString(): string;
 }
@@ -44,11 +45,11 @@ export declare class File extends Group {
 }
 export declare class Dataset extends HasAttrs {
     constructor(file_id: any, path: any);
-    get metadata(): any;
+    get metadata(): Metadata;
     get dtype(): string | {
         compound: any;
     };
-    get shape(): any;
+    get shape(): number[];
     get value(): any;
-    slice(ranges: any): any;
+    slice(ranges: Array<Array<number>>): any;
 }
