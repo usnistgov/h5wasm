@@ -1,13 +1,12 @@
-/// <reference path="./hdf5_util.d.ts" />
-import {Status, Metadata, H5Module} from "./hdf5_util_helpers";
+import type {Status, Metadata, H5Module} from "./hdf5_util_helpers";
 
-import ModuleFactory from './hdf5_util.js';
-//export {File, Group, Dataset, FS, Module, ACCESS_MODES};
+import {default as ModuleFactory} from './hdf5_util.js';
 
 export var Module: H5Module; //: H5WasmModule = null;
-var FS: Emscripten.FileSystemType = null;
+export default Module;
+export var FS: FS.FileSystemType = null;
 
-const ready = ModuleFactory({ noInitialRun: true }).then(result => { Module = result; FS = Module.FS });
+const ready = (ModuleFactory as EmscriptenModuleFactory<H5Module>)({ noInitialRun: true }).then(result => { Module = result; FS = Module.FS });
 export { ready };
 
 
