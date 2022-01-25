@@ -221,6 +221,19 @@ val get_dtype_metadata(hid_t dtype)
         compound_type.set("members", members);
         attr.set("compound_type", compound_type);
     }
+    else if (dtype_class == H5T_ARRAY) {
+        hid_t base_dtype = H5Tget_super(dtype);
+        val array_type = get_dtype_metadata(base_dtype);
+        val array_dims_out = val::array();
+        int ndims = H5Tget_array_ndims(dtype);
+        std::vector<hsize_t> array_dims(ndims);
+        H5Tget_array_dims2(dtype, &array_dims[0]);
+        for (int i=0; i<ndims; i++) {
+            array_dims_out.set(i, (int)array_dims[i]);
+        }
+        array_type.set("dims", array_dims_out);
+        attr.set("array_type", array_type);
+    }
 
     bool littleEndian = (order == H5T_ORDER_LE);
     attr.set("vlen", (bool)H5Tis_variable_str(dtype));

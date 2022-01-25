@@ -122,6 +122,10 @@ function process_data(data, metadata) {
     data = output;
   }
 
+  else if (metadata.type == Module.H5T_class_t.H5T_ARRAY.value) {
+    data = process_data(data, metadata.array_type);
+  }
+
   return ((!metadata.shape || metadata.shape.length == 0) && data.length == 1) ? data[0] : data;
 }
 
