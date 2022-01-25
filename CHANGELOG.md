@@ -5,6 +5,7 @@
  - Typescript definitions (src/hdf5_hl.d.ts)
  - Support for reading and processing HDF5 Array datatype
  - esm and nodejs modules both offer ```ready``` Promise, which can be awaited before working with the module (addresses #5)
+ - minimal set of tests (```npm test```)
  
 ### Changed
  - **POSSIBLY BREAKING**: local paths to modules is changed
