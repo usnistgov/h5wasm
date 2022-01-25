@@ -14,7 +14,7 @@
     "build_esm": "tsc src/hdf5_hl.ts src/file_handlers.ts --outDir dist/esm --target es2020",
     "build_node": "tsc src/hdf5_hl.ts --outDir dist/node --target es2020 --module commonjs --allowJs --esModuleInterop",
     "build_types": "tsc -d --emitDeclarationOnly src/hdf5_hl.ts --target es2020",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node ./test/test.mjs"
   },
   "repository": {
     "type": "git",
