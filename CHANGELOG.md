@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.2.0 (unreleased)
+### Added
+ - Typescript definitions (src/hdf5_hl.d.ts)
+ - Support for reading and processing HDF5 Array datatype
+ - esm and nodejs modules both offer ```ready``` Promise, which can be awaited before working with the module (addresses #5)
+ 
+### Changed
+ - **POSSIBLY BREAKING**: local paths to modules is changed
+     - esm: ./dist/esm/hdf5_hl.js
+     - node (CJS): ./dist/node/hdf5_hl.js
+ - Build step added (esm and nodejs modules both built from Typescript source)
+
 ## v0.1.8 2022-01-06
 ### Added
  - auto decoding of [Compound datatypes](https://support.hdfgroup.org/HDF5/Tutor/compound.html) to native Javascript arrays
