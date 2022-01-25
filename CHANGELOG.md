@@ -8,7 +8,7 @@
  - minimal set of tests (```npm test```)
  
 ### Changed
- - **POSSIBLY BREAKING**: local paths to modules is changed
+ - **POSSIBLY BREAKING**: local paths to modules are changed
      - esm: ./dist/esm/hdf5_hl.js
      - node (CJS): ./dist/node/hdf5_hl.js
  - Build step added (esm and nodejs modules both built from Typescript source)
