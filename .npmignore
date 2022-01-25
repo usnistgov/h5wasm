@@ -4,5 +4,4 @@ wasm_build**
 .cache
 .vscode
 hdf5_src.tgz
-dist**
 h5wasm*.tgz

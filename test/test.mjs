@@ -1,0 +1,28 @@
+#!/usr/bin/env node
+
+// tests for H5T_COMPOUND and H5T_ARRAY support
+import compound_and_array_tests from "./compound_and_array_test.mjs";
+
+let tests = [];
+let add_tests = (tests_in) => { /*global*/ tests = tests.concat(tests_in)}
+
+add_tests(compound_and_array_tests);
+
+async function run_test(test) {
+    try {
+        await test.test();
+        console.log('✓', test.description);
+    }
+    catch (error) {
+        console.log('x', test.description);
+        console.log(error.stack);
+    }
+}
+
+async function run_tests(tests) {
+    for (let test of tests) {
+        await run_test(test);
+    }
+}
+
+await run_tests(tests);

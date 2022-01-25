@@ -11,12 +11,11 @@ HDF5_DOWNLOAD_URL = https://github.com/HDFGroup/hdf5/archive/refs/tags/$(HDF5_VE
 HDF5_DOWNLOAD_HASH = e6dde173c2d243551922d23a0387a79961205b018502e6a742acb30b61bc2d5f
 SRC = src
 APP_DIR = dist
-APP = $(APP_DIR)/hdf5_hl.js $(APP_DIR)/hdf5_hl_node.js 
 APP_WASM = $(APP_DIR)/esm/hdf5_util.js $(APP_DIR)/node/hdf5_util.js
 LIBHDF5 = $(APP_DIR)/libhdf5.js $(APP_DIR)/libhdf5_sa.wasm
 
-app: $(APP) $(APP_WASM)
-all: $(HDF5_SRC) $(APP) $(APP_WASM) $(LIBHDF5) 
+app: $(APP_WASM)
+all: $(HDF5_SRC) $(APP_WASM) 
 wasm: $(WASM_LIBS)
 
 $(HDF5_SRC):
@@ -69,10 +68,10 @@ $(LIBHDF5): $(WASM_LIBS)
 $(APP_WASM): $(SRC)/hdf5_util.cc $(WASM_LIBS)
 	mkdir -p dist/esm dist/node;
 	emcc -O3 $(WASM_LIBS) $(SRC)/hdf5_util.cc -o $(APP_DIR)/esm/hdf5_util.js \
-        -I$(WASM_INCLUDE_DIR) \
-        --bind  \
-        -s ALLOW_TABLE_GROWTH=1 \
-        -s ALLOW_MEMORY_GROWTH=1 \
+		-I$(WASM_INCLUDE_DIR) \
+		--bind  \
+		-s ALLOW_TABLE_GROWTH=1 \
+		-s ALLOW_MEMORY_GROWTH=1 \
 		-s WASM_BIGINT \
 		-s ENVIRONMENT=web \
 		-s EXPORT_ES6=1 \
@@ -82,26 +81,22 @@ $(APP_WASM): $(SRC)/hdf5_util.cc $(WASM_LIBS)
 		-s EXPORTED_FUNCTIONS="['_H5Fopen', '_H5Fclose', '_H5Fcreate']";
 		
 	emcc -O3 $(WASM_LIBS) $(SRC)/hdf5_util.cc -o $(APP_DIR)/node/hdf5_util.js \
-        -I$(WASM_INCLUDE_DIR) \
-        --bind  \
-        -s ALLOW_TABLE_GROWTH=1 \
-        -s ALLOW_MEMORY_GROWTH=1 \
+		-I$(WASM_INCLUDE_DIR) \
+		--bind  \
+		-s ALLOW_TABLE_GROWTH=1 \
+		-s ALLOW_MEMORY_GROWTH=1 \
 		-s WASM_BIGINT \
 		-s NODERAWFS=1 \
 		-s FORCE_FILESYSTEM=1 \
+		-s ENVIRONMENT=node \
+		-s MODULARIZE=1 \
 		-s USE_ZLIB=1 \
 		-s ASSERTIONS=1 \
 		-s EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap', 'FS', 'AsciiToString', 'UTF8ToString']" \
 		-s EXPORTED_FUNCTIONS="['_H5Fopen', '_H5Fclose', '_H5Fcreate']";
 
-$(APP): $(SRC)/hdf5_hl_base.js
-	cat $(SRC)/hdf5_hl_esm_header.js > $(APP_DIR)/hdf5_hl.js;
-	cat $(SRC)/hdf5_hl_base.js >> $(APP_DIR)/hdf5_hl.js;
-	cat $(SRC)/hdf5_hl_base.js > $(APP_DIR)/hdf5_hl_node.js;
-	cat $(SRC)/hdf5_hl_node_footer.js >> $(APP_DIR)/hdf5_hl_node.js;
-	
-	  
+
 clean:
 	rm -rf $(WASM_BUILD_DIR);
 	rm -rf $(APP_DIR)/esm/;
-	rm -f $(APP_DIR)/node/;
+	rm -rf $(APP_DIR)/node/;

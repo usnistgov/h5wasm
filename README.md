@@ -9,7 +9,7 @@ See [libhdf5 branch](../../tree/libhdf5) if you have a use for wasm-compiled  ``
 
 ## Browser (no-build)
 ```js
-import * as hdf5 from "https://cdn.jsdelivr.net/npm/h5wasm@latest/dist/hdf5_hl.js";
+import * as hdf5 from "https://cdn.jsdelivr.net/npm/h5wasm@latest/dist/esm/hdf5_hl.js";
 
 let response = await fetch("https://ncnr.nist.gov/pub/ncnrdata/vsans/202003/24845/data/sans59510.nxs.ngv");
 let ab = await response.arrayBuffer();
@@ -181,7 +181,7 @@ f.close()
 Optional, to support uploads and downloads
 
 ```js
-import {uploader, download, UPLOADED_FILES} from "https://cdn.jsdelivr.net/npm/h5wasm@latest/dist/file_handlers.js";
+import {uploader, download, UPLOADED_FILES} from "https://cdn.jsdelivr.net/npm/h5wasm@latest/dist/esm/file_handlers.js";
 // 
 // Attach to a file input element:
 // will save to hdf5.FS (memfs) with the name of the uploaded file
