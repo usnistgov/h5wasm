@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.2.0 (unreleased)
+## v0.2.0 2022-01-25
 ### Added
  - Typescript definitions (src/hdf5_hl.d.ts)
  - Support for reading and processing HDF5 Array datatype
