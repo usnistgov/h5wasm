@@ -12,6 +12,7 @@
      - esm: ./dist/esm/hdf5_hl.js
      - node (CJS): ./dist/node/hdf5_hl.js
  - Build step added (esm and nodejs modules both built from Typescript source)
+ - Build artifacts no longer available from ```dist``` branch, will be uploaded as .tgz archive (output of npm pack) to releases
 
 ## v0.1.8 2022-01-06
 ### Added
