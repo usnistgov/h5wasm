@@ -17,6 +17,7 @@ LIBHDF5 = $(APP_DIR)/libhdf5.js $(APP_DIR)/libhdf5_sa.wasm
 app: $(APP_WASM)
 all: $(HDF5_SRC) $(APP_WASM) 
 wasm: $(WASM_LIBS)
+wasm_tar: libhdf5_wasm.tgz
 
 $(HDF5_SRC):
 	curl -L $(HDF5_DOWNLOAD_URL) -o hdf5_src.tgz;
@@ -38,6 +39,9 @@ $(WASM_LIBS): $(HDF5_SRC)
 	mkdir -p $(WASM_BUILD_DIR);
 	cd $(WASM_BUILD_DIR) && emcmake cmake ../
 	cd $(WASM_BUILD_DIR) && emmake make -j8 install;
+
+wasm_tar: $(WASM_LIBS)
+	tar -C $(WASM_BUILD_DIR)/hdf5/ -czf libhdf5_wasm.tgz include lib
 
 $(LIBHDF5): $(WASM_LIBS)
 	emcc -O3 $(WASM_LIBS) \
