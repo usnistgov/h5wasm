@@ -5,3 +5,4 @@ wasm_build**
 .vscode
 hdf5_src.tgz
 h5wasm*.tgz
+libhdf5*.tgz

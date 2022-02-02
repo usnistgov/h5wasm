@@ -6,3 +6,4 @@ wasm_build**
 hdf5_src.tgz
 dist**
 h5wasm*.tgz
+libhdf5*.tgz
