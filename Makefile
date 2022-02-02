@@ -36,18 +36,7 @@ C_FLAGS = \
 
 $(WASM_LIBS): $(HDF5_SRC)
 	mkdir -p $(WASM_BUILD_DIR);
-	cd $(WASM_BUILD_DIR) \
-        && LDFLAGS="-s NODERAWFS=1 -s USE_ZLIB=1" emcmake cmake ../$(HDF5_SRC) \
-        -DCMAKE_INSTALL_PREFIX=hdf5 \
-        -DH5_HAVE_GETPWUID=0 \
-        -DH5_HAVE_SIGNAL=0 \
-        -DBUILD_SHARED_LIBS=0 \
-        -DBUILD_STATIC_LIBS=1 \
-        -DBUILD_TESTING=0 \
-        -DCMAKE_C_FLAGS=$(C_FLAGS) \
-        -DHDF5_BUILD_EXAMPLES=0 \
-        -DHDF5_BUILD_TOOLS=0 \
-        -DHDF5_ENABLE_Z_LIB_SUPPORT=1;
+	cd $(WASM_BUILD_DIR) && emcmake cmake ../
 	cd $(WASM_BUILD_DIR) && emmake make -j8 install;
 
 $(LIBHDF5): $(WASM_LIBS)
