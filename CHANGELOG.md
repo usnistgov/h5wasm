@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.2.1 2022-02-04
+### Fixed
+ - Writing of Float64 datasets was broken, and is now working
+ - Guessed shape of simple string values is fixed so that this will work: 
+```js
+  f.create_attribute("my_attr", "a string value");
+```
+
 ## v0.2.0 2022-01-25
 ### Added
  - Typescript definitions (src/hdf5_hl.d.ts)
