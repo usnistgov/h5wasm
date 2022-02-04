@@ -39,7 +39,7 @@ std::vector<std::string> get_keys_vector(hid_t group_id, H5_index_t index = H5_I
     return namelist;
 }
 
-val get_child_names(hid_t loc_id, const std::string group_name_string)
+val get_child_names(hid_t loc_id, const std::string& group_name_string)
 {
     hid_t gcpl_id;
     unsigned crt_order_flags;
@@ -72,7 +72,7 @@ val get_child_names(hid_t loc_id, const std::string group_name_string)
     return names;
 }
 
-val get_child_types(hid_t loc_id, const std::string group_name_string)
+val get_child_types(hid_t loc_id, const std::string& group_name_string)
 {
     hid_t gcpl_id;
     unsigned crt_order_flags;
@@ -111,18 +111,19 @@ val get_child_types(hid_t loc_id, const std::string group_name_string)
     return names;
 }
 
-val get_type(hid_t loc_id, const std::string obj_name_string)
+int get_type(hid_t loc_id, const std::string& obj_name_string)
 {
-    H5O_info_t oinfo;
+    H5O_info1_t oinfo;
+    int obj_type = -1; // default: if not name exists
     const char *obj_name = obj_name_string.c_str();
-    htri_t exists = H5LTpath_valid(loc_id, obj_name, true);
+    const hid_t obj_id = H5Oopen(loc_id, obj_name, H5P_DEFAULT);
+    htri_t exists = (obj_id >= 0); // H5LTpath_valid(loc_id, obj_name, true);
     if (exists) {
-        herr_t status = H5Oget_info_by_name(loc_id, obj_name, &oinfo, H5O_INFO_BASIC, H5P_DEFAULT);
-        return val((int)oinfo.type);
+        herr_t status = H5Oget_info2(obj_id, &oinfo, H5O_INFO_BASIC);
+        obj_type = (int)oinfo.type;
     }
-    else {
-        return val::null();
-    }
+    H5Oclose(obj_id);
+    return obj_type;
 }
 
 herr_t attribute_name_callback(hid_t loc_id, const char *name, const H5A_info_t *ainfo, void *opdata)
@@ -132,7 +133,7 @@ herr_t attribute_name_callback(hid_t loc_id, const char *name, const H5A_info_t 
     return 0;
 }
 
-val get_attribute_names(hid_t loc_id, const std::string obj_name_string)
+val get_attribute_names(hid_t loc_id, const std::string& obj_name_string)
 {
     hid_t ocpl_id;
     unsigned crt_order_flags;
@@ -264,7 +265,7 @@ val get_abstractDS_metadata(hid_t dspace, hid_t dtype)
     return attr;
 }
 
-val get_attribute_metadata(hid_t loc_id, const std::string group_name_string, const std::string attribute_name_string)
+val get_attribute_metadata(hid_t loc_id, const std::string& group_name_string, const std::string& attribute_name_string)
 {
     hid_t attr_id;
     hid_t dspace;
@@ -290,7 +291,7 @@ val get_attribute_metadata(hid_t loc_id, const std::string group_name_string, co
     return metadata;
 }
 
-val get_dataset_metadata(hid_t loc_id, const std::string dataset_name_string)
+val get_dataset_metadata(hid_t loc_id, const std::string& dataset_name_string)
 {
     hid_t ds_id;
     hid_t dspace;
@@ -314,7 +315,7 @@ val get_dataset_metadata(hid_t loc_id, const std::string dataset_name_string)
     return metadata;
 }
 
-int get_dataset_data(hid_t loc_id, const std::string dataset_name_string, val count_out, val offset_out, uint64_t rdata_uint64)
+int get_dataset_data(hid_t loc_id, const std::string& dataset_name_string, val count_out, val offset_out, uint64_t rdata_uint64)
 {
     hid_t ds_id;
     hid_t dspace;
@@ -356,7 +357,7 @@ int get_dataset_data(hid_t loc_id, const std::string dataset_name_string, val co
     return (int)status;
 }
 
-int reclaim_vlen_memory(hid_t loc_id, const std::string object_name_string, const std::string attribute_name_string, uint64_t rdata_uint64)
+int reclaim_vlen_memory(hid_t loc_id, const std::string& object_name_string, const std::string& attribute_name_string, uint64_t rdata_uint64)
 {
     hid_t ds_id;
     hid_t attr_id;
@@ -388,7 +389,7 @@ int reclaim_vlen_memory(hid_t loc_id, const std::string object_name_string, cons
     return (int)status;
 }
 
-int get_attribute_data(hid_t loc_id, const std::string group_name_string, const std::string attribute_name_string, uint64_t rdata_uint64)
+int get_attribute_data(hid_t loc_id, const std::string& group_name_string, const std::string& attribute_name_string, uint64_t rdata_uint64)
 {
     hid_t attr_id;
     hid_t dspace;
@@ -454,8 +455,15 @@ herr_t setup_dataset(val dims_in, int dtype, int dsize, bool is_signed, bool is_
     }
     else if (dtype == H5T_FLOAT)
     {
-        *filetype = H5Tcopy(H5T_NATIVE_FLOAT);
-        status = H5Tset_size(*filetype, dsize);
+        if (dsize == 4) {
+            *filetype = H5Tcopy(H5T_NATIVE_FLOAT);
+        }
+        else if (dsize == 8) {
+            *filetype = H5Tcopy(H5T_NATIVE_DOUBLE);
+        }
+        else {
+            throw_error("data type not supported");
+        }
     }
     else
     {
