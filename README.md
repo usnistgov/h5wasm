@@ -59,6 +59,7 @@ File {
 ```
 
 ## Usage
+_(all examples are written in ESM - for Typescript some type casting is probably required, as `get` returns either Group or Dataset)_
 ### Reading
 ```js
 let f = new hdf5.File("sans59510.nxs.ngv", "r");
