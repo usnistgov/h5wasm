@@ -3,9 +3,9 @@ a zero-dependency WebAssembly-powered library for [reading](#reading) and [writi
 
 (built on the [HDF5 C API](http://portal.hdfgroup.org/pages/viewpage.action?pageId=50073943))
 
-See [dist branch](../../tree/dist) for built binaries.
-
-See [libhdf5 branch](../../tree/libhdf5) if you have a use for wasm-compiled  ```libhdf5.a``` and ```include``` files (in wasm_build/hdf5 subfolder)
+The built binaries (esm and node) will be attached to the [latest release](https://github.com/usnistgov/h5wasm/releases/latest/) as h5wasm-{version}.tgz
+  
+The wasm-compiled libraries `libhdf5.a`, `libhdf5_cpp.a` ... and the related `include/` folder are attached as libhdf5_wasm.tgz to the release.
 
 ## Browser (no-build)
 ```js
