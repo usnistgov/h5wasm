@@ -134,7 +134,12 @@ function prepare_data(data: any, metadata: Metadata, shape: Array<number> = null
 
   // set shape to size of array if it is not specified:
   if (shape == null) {
-    shape = (data.length) ? [data.length] : [];
+    if (data != null && data.length != null && !(typeof data === 'string')) {
+      shape = [data.length];
+    }
+    else {
+      shape = [];
+    }
   }
   data = (Array.isArray(data) || ArrayBuffer.isView(data)) ? data : [data];
   let total_size = shape.reduce((previous, current) => current * previous, 1);
@@ -187,7 +192,6 @@ function prepare_data(data: any, metadata: Metadata, shape: Array<number> = null
     let typed_array = (data instanceof accessor) ? data : new accessor(data);
     output = new Uint8Array(typed_array.buffer);
   }
-
   return [output, shape]
 }
 
@@ -252,8 +256,24 @@ function dtype_to_metadata(dtype_str) {
   return metadata
 }
 
+const TypedArray_to_dtype = new Map([
+  ['Uint8Array', '<B'],
+  ['Uint16Array', '<H'],
+  ['Uint32Array', '<I'],
+  ['BigUint64Array', '<Q'],
+  ['Int8Array', '<b'],
+  ['Int16Array', '<h'],
+  ['Int32Array', '<i'],
+  ['BigInt64Array', '<q'],
+  ['Float32Array', '<f'],
+  ['Float64Array', '<d']
+])
+
 function guess_dtype(data): string {
-  data = ((Array.isArray(data) || ArrayBuffer.isView(data)) ? data : [data]);
+  if (ArrayBuffer.isView(data) && !(data instanceof DataView)) {
+    return TypedArray_to_dtype.get(data.constructor.name);
+  }
+  data = ((Array.isArray(data)) ? data : [data]);
   if (data.every(Number.isInteger)) {
     return '<i'; // default integer type: Int32
   }
@@ -390,7 +410,7 @@ export class Group extends HasAttrs {
     return this.get(name) as Group;
   }
 
-  create_dataset(name: string, data, shape: Array<number> = null, dtype: string = null) {
+  create_dataset(name: string, data, shape: Array<number> = null, dtype: string = null): Dataset {
     var dtype = dtype ?? guess_dtype(data);
     let metadata = dtype_to_metadata(dtype);
     let [prepared_data, guessed_shape] = prepare_data(data, metadata, shape);
@@ -425,7 +445,7 @@ export class Group extends HasAttrs {
         Module._free(data_ptr);
       }
     }
-    return this.get(name);
+    return this.get(name) as Dataset;
   }
   toString() {
     return `Group(file_id=${this.file_id}, path=${this.path})`;
