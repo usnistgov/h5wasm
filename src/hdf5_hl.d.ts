@@ -34,7 +34,7 @@ export declare class Group extends HasAttrs {
     get_type(obj_path: string): number;
     get(obj_name: string): Group | Dataset;
     create_group(name: string): Group;
-    create_dataset(name: string, data: any, shape?: Array<number>, dtype?: string): Group | Dataset;
+    create_dataset(name: string, data: any, shape?: Array<number>, dtype?: string): Dataset;
     toString(): string;
 }
 export declare class File extends Group {
