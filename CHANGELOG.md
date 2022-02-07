@@ -7,6 +7,7 @@
 ```js
   f.create_attribute("my_attr", "a string value");
 ```
+ - Group.prototype.create_dataset now returns type Dataset (ts)
 
 ## v0.2.0 2022-01-25
 ### Added
