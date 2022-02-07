@@ -1,12 +1,16 @@
 #!/usr/bin/env node
 
 import { strict as assert } from 'assert';
+import { existsSync, mkdirSync, unlinkSync } from 'fs';
+import { join } from 'path';
 import hdf5 from "../dist/node/hdf5_hl.js";
 
 async function create_dataset() {
 
   await hdf5.ready;
-  var f = new hdf5.File("./test/dataset.h5", "w");
+  const PATH = join(".", "test", "tmp");
+  const FILEPATH = join(PATH, "dataset.h5");
+  const VALUES = [3,2,1];
 
   const TypedArray_to_dtype = new Map([
     ['Uint8Array', '<B'],
@@ -21,13 +25,31 @@ async function create_dataset() {
     ['Float32Array', '<f'],
   ])
 
-  for (let typed_arrayname of TypedArray_to_dtype.keys()) {
-      let values = (/^Big/.test(typed_arrayname)) ? [3n, 2n, 1n] : [3,2,1];
-      let data = new globalThis[typed_arrayname](values);
-      f.create_dataset(typed_arrayname, data);
+  if (!(existsSync(PATH))) {
+    mkdirSync(PATH);
   }
-  f.flush();
-  f.close();
+  
+  let write_file = new hdf5.File(FILEPATH, "w");
+
+  for (let typed_arrayname of TypedArray_to_dtype.keys()) {
+    let write_values = (/^Big/.test(typed_arrayname)) ? VALUES.map(BigInt) : VALUES;
+    let data = new globalThis[typed_arrayname](write_values);
+    write_file.create_dataset(typed_arrayname, data);
+  }
+  write_file.flush();
+  write_file.close();
+
+  let read_file = new hdf5.File(FILEPATH, "r");
+  for (let [name, dtype] of TypedArray_to_dtype.entries()) {
+    let dset = read_file.get(name);
+    assert.equal(dset.dtype, dtype);
+    assert.deepEqual([...dset.value].map(Number), VALUES);
+  }
+  read_file.close()
+
+  // cleanup file when finished:
+  unlinkSync(FILEPATH);
+
 }
 
 export const tests = [
