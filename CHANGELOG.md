@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.2.2 2022-02-16
+### Added
+ - IDBFS adapter added to ESM module
+
+### Changed
+ - license statement expanded
+
 ## v0.2.1 2022-02-04
 ### Fixed
  - Writing of Float64 datasets was broken, and is now working
