@@ -57,3 +57,15 @@ export function download(hdf5_file) {
     let b = to_blob(hdf5_file);
     downloader(b, hdf5_file.filename);
 }
+
+export function dirlisting(path: string) {
+    let node = FS.analyzePath(path).object;
+    if (node && node.isFolder) {
+        let files = Object.values(node.contents).filter(v => !(v.isFolder)).map(v => v.name);
+        let subfolders = Object.values(node.contents).filter(v => (v.isFolder)).map(v => v.name);
+        return {files, subfolders}
+    }
+    else {
+        return {}
+    }
+}
