@@ -63,6 +63,7 @@ $(APP_WASM): $(SRC)/hdf5_util.cc $(WASM_LIBS)
 	emcc -O3 $(WASM_LIBS) $(SRC)/hdf5_util.cc -o $(APP_DIR)/esm/hdf5_util.js \
 		-I$(WASM_INCLUDE_DIR) \
 		--bind  \
+		-lidbfs.js \
 		-s ALLOW_TABLE_GROWTH=1 \
 		-s ALLOW_MEMORY_GROWTH=1 \
 		-s WASM_BIGINT \
