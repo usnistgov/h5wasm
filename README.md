@@ -200,5 +200,17 @@ new_file.get("entry").create_dataset("auto", [3.1, 4.1, 0.0, -1.0]);
 // this will download a snapshot of the HDF5 in its current state, with the same name
 // (in this case, a file named "myfile.h5" would be downloaded)
 download(new_file);
+```
 
+## Persistent file store (web)
+To persist the emscripten virtual filesystem between sessions, use IDBFS (syncs with browser IndexedDB), e.g.
+```js
+// create a local mount of the IndexedDB filesystem:
+hdf5.FS.mount(hdf5.FS.filesystems.IDBFS, {}, "/home/web_user")
+
+// to read from the browser IndexedDB into the active filesystem:
+hdf5.FS.syncfs(true, (e) => {console.log(e)});
+
+// to push all current files in /home/web_user to IndexedDB, e.g. when closing your application:
+hdf5.FS.syncfs(false, (e) => {console.log(e)})
 ```
