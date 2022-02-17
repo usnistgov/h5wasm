@@ -119,9 +119,28 @@ declare namespace FS {
         path: string;
         node: FSNode;
     }
+    interface AnalyzePath {
+        error: number;
+        exists: boolean;
+        isRoot: boolean;
+        name: string;
+        object: FSNode;
+        parentExists: boolean;
+        parentObject?: FSNode;
+        parentPath?: string;
+        path: string;
+    }
 
     interface FSStream {}
-    interface FSNode {}
+    interface FSNode {
+        path: string;
+        name: string;
+        read: boolean;
+        timestamp: number;
+        write: boolean;
+        isFolder: boolean;
+        contents: {[key: string]: FSNode} | Uint8Array;
+    }
     interface ErrnoError {}
 
     interface FileSystemType {
@@ -135,6 +154,7 @@ declare namespace FS {
         // paths
         //
         lookupPath(path: string, opts: any): Lookup,
+        analyzePath(path: string, dontResolveLastLink?: boolean): AnalyzePath,
         getPath(node: FSNode): string,
 
         //
