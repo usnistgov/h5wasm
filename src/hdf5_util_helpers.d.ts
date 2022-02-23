@@ -3,18 +3,18 @@
 export type Status = number;
 
 export interface H5T_class_t {
-    H5T_NO_CLASS: {value: -1},     // = -1 /**< error                                   */
-    H5T_INTEGER: {value: 0},       //   = 0,  /**< integer types                           */
-    H5T_FLOAT: {value: 1},         //     = 1,  /**< floating-point types                    */
-    H5T_TIME: {value: 2},          //      = 2,  /**< date and time types                     */
-    H5T_STRING: {value: 3},        //    = 3,  /**< character string types                  */
-    H5T_BITFIELD: {value: 4},      //  = 4,  /**< bit field types                         */
-    H5T_OPAQUE: {value: 5},        //    = 5,  /**< opaque types                            */
-    H5T_COMPOUND: {value: 6},      //  = 6,  /**< compound types                          */
+    H5T_NO_CLASS: {value: -1},     // = -1  /**< error                                   */
+    H5T_INTEGER: {value: 0},       // = 0,  /**< integer types                           */
+    H5T_FLOAT: {value: 1},         // = 1,  /**< floating-point types                    */
+    H5T_TIME: {value: 2},          // = 2,  /**< date and time types                     */
+    H5T_STRING: {value: 3},        // = 3,  /**< character string types                  */
+    H5T_BITFIELD: {value: 4},      // = 4,  /**< bit field types                         */
+    H5T_OPAQUE: {value: 5},        // = 5,  /**< opaque types                            */
+    H5T_COMPOUND: {value: 6},      // = 6,  /**< compound types                          */
     H5T_REFERENCE: {value: 7},     // = 7,  /**< reference types                         */
-    H5T_ENUM: {value: 8},          //      = 8,  /**< enumeration types                       */
-    H5T_VLEN: {value: 9},          //      = 9,  /**< variable-Length types                   */
-    H5T_ARRAY: {value: 10}          //     = 10, /**< array types                             */
+    H5T_ENUM: {value: 8},          // = 8,  /**< enumeration types                       */
+    H5T_VLEN: {value: 9},          // = 9,  /**< variable-Length types                   */
+    H5T_ARRAY: {value: 10}         // = 10, /**< array types                             */
 }
 
 export interface Metadata {
