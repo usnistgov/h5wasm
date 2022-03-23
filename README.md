@@ -10,6 +10,8 @@ The wasm-compiled libraries `libhdf5.a`, `libhdf5_cpp.a` ... and the related `in
 ## Browser (no-build)
 ```js
 import * as hdf5 from "https://cdn.jsdelivr.net/npm/h5wasm@latest/dist/esm/hdf5_hl.js";
+// the WASM loads asychronously, and it can be awaited if necessary:
+await hdf5.ready;
 
 let response = await fetch("https://ncnr.nist.gov/pub/ncnrdata/vsans/202003/24845/data/sans59510.nxs.ngv");
 let ab = await response.arrayBuffer();
@@ -27,6 +29,7 @@ then in your file
 ```js
 // index.js
 import * as hdf5 from "h5wasm";
+await hdf5.ready;
 
 let f = new hdf5.File("test.h5", "w");
 f.create_dataset("text_data", ["this", "that"]);
@@ -46,6 +49,7 @@ node --experimental-wasm-bigint
 
 ```js
 const hdf5 = require("h5wasm");
+await hdf5.ready;
 
 let f = new hdf5.File("/home/brian/Downloads/sans59510.nxs.ngv", "r");
 /*
