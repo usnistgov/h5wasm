@@ -1,4 +1,5 @@
 BUILD_DIR = build
+DIST_DIR = dist
 
 all:
 	mkdir -p dist/esm dist/node;
@@ -8,5 +9,5 @@ all:
 
 clean:
 	rm -rf $(BUILD_DIR);
-	rm -rf $(APP_DIR)/esm/;
-	rm -rf $(APP_DIR)/node/;
+	rm -rf $(DIST_DIR)/esm/;
+	rm -rf $(DIST_DIR)/node/;
