@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.3.0 2022-03-23
+### Changed
+ - compiled with ```-s SINGLE_FILE``` to embed WASM in output .js file (for compatibility with bundlers)
+ - using external build of libhdf5 from https://github.com/usnistgov/libhdf5-wasm
+
 ## v0.2.2 2022-02-16
 ### Added
  - IDBFS adapter added to ESM module
