@@ -290,7 +290,28 @@ function guess_dtype(data): string {
 
 enum OBJECT_TYPE {
   DATASET = "Dataset",
-  GROUP = "Group"
+  GROUP = "Group",
+  BROKEN_SOFT_LINK = "BrokenSoftLink",
+  EXTERNAL_LINK = "ExternalLink"
+}
+
+export class BrokenSoftLink {
+  // only used for broken links...
+  target: string;
+  type: OBJECT_TYPE = OBJECT_TYPE.BROKEN_SOFT_LINK;
+  constructor(target: string) {
+    this.target = target;
+  }
+}
+
+export class ExternalLink {
+  filename: string;
+  obj_path: string;
+  type: OBJECT_TYPE = OBJECT_TYPE.EXTERNAL_LINK;
+  constructor(filename: string, obj_path: string) {
+    this.filename = filename;
+    this.obj_path = obj_path;
+  }
 }
 
 class HasAttrs {
@@ -392,16 +413,32 @@ export class Group extends HasAttrs {
     return Module.get_type(this.file_id, obj_path);
   }
 
+  get_link(obj_path: string) {
+    return Module.get_symbolic_link(this.file_id, obj_path);
+  }
+
+  get_external_link(obj_path: string) {
+    return Module.get_external_link(this.file_id, obj_path);
+  }
+
   get(obj_name: string) {
     let fullpath = (/^\//.test(obj_name)) ? obj_name : this.path + "/" + obj_name;
     fullpath = normalizePath(fullpath);
 
     let type = this.get_type(fullpath);
-    if (type == Module.H5O_TYPE_GROUP) {
+    if (type == Module.H5G_GROUP) {
       return new Group(this.file_id, fullpath);
     }
-    else if (type == Module.H5O_TYPE_DATASET) {
+    else if (type == Module.H5G_DATASET) {
       return new Dataset(this.file_id, fullpath);
+    }
+    else if (type === Module.H5G_LINK) {
+      let target = this.get_link(fullpath);
+      return new BrokenSoftLink(target);
+    }
+    else if (type === Module.H5G_UDLINK) {
+      let {filename, obj_path} = this.get_external_link(fullpath);
+      return new ExternalLink(filename, obj_path);
     }
   }
 

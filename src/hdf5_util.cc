@@ -113,17 +113,69 @@ val get_child_types(hid_t loc_id, const std::string& group_name_string)
 
 int get_type(hid_t loc_id, const std::string& obj_name_string)
 {
-    H5O_info1_t oinfo;
+    // H5O_info2_t oinfo;
+    H5G_stat_t ginfo;
     int obj_type = -1; // default: if not name exists
     const char *obj_name = obj_name_string.c_str();
-    const hid_t obj_id = H5Oopen(loc_id, obj_name, H5P_DEFAULT);
-    htri_t exists = (obj_id >= 0); // H5LTpath_valid(loc_id, obj_name, true);
+    htri_t exists = H5LTpath_valid(loc_id, obj_name, true);
     if (exists) {
-        herr_t status = H5Oget_info2(obj_id, &oinfo, H5O_INFO_BASIC);
-        obj_type = (int)oinfo.type;
+        herr_t status = H5Gget_objinfo(loc_id, obj_name, true, &ginfo);
+        // herr_t status = H5Oget_info_by_name(loc_id, obj_name, &oinfo, H5O_INFO_BASIC, H5P_DEFAULT);
+        obj_type = (int)ginfo.type;
     }
-    H5Oclose(obj_id);
+    else {
+        // check if the path exists but doesn't resolve to an object
+        htri_t link_exists = H5LTpath_valid(loc_id, obj_name, false);
+        if (link_exists) {
+            herr_t status = H5Gget_objinfo(loc_id, obj_name, false, &ginfo);
+            obj_type = (int)ginfo.type;
+        }
+    }
     return obj_type;
+}
+
+val get_symbolic_link(hid_t loc_id, const std::string& obj_name_string)
+{
+    H5L_info2_t linfo;
+    const char *obj_name = obj_name_string.c_str();
+    htri_t exists = H5LTpath_valid(loc_id, obj_name, false);
+    herr_t status = H5Lget_info2(loc_id, obj_name, &linfo, H5P_DEFAULT);
+    if (exists && linfo.type == H5L_TYPE_SOFT) {
+        size_t linksize = linfo.u.val_size;
+        char * targbuf = (char *)malloc(linksize + 1);
+        status = H5Lget_val(loc_id, obj_name, targbuf, linksize, H5P_DEFAULT);
+        val output = val(std::string(targbuf));
+        free(targbuf);
+        return output;
+    }
+    else {
+        return val::null();
+    }
+}
+
+val get_external_link(hid_t loc_id, const std::string& obj_name_string)
+{
+    H5L_info2_t linfo;
+    const char *obj_name = obj_name_string.c_str();
+    htri_t exists = H5LTpath_valid(loc_id, obj_name, false);
+    herr_t status = H5Lget_info2(loc_id, obj_name, &linfo, H5P_DEFAULT);
+    val output = val::object();
+    if (exists && linfo.type == H5L_TYPE_EXTERNAL) {
+        size_t linksize = linfo.u.val_size;
+        char *targbuf = NULL;
+        const char *filename = NULL;
+        const char *external_obj_path = NULL;
+
+        targbuf = (char*)malloc(linksize + 1);
+        unsigned int flags = 0;
+
+        status = H5Lget_val(loc_id, obj_name, targbuf, linksize, H5P_DEFAULT);
+        status = H5Lunpack_elink_val(targbuf, linksize, NULL, &filename, &external_obj_path);
+        output.set("filename", std::string(filename));
+        output.set("obj_path", std::string(external_obj_path));
+        free(targbuf);
+    }
+    return output;
 }
 
 herr_t attribute_name_callback(hid_t loc_id, const char *name, const H5A_info_t *ainfo, void *opdata)
@@ -611,6 +663,8 @@ EMSCRIPTEN_BINDINGS(hdf5)
     function("get_keys", &get_keys_vector);
     function("get_names", &get_child_names);
     function("get_types", &get_child_types);
+    function("get_symbolic_link", &get_symbolic_link);
+    function("get_external_link", &get_external_link);
     function("get_type", &get_type);
     function("get_attribute_names", &get_attribute_names);
     function("get_attribute_metadata", &get_attribute_metadata);
@@ -663,11 +717,11 @@ EMSCRIPTEN_BINDINGS(hdf5)
     constant("H5F_ACC_SWMR_WRITE", H5F_ACC_SWMR_WRITE);
     constant("H5F_ACC_SWMR_READ", H5F_ACC_SWMR_READ);
 
-    constant("H5G_GROUP", H5G_GROUP);     //	0	Object is a group.
-    constant("H5G_DATASET", H5G_DATASET); //    	1   	Object is a dataset.
-    constant("H5G_TYPE", H5G_TYPE);       //	2	Object is a named datatype.
-    constant("H5G_LINK", H5G_LINK);       //	3	Object is a symbolic link.
-    constant("H5G_UDLINK", H5G_UDLINK);   //	4	Object is a user-defined link.
+    constant("H5G_GROUP", (int)H5G_GROUP);     //    0    Object is a group.
+    constant("H5G_DATASET", (int)H5G_DATASET); //    1    Object is a dataset.
+    constant("H5G_TYPE", (int)H5G_TYPE);       //    2    Object is a named datatype.
+    constant("H5G_LINK", (int)H5G_LINK);       //    3    Object is a symbolic link.
+    constant("H5G_UDLINK", (int)H5G_UDLINK);   //    4    Object is a user-defined link.
 
     constant("H5P_DEFAULT", H5P_DEFAULT);
     constant("H5O_TYPE_GROUP", (int)H5O_TYPE_GROUP);

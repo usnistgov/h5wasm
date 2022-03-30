@@ -16,7 +16,20 @@ export declare const ACCESS_MODES: {
 declare type ACCESS_MODESTRING = keyof typeof ACCESS_MODES;
 declare enum OBJECT_TYPE {
     DATASET = "Dataset",
-    GROUP = "Group"
+    GROUP = "Group",
+    BROKEN_SOFT_LINK = "BrokenSoftLink",
+    EXTERNAL_LINK = "ExternalLink"
+}
+export declare class BrokenSoftLink {
+    target: string;
+    type: OBJECT_TYPE;
+    constructor(target: string);
+}
+export declare class ExternalLink {
+    filename: string;
+    obj_path: string;
+    type: OBJECT_TYPE;
+    constructor(filename: string, obj_path: string);
 }
 declare class HasAttrs {
     file_id: bigint;
@@ -29,10 +42,15 @@ declare class HasAttrs {
 export declare class Group extends HasAttrs {
     constructor(file_id: any, path: any);
     keys(): Array<string>;
-    values(): Generator<Group | Dataset, void, unknown>;
-    items(): Generator<(string | Group | Dataset)[], void, unknown>;
+    values(): Generator<BrokenSoftLink | ExternalLink | Group | Dataset, void, unknown>;
+    items(): Generator<(string | BrokenSoftLink | ExternalLink | Group | Dataset)[], void, unknown>;
     get_type(obj_path: string): number;
-    get(obj_name: string): Group | Dataset;
+    get_link(obj_path: string): string;
+    get_external_link(obj_path: string): {
+        filename: string;
+        obj_path: string;
+    };
+    get(obj_name: string): BrokenSoftLink | ExternalLink | Group | Dataset;
     create_group(name: string): Group;
     create_dataset(name: string, data: any, shape?: Array<number>, dtype?: string): Dataset;
     toString(): string;

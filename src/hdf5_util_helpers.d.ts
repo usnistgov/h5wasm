@@ -38,8 +38,15 @@ export interface CompoundType {
 export interface H5Module extends EmscriptenModule {
     create_dataset(file_id: bigint, arg1: string, arg2: bigint, arg3: bigint[], type: number, size: number, signed: boolean, vlen: boolean);
     get_type(file_id: bigint, obj_path: string): number;
+    get_symbolic_link(file_id: bigint, obj_path: string): string | null;
+    get_external_link(file_id: bigint, obj_path: string): {filename: string, obj_path: string} | null;
     H5O_TYPE_DATASET: number;
     H5O_TYPE_GROUP: number;
+    H5G_GROUP: number;
+    H5G_DATASET: number;
+    H5G_TYPE: number;
+    H5G_LINK: number;
+    H5G_UDLINK: number;
     create_group(file_id: bigint, name: string);
     create_vlen_str_dataset(file_id: bigint, dset_name: string, prepared_data: any, arg3: any, type: number, size: number, signed: boolean, vlen: boolean);
     get_dataset_data(file_id: bigint, path: string, arg2: bigint[], arg3: bigint[], arg4: bigint);
