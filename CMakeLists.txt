@@ -24,7 +24,7 @@ set_target_properties(hdf5_util PROPERTIES
     -s ALLOW_TABLE_GROWTH=1 \
     -s ALLOW_MEMORY_GROWTH=1 \
     -s WASM_BIGINT \
-    -s ENVIRONMENT=web \
+    -s ENVIRONMENT=web,worker \
     -s SINGLE_FILE \
     -s EXPORT_ES6=1 \
     -s FORCE_FILESYSTEM=1 \
