@@ -1,4 +1,13 @@
 # Changelog
+## v0.3.1 2022-03-31
+### Added
+ - ```Group.get_type(path)``` will now return
+     - ```H5G_LINK (3)``` if path is a dangling soft link
+     - ```H5G_UDLINK (4)``` if path is a user-defined (e.g. external) link
+ - ```Group.get(path)``` will now return
+     - ```BrokenSoftLink(target: string)``` if the path is a dangling soft link
+     - ```ExternalLink(filename: string, obj_path: string)``` if the path is an external link
+     - ```undefined``` if the path is a user-defined link that is not an external link.
 
 ## v0.3.0 2022-03-23
 ### Changed
