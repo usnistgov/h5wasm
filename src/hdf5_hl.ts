@@ -1,14 +1,13 @@
-import type {Status, Metadata, H5Module} from "./hdf5_util_helpers";
+import type {Status, Metadata, H5Module, CompoundType} from "./hdf5_util_helpers";
 
 import {default as ModuleFactory} from './hdf5_util.js';
 
 export var Module: H5Module; //: H5WasmModule = null;
 export default Module;
-export var FS: FS.FileSystemType = null;
+export var FS: (FS.FileSystemType | null) = null;
 
 const ready = (ModuleFactory as EmscriptenModuleFactory<H5Module>)({ noInitialRun: true }).then(result => { Module = result; FS = Module.FS });
 export { ready };
-
 
 export const ACCESS_MODES = {
   "r": "H5F_ACC_RDONLY",
@@ -35,7 +34,7 @@ class Attribute {
   private _file_id: bigint;
   private _path: string;
   private _name: string;
-  constructor(file_id, path, name) {
+  constructor(file_id: bigint, path: string, name: string) {
     this._file_id = file_id;
     this._path = path;
     this._name = name;
@@ -64,11 +63,43 @@ function get_attr(file_id: bigint, obj_name: string, attr_name: string) {
   return processed;
 }
 
-function process_data(data, metadata) {
+function getAccessor(type: 0 | 1, size: Metadata["size"], signed: Metadata["signed"]): TypedArrayConstructor {
+  if (type === 0) {
+    if (size === 8) {
+      return (signed) ? BigInt64Array : BigUint64Array;
+    }
+    else if (size === 4) {
+      return (signed) ? Int32Array : Uint32Array;
+    }
+    else if (size === 2) {
+      return (signed) ? Int16Array : Uint16Array;
+    }
+    else { // size === 1
+      return (signed) ? Int8Array : Uint8Array;
+    }
+  }
+  else { // type ==== 1 (float)
+    if (size === 8) {
+      return Float64Array;
+    }
+    else if (size === 4) {
+      return Float32Array;
+    }
+    else {
+      throw new Error(`Float${size * 8} not supported`);
+    }
+  }
+}
+
+export type OutputData = TypedArray | string | number | bigint | (string | number | bigint | OutputData)[];
+
+function process_data(data: Uint8Array, metadata: Metadata): OutputData {
   // (for data coming out of Module)
   // If an appropriate TypedArray container can be constructed, it will
   // but otherwise returns Uint8Array raw bytes as loaded.
-  if (metadata.type == Module.H5T_class_t.H5T_STRING.value) {
+  let output_data: OutputData;
+  // let length: number;
+  if (metadata.type === Module.H5T_class_t.H5T_STRING.value) {
     if (metadata.vlen) {
       let output = [];
       let reader = (metadata.cset == 1) ? Module.UTF8ToString : Module.AsciiToString;
@@ -76,7 +107,8 @@ function process_data(data, metadata) {
       for (let ptr of ptrs) {
         output.push(reader(ptr));
       }
-      data = output;
+      output_data = output;
+      // length = output_data.length;
     }
     else {
       let encoding = (metadata.cset == 1) ? 'utf-8' : 'ascii';
@@ -88,69 +120,73 @@ function process_data(data, metadata) {
         let s = data.slice(i * size, (i + 1) * size);
         output.push(decoder.decode(s).replace(/\u0000+$/, ''));
       }
-      data = output;
+      output_data = output;
+      // length = output_data.length;
     }
   }
-  else if (metadata.type == Module.H5T_class_t.H5T_INTEGER.value) {
-    let accessor_name = (metadata.size > 4) ? "Big" : "";
-    accessor_name += (metadata.signed) ? "Int" : "Uint";
-    accessor_name += ((metadata.size) * 8).toFixed() + "Array";
-    if (accessor_name in globalThis) {
-      data = new globalThis[accessor_name](data.buffer);
-    }
-  }
-  else if (metadata.type == Module.H5T_class_t.H5T_FLOAT.value) {
-    let accessor_name = "Float" + ((metadata.size) * 8).toFixed() + "Array";
-    if (accessor_name in globalThis) {
-      data = new globalThis[accessor_name](data.buffer);
-    }
+  else if (metadata.type === Module.H5T_class_t.H5T_INTEGER.value || metadata.type === Module.H5T_class_t.H5T_FLOAT.value) {
+    const {type, size, signed} = metadata;
+    const accessor = getAccessor(type, size, signed);
+    output_data = new accessor(data.buffer);
   }
 
-  else if (metadata.type == Module.H5T_class_t.H5T_COMPOUND.value) {
-    let n = Math.floor(data.byteLength / metadata.size);
-    let size = metadata.size;
+  else if (metadata.type === Module.H5T_class_t.H5T_COMPOUND.value) {
+    const { size, compound_type } = <{size: Metadata["size"], compound_type: CompoundType}>metadata;
+    let n = Math.floor(data.byteLength / size);
     let output = [];
     for (let i = 0; i < n; i++) {
       let row = [];
       let row_data = data.slice(i * size, (i + 1) * size);
-      for (let member of metadata.compound_type.members) {
+      for (let member of compound_type.members) {
         let member_data = row_data.slice(member.offset, member.offset + member.size);
         row.push(process_data(member_data, member))
       }
       output.push(row);
     }
-    data = output;
+    output_data = output;
   }
 
-  else if (metadata.type == Module.H5T_class_t.H5T_ARRAY.value) {
-    data = process_data(data, metadata.array_type);
+  else if (metadata.type === Module.H5T_class_t.H5T_ARRAY.value) {
+    const { array_type } = <{array_type: Metadata}>metadata;
+    output_data = process_data(data, array_type);
   }
 
-  return ((!metadata.shape || metadata.shape.length == 0) && data.length == 1) ? data[0] : data;
+  else {
+    output_data = data;
+  }
+
+  if ((Array.isArray(output_data) || (ArrayBuffer.isView(output_data) && output_data instanceof DataView)) && output_data.length == 1) {
+    return output_data[0]
+  }
+  return output_data;
 }
 
-function prepare_data(data: any, metadata: Metadata, shape: Array<number> = null) {
+function prepare_data(data: any, metadata: Metadata, shape?: Array<number> | null): {data: Uint8Array | string[], shape: number[]} {
   // for data being sent to Module
 
   // set shape to size of array if it is not specified:
-  if (shape == null) {
+  let final_shape: number[];
+  if (shape === undefined || shape === null) {
     if (data != null && data.length != null && !(typeof data === 'string')) {
-      shape = [data.length];
+      final_shape = [data.length];
     }
     else {
-      shape = [];
+      final_shape = [];
     }
   }
+  else {
+    final_shape = shape;
+  }
   data = (Array.isArray(data) || ArrayBuffer.isView(data)) ? data : [data];
-  let total_size = shape.reduce((previous, current) => current * previous, 1);
+  let total_size = final_shape.reduce((previous, current) => current * previous, 1);
 
   if (data.length != total_size) {
-    throw `Error: shape ${shape} does not match number of elements in data`;
+    throw `Error: shape ${final_shape} does not match number of elements in data`;
   }
   //assert(data.length == total_size)
-  var output;
+  let output: Uint8Array | string[];
 
-  if (metadata.type == Module.H5T_class_t.H5T_STRING.value) {
+  if (metadata.type === Module.H5T_class_t.H5T_STRING.value) {
     if (!metadata.vlen) {
       output = new Uint8Array(total_size * metadata.size);
       let encoder = new TextEncoder();
@@ -166,13 +202,10 @@ function prepare_data(data: any, metadata: Metadata, shape: Array<number> = null
       output = data;
     }
   }
-  else if (metadata.type == Module.H5T_class_t.H5T_INTEGER.value) {
-    let accessor_name = (metadata.size > 4) ? "Big" : "";
-    accessor_name += (metadata.signed) ? "Int" : "Uint";
-    accessor_name += ((metadata.size) * 8).toFixed() + "Array";
-    // check to see if data is already in the right form:
-    let accessor = globalThis[accessor_name];
-    let typed_array;
+  else if (metadata.type === Module.H5T_class_t.H5T_INTEGER.value || metadata.type === Module.H5T_class_t.H5T_FLOAT.value) {
+    const {type, size, signed} = metadata;
+    const accessor = getAccessor(type, size, signed);
+    let typed_array: ArrayBufferView;
     if (data instanceof accessor) {
       typed_array = data;
     }
@@ -185,14 +218,10 @@ function prepare_data(data: any, metadata: Metadata, shape: Array<number> = null
     }
     output = new Uint8Array(typed_array.buffer);
   }
-  else if (metadata.type == Module.H5T_class_t.H5T_FLOAT.value) {
-    let accessor_name = "Float" + ((metadata.size) * 8).toFixed() + "Array";
-    // check to see if data is already in the right form:
-    let accessor = globalThis[accessor_name];
-    let typed_array = (data instanceof accessor) ? data : new accessor(data);
-    output = new Uint8Array(typed_array.buffer);
+  else {
+    throw new Error(`data with type ${metadata.type} can not be prepared for write`);
   }
-  return [output, shape]
+  return {data: output, shape: final_shape}
 }
 
 function map_reverse<Key, Value>(map: Map<Key, Value>): Map<Value, Key> {
@@ -204,13 +233,16 @@ const float_fmts = new Map([[2, 'e'], [4, 'f'], [8, 'd']]);
 const fmts_float = map_reverse(float_fmts);
 const fmts_int = map_reverse(int_fmts);
 
-function metadata_to_dtype(metadata) {
+function metadata_to_dtype(metadata: Metadata) {
   if (metadata.type == Module.H5T_class_t.H5T_STRING.value) {
     let length_str = metadata.vlen ? "" : String(metadata.size);
     return `S${length_str}`;
   }
   else if (metadata.type == Module.H5T_class_t.H5T_INTEGER.value) {
     let fmt = int_fmts.get(metadata.size);
+    if (fmt === undefined) {
+      throw new Error(`int of size ${metadata.size} unsupported`);
+    }
     if (!metadata.signed) {
       fmt = fmt.toUpperCase();
     }
@@ -228,7 +260,7 @@ function metadata_to_dtype(metadata) {
   }
 }
 
-function dtype_to_metadata(dtype_str) {
+function dtype_to_metadata(dtype_str: string) {
   let match = dtype_str.match(/^([<>|]?)([bhiqefdsBHIQS])([0-9]*)$/);
   if (match == null) {
     throw dtype_str + " is not a recognized dtype"
@@ -238,12 +270,12 @@ function dtype_to_metadata(dtype_str) {
   metadata.littleEndian = (endianness != '>');
   if (fmts_int.has(typestr.toLowerCase())) {
     metadata.type = Module.H5T_class_t.H5T_INTEGER.value;
-    metadata.size = fmts_int.get(typestr.toLowerCase());
+    metadata.size = (fmts_int.get(typestr.toLowerCase()) as number);
     metadata.signed = (typestr.toLowerCase() == typestr);
   }
   else if (fmts_float.has(typestr)) {
     metadata.type = Module.H5T_class_t.H5T_FLOAT.value;
-    metadata.size = fmts_float.get(typestr);
+    metadata.size = (fmts_float.get(typestr) as number);
   }
   else if (typestr.toUpperCase() == 'S') {
     metadata.type = Module.H5T_class_t.H5T_STRING.value;
@@ -255,6 +287,32 @@ function dtype_to_metadata(dtype_str) {
   }
   return metadata
 }
+
+type TypedArray =
+  | Int8Array
+  | Uint8Array
+  | Uint8ClampedArray
+  | Int16Array
+  | Uint16Array
+  | Int32Array
+  | Uint32Array
+  | BigInt64Array
+  | BigUint64Array
+  | Float32Array
+  | Float64Array;
+
+type TypedArrayConstructor = 
+  | Int8ArrayConstructor
+  | Uint8ArrayConstructor
+  | Uint8ClampedArrayConstructor
+  | Int16ArrayConstructor
+  | Uint16ArrayConstructor
+  | Int32ArrayConstructor
+  | Uint32ArrayConstructor
+  | BigInt64ArrayConstructor
+  | BigUint64ArrayConstructor
+  | Float32ArrayConstructor
+  | Float64ArrayConstructor;
 
 const TypedArray_to_dtype = new Map([
   ['Uint8Array', '<B'],
@@ -269,23 +327,30 @@ const TypedArray_to_dtype = new Map([
   ['Float64Array', '<d']
 ])
 
-function guess_dtype(data): string {
-  if (ArrayBuffer.isView(data) && !(data instanceof DataView)) {
-    return TypedArray_to_dtype.get(data.constructor.name);
-  }
-  data = ((Array.isArray(data)) ? data : [data]);
-  if (data.every(Number.isInteger)) {
-    return '<i'; // default integer type: Int32
-  }
-  else if (data.every((d) => (typeof d == 'number'))) {
-    return '<d'; // default float type: Float64
-  }
-  else if (data.every((d) => (typeof d == 'string'))) {
-    return 'S'
+export type GuessableDataTypes = TypedArray | number | number[] | string | string[];
+
+function guess_dtype(data: GuessableDataTypes): string {
+  if (ArrayBuffer.isView(data)) {
+    const dtype = TypedArray_to_dtype.get(data.constructor.name);
+    if (dtype === undefined) {
+      throw new Error("DataView not supported directly for write")
+    }
+    return dtype;
   }
   else {
-    throw "unguessable type for data";
+    // then it is an array or a single value...
+    const arr_data = ((Array.isArray(data)) ? data : [data]);
+    if (arr_data.every(Number.isInteger)) {
+      return '<i'; // default integer type: Int32
+    }
+    else if (arr_data.every((d) => (typeof d == 'number'))) {
+      return '<d'; // default float type: Float64
+    }
+    else if (arr_data.every((d) => (typeof d == 'string'))) {
+      return 'S'
+    }
   }
+  throw new Error("unguessable type for data");
 }
 
 enum OBJECT_TYPE {
@@ -314,12 +379,13 @@ export class ExternalLink {
   }
 }
 
-class HasAttrs {
-  file_id: bigint;
-  path: string;
-  type: OBJECT_TYPE;
+abstract class HasAttrs {
+  file_id!: bigint;
+  path!: string;
+  type!: OBJECT_TYPE;
+
   get attrs() {
-    let attr_names = Module.get_attribute_names(this.file_id, this.path);
+    let attr_names = Module.get_attribute_names(this.file_id, this.path) as string[];
     let attrs = {};
     for (let name of attr_names) {
       let metadata = Module.get_attribute_metadata(this.file_id, this.path, name);
@@ -338,22 +404,23 @@ class HasAttrs {
 
   }
 
-  get_attribute(name) {
+  get_attribute(name: string) {
     get_attr(this.file_id, this.path, name);
   }
 
-  create_attribute(name, data, shape = null, dtype = null) {
-    var dtype = dtype ?? guess_dtype(data);
-    let metadata = dtype_to_metadata(dtype);
-    let [prepared_data, guessed_shape] = prepare_data(data, metadata, shape);
-    var shape = shape ?? guessed_shape;
+  
+  create_attribute(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null) {
+    const final_dtype = dtype ?? guess_dtype(data);
+    let metadata = dtype_to_metadata(final_dtype);
+    let {data: prepared_data, shape: guessed_shape} = prepare_data(data, metadata, shape);
+    const final_shape = shape ?? guessed_shape;
     if (metadata.vlen) {
       Module.create_vlen_str_attribute(
         this.file_id,
         this.path,
         name,
-        prepared_data,
-        shape.map(BigInt),
+        prepared_data as string[],
+        final_shape.map(BigInt),
         metadata.type,
         metadata.size,
         metadata.signed,
@@ -361,15 +428,15 @@ class HasAttrs {
       );
     }
     else {
-      let data_ptr = Module._malloc(prepared_data.byteLength);
+      let data_ptr = Module._malloc((prepared_data as Uint8Array).byteLength);
       try {
-        Module.HEAPU8.set(prepared_data, data_ptr);
+        Module.HEAPU8.set(prepared_data as Uint8Array, data_ptr);
         Module.create_attribute(
           this.file_id,
           this.path,
           name,
           BigInt(data_ptr),
-          shape.map(BigInt),
+          final_shape.map(BigInt),
           metadata.type,
           metadata.size,
           metadata.signed,
@@ -384,7 +451,7 @@ class HasAttrs {
 }
 
 export class Group extends HasAttrs {
-  constructor(file_id, path) {
+  constructor(file_id: bigint, path: string) {
     super();
     this.path = path;
     this.file_id = file_id;
@@ -392,7 +459,7 @@ export class Group extends HasAttrs {
   }
 
   keys(): Array<string> {
-    return Module.get_names(this.file_id, this.path);
+    return Module.get_names(this.file_id, this.path) as string[];
   }
 
   * values() {
@@ -426,20 +493,24 @@ export class Group extends HasAttrs {
     fullpath = normalizePath(fullpath);
 
     let type = this.get_type(fullpath);
-    if (type == Module.H5G_GROUP) {
+    if (type === Module.H5G_GROUP) {
       return new Group(this.file_id, fullpath);
     }
-    else if (type == Module.H5G_DATASET) {
+    else if (type === Module.H5G_DATASET) {
       return new Dataset(this.file_id, fullpath);
     }
     else if (type === Module.H5G_LINK) {
-      let target = this.get_link(fullpath);
+      // if get_type succeeds, then get_link must as well
+      let target = this.get_link(fullpath) as string;
       return new BrokenSoftLink(target);
     }
     else if (type === Module.H5G_UDLINK) {
-      let {filename, obj_path} = this.get_external_link(fullpath);
+      // if get_type succeeds, then get_external_link must as well
+      let {filename, obj_path} = this.get_external_link(fullpath) as {filename: string, obj_path: string};
       return new ExternalLink(filename, obj_path);
     }
+    // unknown type or object not found
+    return null
   }
 
   create_group(name: string): Group {
@@ -447,17 +518,17 @@ export class Group extends HasAttrs {
     return this.get(name) as Group;
   }
 
-  create_dataset(name: string, data, shape: Array<number> = null, dtype: string = null): Dataset {
-    var dtype = dtype ?? guess_dtype(data);
-    let metadata = dtype_to_metadata(dtype);
-    let [prepared_data, guessed_shape] = prepare_data(data, metadata, shape);
-    shape = shape ?? guessed_shape;
+  create_dataset(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null): Dataset {
+    const final_dtype = dtype ?? guess_dtype(data);
+    let metadata = dtype_to_metadata(final_dtype);
+    let {data: prepared_data, shape: guessed_shape} = prepare_data(data, metadata, shape);
+    const final_shape: number[] = shape ?? guessed_shape;
     if (metadata.vlen) {
       Module.create_vlen_str_dataset(
         this.file_id,
         this.path + "/" + name,
-        prepared_data,
-        shape.map(BigInt),
+        prepared_data as string[],
+        final_shape.map(BigInt),
         metadata.type,
         metadata.size,
         metadata.signed,
@@ -465,14 +536,14 @@ export class Group extends HasAttrs {
       );
     }
     else {
-      let data_ptr = Module._malloc(prepared_data.byteLength);
+      let data_ptr = Module._malloc((prepared_data as Uint8Array).byteLength);
       try {
-        Module.HEAPU8.set(prepared_data, data_ptr);
+        Module.HEAPU8.set(prepared_data as Uint8Array, data_ptr);
         Module.create_dataset(
           this.file_id,
           this.path + "/" + name,
           BigInt(data_ptr),
-          shape.map(BigInt),
+          final_shape.map(BigInt),
           metadata.type,
           metadata.size,
           metadata.signed,
@@ -493,16 +564,17 @@ export class File extends Group {
   filename: string;
   mode: ACCESS_MODESTRING;
   constructor(filename: string, mode: ACCESS_MODESTRING = "r") {
-    super(null, "/");
+    let file_id: bigint;
     let access_mode = ACCESS_MODES[mode];
     let h5_mode = Module[access_mode];
     if (['H5F_ACC_RDWR', 'H5F_ACC_RDONLY'].includes(access_mode)) {
       // then it's an existing file...
-      this.file_id = Module.ccall("H5Fopen", "bigint", ["string", "number", "bigint"], [filename, h5_mode, 0n]);
+      file_id = Module.ccall("H5Fopen", "bigint", ["string", "number", "bigint"], [filename, h5_mode, 0n]);
     }
     else {
-      this.file_id = Module.ccall("H5Fcreate", "bigint", ["string", "number", "bigint", "bigint"], [filename, h5_mode, 0n, 0n]);
+      file_id = Module.ccall("H5Fcreate", "bigint", ["string", "number", "bigint", "bigint"], [filename, h5_mode, 0n, 0n]);
     }
+    super(file_id, "/");
     this.filename = filename;
 
     this.mode = mode;
@@ -518,7 +590,7 @@ export class File extends Group {
 }
 
 export class Dataset extends HasAttrs {
-  constructor(file_id, path) {
+  constructor(file_id: bigint, path: string) {
     super();
     this.path = path;
     this.file_id = file_id;
@@ -558,11 +630,10 @@ export class Dataset extends HasAttrs {
   slice(ranges: Array<Array<number>>) {
     // interpret ranges as [start, stop], with one per dim.
     let metadata = this.metadata;
-    let shape = metadata.shape;
+    const { shape } = metadata;
     let ndims = shape.length;
     let count = shape.map((s, i) => BigInt(Math.min(s, ranges?.[i]?.[1] ?? s) - Math.max(0, ranges?.[i]?.[0] ?? 0)));
     let offset = shape.map((s, i) => BigInt(Math.min(s, Math.max(0, ranges?.[i]?.[0] ?? 0))));
-    // console.log(count, offset);
     let total_size = count.reduce((previous, current) => current * previous, 1n);
     let nbytes = metadata.size * Number(total_size);
     let data_ptr = Module._malloc(nbytes);
