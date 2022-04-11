@@ -25,21 +25,25 @@ export interface Metadata {
     littleEndian: boolean,
     type: number,
     size: number,
-    shape?: Array<number>,
-    total_size: number
+    shape: Array<number>,
+    total_size: number,
+    array_type?: Metadata,
+}
+
+export interface CompoundMember extends Metadata {
+    offset: number;
 }
 
 export interface CompoundType {
     name: string,
-    offset: number,
-    members: Array<Metadata>
+    members: Array<CompoundMember>
 }
 
 export interface H5Module extends EmscriptenModule {
-    create_dataset(file_id: bigint, arg1: string, arg2: bigint, arg3: bigint[], type: number, size: number, signed: boolean, vlen: boolean);
+    create_dataset(file_id: bigint, arg1: string, arg2: bigint, arg3: bigint[], type: number, size: number, signed: boolean, vlen: boolean): number;
     get_type(file_id: bigint, obj_path: string): number;
-    get_symbolic_link(file_id: bigint, obj_path: string): string | null;
-    get_external_link(file_id: bigint, obj_path: string): {filename: string, obj_path: string} | null;
+    get_symbolic_link(file_id: bigint, obj_path: string): string;
+    get_external_link(file_id: bigint, obj_path: string): {filename: string, obj_path: string};
     H5O_TYPE_DATASET: number;
     H5O_TYPE_GROUP: number;
     H5G_GROUP: number;
@@ -47,16 +51,23 @@ export interface H5Module extends EmscriptenModule {
     H5G_TYPE: number;
     H5G_LINK: number;
     H5G_UDLINK: number;
-    create_group(file_id: bigint, name: string);
-    create_vlen_str_dataset(file_id: bigint, dset_name: string, prepared_data: any, arg3: any, type: number, size: number, signed: boolean, vlen: boolean);
-    get_dataset_data(file_id: bigint, path: string, arg2: bigint[], arg3: bigint[], arg4: bigint);
+    H5F_ACC_RDONLY: 0;
+    H5F_ACC_RDWR: 1;
+    H5F_ACC_TRUNC: 2;
+    H5F_ACC_EXCL: 4;
+    H5F_ACC_CREAT: 16;
+    H5F_ACC_SWMR_WRITE: 32;
+    H5F_ACC_SWMR_READ: 64;
+    create_group(file_id: bigint, name: string): number;
+    create_vlen_str_dataset(file_id: bigint, dset_name: string, prepared_data: any, arg3: any, type: number, size: number, signed: boolean, vlen: boolean): number;
+    get_dataset_data(file_id: bigint, path: string, arg2: bigint[] | null, arg3: bigint[] | null, arg4: bigint): number;
     get_dataset_metadata(file_id: bigint, path: string): Metadata;
-    flush(file_id: bigint);
+    flush(file_id: bigint): number;
     ccall: typeof ccall;
-    get_names(file_id: bigint, path: string);
-    create_attribute(file_id: bigint, path: string, name: any, arg3: bigint, arg4: any, type: number, size: number, signed: boolean, vlen: boolean);
-    create_vlen_str_attribute(file_id: bigint, path: string, name: any, prepared_data: any, arg4: any, type: number, size: number, signed: boolean, vlen: boolean);
-    get_attribute_names(file_id: any, path: any);
+    get_names(file_id: bigint, path: string): string[];
+    create_attribute(file_id: bigint, path: string, name: any, arg3: bigint, arg4: any, type: number, size: number, signed: boolean, vlen: boolean): number;
+    create_vlen_str_attribute(file_id: bigint, path: string, name: any, prepared_data: any, arg4: any, type: number, size: number, signed: boolean, vlen: boolean): number;
+    get_attribute_names(file_id: any, path: any): string[];
     // things from ModuleFactory:
     UTF8ToString(ptr: number): string,
     AsciiToString(ptr: number): string,
