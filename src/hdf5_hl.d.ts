@@ -1,7 +1,7 @@
-import type { Status, Metadata, H5Module } from "./hdf5_util_helpers";
+import type { Status, Metadata, H5Module, CompoundType } from "./hdf5_util_helpers";
 export declare var Module: H5Module;
 export default Module;
-export declare var FS: FS.FileSystemType;
+export declare var FS: (FS.FileSystemType | null);
 declare const ready: Promise<void>;
 export { ready };
 export declare const ACCESS_MODES: {
@@ -14,6 +14,9 @@ export declare const ACCESS_MODES: {
     readonly Sr: "H5F_ACC_SWMR_READ";
 };
 declare type ACCESS_MODESTRING = keyof typeof ACCESS_MODES;
+export declare type OutputData = TypedArray | string | number | bigint | (string | number | bigint | OutputData)[];
+declare type TypedArray = Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | BigInt64Array | BigUint64Array | Float32Array | Float64Array;
+export declare type GuessableDataTypes = TypedArray | number | number[] | string | string[];
 declare enum OBJECT_TYPE {
     DATASET = "Dataset",
     GROUP = "Group",
@@ -31,28 +34,28 @@ export declare class ExternalLink {
     type: OBJECT_TYPE;
     constructor(filename: string, obj_path: string);
 }
-declare class HasAttrs {
+declare abstract class HasAttrs {
     file_id: bigint;
     path: string;
     type: OBJECT_TYPE;
     get attrs(): {};
-    get_attribute(name: any): void;
-    create_attribute(name: any, data: any, shape?: any, dtype?: any): void;
+    get_attribute(name: string): void;
+    create_attribute(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null): void;
 }
 export declare class Group extends HasAttrs {
-    constructor(file_id: any, path: any);
+    constructor(file_id: bigint, path: string);
     keys(): Array<string>;
-    values(): Generator<BrokenSoftLink | ExternalLink | Group | Dataset, void, unknown>;
-    items(): Generator<(string | BrokenSoftLink | ExternalLink | Group | Dataset)[], void, unknown>;
+    values(): Generator<BrokenSoftLink | ExternalLink | Group | Dataset | null, void, unknown>;
+    items(): Generator<(string | BrokenSoftLink | ExternalLink | Group | Dataset | null)[], void, unknown>;
     get_type(obj_path: string): number;
     get_link(obj_path: string): string;
     get_external_link(obj_path: string): {
         filename: string;
         obj_path: string;
     };
-    get(obj_name: string): BrokenSoftLink | ExternalLink | Group | Dataset;
+    get(obj_name: string): BrokenSoftLink | ExternalLink | Group | Dataset | null;
     create_group(name: string): Group;
-    create_dataset(name: string, data: any, shape?: Array<number>, dtype?: string): Dataset;
+    create_dataset(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null): Dataset;
     toString(): string;
 }
 export declare class File extends Group {
@@ -63,12 +66,12 @@ export declare class File extends Group {
     close(): Status;
 }
 export declare class Dataset extends HasAttrs {
-    constructor(file_id: any, path: any);
+    constructor(file_id: bigint, path: string);
     get metadata(): Metadata;
     get dtype(): string | {
-        compound: any;
+        compound: CompoundType | undefined;
     };
     get shape(): number[];
-    get value(): any;
-    slice(ranges: Array<Array<number>>): any;
+    get value(): OutputData;
+    slice(ranges: Array<Array<number>>): OutputData;
 }
