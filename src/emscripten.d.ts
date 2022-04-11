@@ -49,7 +49,7 @@ interface EmscriptenModule {
     postRun: Array<{ (): void }>;
     onAbort: { (what: any): void };
     onRuntimeInitialized: { (): void };
-    preinitializedWebGLContext: WebGLRenderingContext;
+    // preinitializedWebGLContext: WebGLRenderingContext; // unused - depends on dom.WebGLRenderingContext
     noInitialRun: boolean;
     noExitRuntime: boolean;
     logReadFiles: boolean;
@@ -63,7 +63,7 @@ interface EmscriptenModule {
         successCallback: (module: WebAssembly.Module) => void,
     ): Emscripten.WebAssemblyExports;
     locateFile(url: string, scriptDirectory: string): string;
-    onCustomMessage(event: MessageEvent): void;
+    // onCustomMessage(event: MessageEvent): void; // unused - depends on dom.MessageEvent
 
     // USE_TYPED_ARRAYS == 1
     HEAP: Int32Array;
