@@ -9,7 +9,7 @@ Then just type
 make
 ```
 
-libhdf5.a and libhdf5_hl.a are built in ```./wasm_build/hdf5/lib/``` 
+libhdf5.a and libhdf5_hl.a are retrieved by CMake from the [libhdf5-wasm](https://github.com/usnistgov/libhdf5-wasm) repository.
 
 and are used to compile ```./src/hdf5_util.cc``` to ```./dist/esm/hdf5_util.js``` (the WASM is embedded in that file, in SINGLE_FILE mode)
 
