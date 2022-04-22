@@ -1,4 +1,12 @@
 # Changelog
+## v0.3.2 2022-04-12
+### Fixed
+ - TypeScript ```strict``` mode checking enabled for build
+ - all TypeScript type errors resolved
+ - unused portions of the ```EmscriptenModule``` interface that raise errors in nodejs builds are removed (both of these depend on dom definitions)
+     - preinitializedWebGLContext: WebGLRenderingContext;
+     - onCustomMessage(event: MessageEvent): void;
+
 ## v0.3.1 2022-03-31
 ### Added
  - ```Group.get_type(path)``` will now return
