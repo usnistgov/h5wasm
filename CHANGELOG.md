@@ -1,4 +1,8 @@
 # Changelog
+## v0.4.0 2022-04-28
+### Changed
+ - **POSSIBLY BREAKING**: nodejs target is compiled as ESM instead of CommonJs
+ - 
 ## v0.3.2 2022-04-12
 ### Fixed
  - TypeScript ```strict``` mode checking enabled for build

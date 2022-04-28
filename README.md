@@ -7,19 +7,41 @@ The built binaries (esm and node) will be attached to the [latest release](https
   
 The wasm-compiled libraries `libhdf5.a`, `libhdf5_cpp.a` ... and the related `include/` folder are retrieved from [libhdf5-wasm](https://github.com/usnistgov/libhdf5-wasm) during the build.
 
+Instead of importing a namespace "*", it is now possible to import the important h5wasm components in an object, from the default export:
+```js
+// in hdf5_hl.ts:
+export const h5wasm = {
+    File,
+    Group,
+    Dataset,
+    ready,
+    ACCESS_MODES
+}
+```
+
+The Emscripten filesystem is important for operations, and it can be accessed after the WASM is loaded as below.
+
 ## Browser (no-build)
 ```js
-import * as hdf5 from "https://cdn.jsdelivr.net/npm/h5wasm@latest/dist/esm/hdf5_hl.js";
-// the WASM loads asychronously, and it can be awaited if necessary:
-await hdf5.ready;
+import h5wasm from "https://cdn.jsdelivr.net/npm/h5wasm@0.4.0/dist/esm/hdf5_hl.js";
+
+// the WASM loads asychronously, and you can get the module like this:
+const Module = await h5wasm.ready;
+
+// then you can get the FileSystem object from the Module:
+const { FS } = Module;
+
+// Or, you can directly get the FS if you don't care about the rest 
+// of the module:
+// const { FS } = await h5wasm.ready;
 
 let response = await fetch("https://ncnr.nist.gov/pub/ncnrdata/vsans/202003/24845/data/sans59510.nxs.ngv");
 let ab = await response.arrayBuffer();
 
-hdf5.FS.writeFile("sans59510.nxs.ngv", new Uint8Array(ab));
+FS.writeFile("sans59510.nxs.ngv", new Uint8Array(ab));
 
-// use mode "r" for reading.  All modes can be found in hdf5.ACCESS_MODES
-let f = new hdf5.File("sans59510.nxs.ngv", "r");
+// use mode "r" for reading.  All modes can be found in h5wasm.ACCESS_MODES
+let f = new h5wasm.File("sans59510.nxs.ngv", "r");
 // File {path: "/", file_id: 72057594037927936n, filename: "data.h5", mode: "r"}
 ```
 
@@ -28,10 +50,10 @@ let f = new hdf5.File("sans59510.nxs.ngv", "r");
 then in your file
 ```js
 // index.js
-import * as hdf5 from "h5wasm";
-await hdf5.ready;
+import h5wasm from "h5wasm";
+const { FS } = await h5wasm.ready;
 
-let f = new hdf5.File("test.h5", "w");
+let f = new h5wasm.File("test.h5", "w");
 f.create_dataset("text_data", ["this", "that"]);
 // ...
 ```
@@ -40,7 +62,7 @@ __note__: you must configure your build system to target >= ES2020 (for bigint s
 ## nodejs
 The host filesystem is made available through Emscripten "NODERAWFS=1".
 
-Enabling BigInt support may be required.
+Enabling BigInt support may be required for nodejs < 16
 ```bash
 npm i h5wasm
 node --experimental-wasm-bigint
@@ -48,10 +70,10 @@ node --experimental-wasm-bigint
 ```
 
 ```js
-const hdf5 = require("h5wasm");
-await hdf5.ready;
+const h5wasm = await import("h5wasm");
+await h5wasm.ready;
 
-let f = new hdf5.File("/home/brian/Downloads/sans59510.nxs.ngv", "r");
+let f = new h5wasm.File("/home/brian/Downloads/sans59510.nxs.ngv", "r");
 /*
 File {
   path: '/',
@@ -66,7 +88,7 @@ File {
 _(all examples are written in ESM - for Typescript some type casting is probably required, as `get` returns either Group or Dataset)_
 ### Reading
 ```js
-let f = new hdf5.File("sans59510.nxs.ngv", "r");
+let f = new h5wasm.File("sans59510.nxs.ngv", "r");
 
 // list keys:
 f.keys()
@@ -117,7 +139,7 @@ Int32Array(1280) [0, 0, 0, 2, 2, 2, 3, 1, 1, 7, 3, 5, 7, 8, 9, 21, 43, 38, 47, 
 
 ### Writing
 ```js
-let new_file = new hdf5.File("myfile.h5", "w");
+let new_file = new h5wasm.File("myfile.h5", "w");
 
 new_file.create_group("entry");
 
@@ -177,7 +199,7 @@ new_file.close()
 ### Edit
 One can also open an existing file and write to it:
 ```js
-let f = new hdf5.File("myfile.h5", "a");
+let f = new h5wasm.File("myfile.h5", "a");
 
 f.create_attribute("new_attr", "something wicked this way comes");
 f.close()
@@ -189,12 +211,12 @@ Optional, to support uploads and downloads
 import {uploader, download, UPLOADED_FILES} from "https://cdn.jsdelivr.net/npm/h5wasm@latest/dist/esm/file_handlers.js";
 // 
 // Attach to a file input element:
-// will save to hdf5.FS (memfs) with the name of the uploaded file
+// will save to Module.FS (memfs) with the name of the uploaded file
 document.getElementById("upload_selector").onchange = uploader;
 // file can be found with 
-let f = new hdf5.File(UPLOADED_FILES[UPLOADED_FILES.length -1], "r");
+let f = new h5wasm.File(UPLOADED_FILES[UPLOADED_FILES.length -1], "r");
 
-let new_file = new hdf5.File("myfile.h5", "w");
+let new_file = new h5wasm.File("myfile.h5", "w");
 
 new_file.create_group("entry");
 
@@ -210,11 +232,11 @@ download(new_file);
 To persist the emscripten virtual filesystem between sessions, use IDBFS (syncs with browser IndexedDB), e.g.
 ```js
 // create a local mount of the IndexedDB filesystem:
-hdf5.FS.mount(hdf5.FS.filesystems.IDBFS, {}, "/home/web_user")
+FS.mount(FS.filesystems.IDBFS, {}, "/home/web_user")
 
 // to read from the browser IndexedDB into the active filesystem:
-hdf5.FS.syncfs(true, (e) => {console.log(e)});
+FS.syncfs(true, (e) => {console.log(e)});
 
 // to push all current files in /home/web_user to IndexedDB, e.g. when closing your application:
-hdf5.FS.syncfs(false, (e) => {console.log(e)})
+FS.syncfs(false, (e) => {console.log(e)})
 ```
