@@ -39,6 +39,7 @@ add_executable(hdf5_util_node src/hdf5_util.cc)
 target_link_libraries(hdf5_util_node hdf5-wasm)
 set_target_properties(hdf5_util_node PROPERTIES
     LINK_FLAGS "-O3 --bind  \
+    --extern-pre-js ${CMAKE_CURRENT_SOURCE_DIR}/src/node_esm_shim.js \
     -s ALLOW_TABLE_GROWTH=1 \
     -s ALLOW_MEMORY_GROWTH=1 \
     -s WASM_BIGINT \
@@ -46,7 +47,7 @@ set_target_properties(hdf5_util_node PROPERTIES
     -s FORCE_FILESYSTEM=1 \
     -s ENVIRONMENT=node \
     -s SINGLE_FILE \
-    -s MODULARIZE=1 \
+    -s EXPORT_ES6=1 \
     -s USE_ZLIB=1 \
     -s ASSERTIONS=1 \
     -s EXPORTED_RUNTIME_METHODS=\"['ccall', 'cwrap', 'FS', 'AsciiToString', 'UTF8ToString']\" \
