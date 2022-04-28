@@ -1,12 +1,11 @@
 import type {Status, Metadata, H5Module, CompoundType} from "./hdf5_util_helpers";
 
-import {default as ModuleFactory} from './hdf5_util.js';
+import ModuleFactory from './hdf5_util.js';
 
 export var Module: H5Module; //: H5WasmModule = null;
-export default Module;
 export var FS: (FS.FileSystemType | null) = null;
 
-const ready = (ModuleFactory as EmscriptenModuleFactory<H5Module>)({ noInitialRun: true }).then(result => { Module = result; FS = Module.FS });
+const ready = ModuleFactory({ noInitialRun: true }).then(result => { Module = result; FS = Module.FS; return Module });
 export { ready };
 
 export const ACCESS_MODES = {
@@ -28,21 +27,6 @@ function normalizePath(path: string) {
   // strip end slashes
   path = path.replace(/(\/)+$/, '');
   return path;
-}
-
-class Attribute {
-  private _file_id: bigint;
-  private _path: string;
-  private _name: string;
-  constructor(file_id: bigint, path: string, name: string) {
-    this._file_id = file_id;
-    this._path = path;
-    this._name = name;
-  }
-
-  get value() {
-    return get_attr(this._file_id, this._path, this._name);
-  }
 }
 
 function get_attr(file_id: bigint, obj_name: string, attr_name: string) {
@@ -92,6 +76,7 @@ function getAccessor(type: 0 | 1, size: Metadata["size"], signed: Metadata["sign
 }
 
 export type OutputData = TypedArray | string | number | bigint | (string | number | bigint | OutputData)[];
+export type Dtype = string | {compound: object};
 
 function process_data(data: Uint8Array, metadata: Metadata): OutputData {
   // (for data coming out of Module)
@@ -233,7 +218,7 @@ const float_fmts = new Map([[2, 'e'], [4, 'f'], [8, 'd']]);
 const fmts_float = map_reverse(float_fmts);
 const fmts_int = map_reverse(int_fmts);
 
-function metadata_to_dtype(metadata: Metadata) {
+function metadata_to_dtype(metadata: Metadata): Dtype {
   if (metadata.type == Module.H5T_class_t.H5T_STRING.value) {
     let length_str = metadata.vlen ? "" : String(metadata.size);
     return `S${length_str}`;
@@ -253,7 +238,7 @@ function metadata_to_dtype(metadata: Metadata) {
     return ((metadata.littleEndian) ? "<" : ">") + fmt;
   }
   else if (metadata.type == Module.H5T_class_t.H5T_COMPOUND.value) {
-    return { compound: metadata.compound_type };
+    return { compound: metadata.compound_type as CompoundType};
   }
   else {
     return "unknown";
@@ -379,6 +364,13 @@ export class ExternalLink {
   }
 }
 
+export interface Attribute {
+  dtype: Dtype,
+  shape: number[],
+  value: OutputData,
+  metadata: Metadata
+}
+
 abstract class HasAttrs {
   file_id!: bigint;
   path!: string;
@@ -386,14 +378,15 @@ abstract class HasAttrs {
 
   get attrs() {
     let attr_names = Module.get_attribute_names(this.file_id, this.path) as string[];
-    let attrs = {};
+    let attrs: {[key: string]: {get(): Attribute, enumerable: true}}  = {};
     for (let name of attr_names) {
       let metadata = Module.get_attribute_metadata(this.file_id, this.path, name);
       Object.defineProperty(attrs, name, {
-        get: () => ({
+        get: (): Attribute => ({
           value: get_attr(this.file_id, this.path, name),
           shape: metadata.shape,
-          dtype: metadata_to_dtype(metadata)
+          dtype: metadata_to_dtype(metadata),
+          metadata
         }),
         enumerable: true
       });
@@ -651,3 +644,13 @@ export class Dataset extends HasAttrs {
     return processed;
   }
 }
+
+export const h5wasm = {
+  File,
+  Group,
+  Dataset,
+  ready,
+  ACCESS_MODES
+}
+
+export default h5wasm;
