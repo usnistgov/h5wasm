@@ -2,7 +2,26 @@
 ## v0.4.0 2022-04-28
 ### Changed
  - **POSSIBLY BREAKING**: nodejs target is compiled as ESM instead of CommonJs
- - 
+ - default export is now an object, which can help when ```import *``` is discouraged
+   ```js
+   export const h5wasm = {
+     File,
+     Group,
+     Dataset,
+     ready,
+     ACCESS_MODES
+   }
+   export default h5wasm;
+   ```
+ - ```ready``` export now returns ```Promise<H5Module>```
+ - recommended access to filesystem is by
+   ```js
+   const { FS } = await h5wasm.ready;
+   ```
+### Added
+ - VLEN string writing and reading test
+ - TypeScript types added for Attribute
+ - Full metadata added to Attribute in addition to dtype and shape
 ## v0.3.2 2022-04-12
 ### Fixed
  - TypeScript ```strict``` mode checking enabled for build
