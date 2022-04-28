@@ -1,8 +1,7 @@
-import type { Status, Metadata, H5Module, CompoundType } from "./hdf5_util_helpers";
+import type { Status, Metadata, H5Module } from "./hdf5_util_helpers";
 export declare var Module: H5Module;
-export default Module;
 export declare var FS: (FS.FileSystemType | null);
-declare const ready: Promise<void>;
+declare const ready: Promise<H5Module>;
 export { ready };
 export declare const ACCESS_MODES: {
     readonly r: "H5F_ACC_RDONLY";
@@ -15,6 +14,9 @@ export declare const ACCESS_MODES: {
 };
 declare type ACCESS_MODESTRING = keyof typeof ACCESS_MODES;
 export declare type OutputData = TypedArray | string | number | bigint | (string | number | bigint | OutputData)[];
+export declare type Dtype = string | {
+    compound: object;
+};
 declare type TypedArray = Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | BigInt64Array | BigUint64Array | Float32Array | Float64Array;
 export declare type GuessableDataTypes = TypedArray | number | number[] | string | string[];
 declare enum OBJECT_TYPE {
@@ -34,11 +36,22 @@ export declare class ExternalLink {
     type: OBJECT_TYPE;
     constructor(filename: string, obj_path: string);
 }
+export interface Attribute {
+    dtype: Dtype;
+    shape: number[];
+    value: OutputData;
+    metadata: Metadata;
+}
 declare abstract class HasAttrs {
     file_id: bigint;
     path: string;
     type: OBJECT_TYPE;
-    get attrs(): {};
+    get attrs(): {
+        [key: string]: {
+            get(): Attribute;
+            enumerable: true;
+        };
+    };
     get_attribute(name: string): void;
     create_attribute(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null): void;
 }
@@ -68,10 +81,24 @@ export declare class File extends Group {
 export declare class Dataset extends HasAttrs {
     constructor(file_id: bigint, path: string);
     get metadata(): Metadata;
-    get dtype(): string | {
-        compound: CompoundType | undefined;
-    };
+    get dtype(): Dtype;
     get shape(): number[];
     get value(): OutputData;
     slice(ranges: Array<Array<number>>): OutputData;
 }
+export declare const h5wasm: {
+    File: typeof File;
+    Group: typeof Group;
+    Dataset: typeof Dataset;
+    ready: Promise<H5Module>;
+    ACCESS_MODES: {
+        readonly r: "H5F_ACC_RDONLY";
+        readonly a: "H5F_ACC_RDWR";
+        readonly w: "H5F_ACC_TRUNC";
+        readonly x: "H5F_ACC_EXCL";
+        readonly c: "H5F_ACC_CREAT";
+        readonly Sw: "H5F_ACC_SWMR_WRITE";
+        readonly Sr: "H5F_ACC_SWMR_READ";
+    };
+};
+export default h5wasm;

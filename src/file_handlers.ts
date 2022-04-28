@@ -1,16 +1,16 @@
-import {Module, ready} from "./hdf5_hl.js";
+import { ready } from "./hdf5_hl.js";
 import type { File as H5WasmFile } from './hdf5_hl.js';
 
 export const UPLOADED_FILES: string[] = [];
 
 export async function uploader(event: Event) {
-    await ready;
+    const { FS } = await ready;
     const target = event.target as HTMLInputElement;
     let file = target.files?.[0]; // only one file allowed
     if (file) {
         let datafilename = file.name;
         let ab = await file.arrayBuffer();
-        Module.FS.writeFile(datafilename, new Uint8Array(ab));
+        FS.writeFile(datafilename, new Uint8Array(ab));
         if (!UPLOADED_FILES.includes(datafilename)) {
             UPLOADED_FILES.push(datafilename);
             console.log("file loaded:", datafilename);
@@ -49,18 +49,19 @@ function create_downloader() {
 
 export const downloader = create_downloader();
 
-export function to_blob(hdf5_file: H5WasmFile) {
+export async function to_blob(hdf5_file: H5WasmFile) {
+    const { FS } = await ready;
     hdf5_file.flush();
-    return new Blob([Module.FS.readFile(hdf5_file.filename)], {type: 'application/x-hdf5'});
+    return new Blob([FS.readFile(hdf5_file.filename)], {type: 'application/x-hdf5'});
 }
 
-export function download(hdf5_file: H5WasmFile) {
-    let b = to_blob(hdf5_file);
+export async function download(hdf5_file: H5WasmFile) {
+    let b = await to_blob(hdf5_file);
     downloader(b, hdf5_file.filename);
 }
 
-export function dirlisting(path: string): {files: string[], subfolders: string[]} | {} {
-    let node = Module.FS.analyzePath(path).object;
+export function dirlisting(path: string, FS: FS.FileSystemType): {files: string[], subfolders: string[]} | {} {
+    let node = FS.analyzePath(path).object;
     if (node && node.isFolder) {
         let files = Object.values(node.contents).filter(v => !(v.isFolder)).map(v => v.name);
         let subfolders = Object.values(node.contents).filter(v => (v.isFolder)).map(v => v.name);
