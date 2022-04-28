@@ -3,11 +3,11 @@
 import { strict as assert } from 'assert';
 import { existsSync, mkdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
-import hdf5 from "../dist/node/hdf5_hl.js";
+import h5wasm from "../dist/node/hdf5_hl.js";
 
-async function create_dataset() {
+async function create_typedarray_datasets() {
 
-  await hdf5.ready;
+  await h5wasm.ready;
   const PATH = join(".", "test", "tmp");
   const FILEPATH = join(PATH, "dataset.h5");
   const VALUES = [3,2,1];
@@ -29,7 +29,7 @@ async function create_dataset() {
     mkdirSync(PATH);
   }
   
-  let write_file = new hdf5.File(FILEPATH, "w");
+  let write_file = new h5wasm.File(FILEPATH, "w");
 
   for (let typed_arrayname of TypedArray_to_dtype.keys()) {
     let write_values = (/^Big/.test(typed_arrayname)) ? VALUES.map(BigInt) : VALUES;
@@ -39,7 +39,7 @@ async function create_dataset() {
   write_file.flush();
   write_file.close();
 
-  let read_file = new hdf5.File(FILEPATH, "r");
+  let read_file = new h5wasm.File(FILEPATH, "r");
   for (let [name, dtype] of TypedArray_to_dtype.entries()) {
     let dset = read_file.get(name);
     assert.equal(dset.dtype, dtype);
@@ -52,10 +52,38 @@ async function create_dataset() {
 
 }
 
+async function create_vlen_string_dataset() {
+  await h5wasm.ready;
+  const PATH = join(".", "test", "tmp");
+  const FILEPATH = join(PATH, "vlen_string_dataset.h5");
+  const VALUES = ["this", "this other thing"];
+  const NAME = "strings";
+
+  if (!(existsSync(PATH))) {
+    mkdirSync(PATH);
+  }
+  
+  const write_file = new h5wasm.File(FILEPATH, "w");
+  write_file.create_dataset(NAME, VALUES);
+  write_file.flush();
+  write_file.close();
+
+  const read_file = new h5wasm.File(FILEPATH, "r");
+  const output = read_file.get(NAME).value;
+  assert.deepEqual(output, VALUES);
+  read_file.close();
+  unlinkSync(FILEPATH);
+
+}
+
 export const tests = [
   {
     description: "Create datasets of all TypedArray types",
-    test: create_dataset
+    test: create_typedarray_datasets
+  },
+  {
+    description: "Create VLEN string dataset",
+    test: create_vlen_string_dataset
   }
 ]
 export default tests;

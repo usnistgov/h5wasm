@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 import { strict as assert } from 'assert';
-import hdf5 from "../dist/node/hdf5_hl.js";
+import h5wasm from "../dist/node/hdf5_hl.js";
 
 async function compound_array_test() {
 
-  await hdf5.ready;
-  var f = new hdf5.File("./test/array.h5", "r");
+  await h5wasm.ready;
+  var f = new h5wasm.File("./test/array.h5", "r");
 
   assert.deepEqual(
     f.get("float_arr").value, 
