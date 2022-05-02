@@ -1,5 +1,5 @@
 # Changelog
-## v0.4.1 2022-05-01
+## v0.4.1 2022-05-02
 ### Added
  - Minimal handling of reading datatype H5T_ENUM (treats as integer base type)
 ### Fixed
