@@ -277,6 +277,7 @@ val get_dtype_metadata(hid_t dtype)
     else if (dtype_class == H5T_ARRAY) {
         hid_t base_dtype = H5Tget_super(dtype);
         val array_type = get_dtype_metadata(base_dtype);
+        H5Tclose(base_dtype);
         val array_dims_out = val::array();
         int ndims = H5Tget_array_ndims(dtype);
         std::vector<hsize_t> array_dims(ndims);
@@ -288,10 +289,19 @@ val get_dtype_metadata(hid_t dtype)
         attr.set("array_type", array_type);
     }
 
+    if (dtype_class == H5T_ENUM) {
+        hid_t base_dtype = H5Tget_super(dtype);
+        H5T_class_t base_dtype_class = H5Tget_class(base_dtype);
+        attr.set("type", (int)base_dtype_class);
+        H5Tclose(base_dtype);
+    }
+    else {
+        attr.set("type", (int)dtype_class);
+    }
+
     bool littleEndian = (order == H5T_ORDER_LE);
     attr.set("vlen", (bool)H5Tis_variable_str(dtype));
     attr.set("littleEndian", littleEndian);
-    attr.set("type", (int)dtype_class);
     attr.set("size", size);
 
     return attr;
