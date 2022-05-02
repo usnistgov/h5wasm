@@ -83,6 +83,7 @@ function process_data(data: Uint8Array, metadata: Metadata): OutputData {
   // If an appropriate TypedArray container can be constructed, it will
   // but otherwise returns Uint8Array raw bytes as loaded.
   let output_data: OutputData;
+  let known_type = true;
   // let length: number;
   if (metadata.type === Module.H5T_class_t.H5T_STRING.value) {
     if (metadata.vlen) {
@@ -102,8 +103,13 @@ function process_data(data: Uint8Array, metadata: Metadata): OutputData {
       let n = Math.floor(data.byteLength / size);
       let output = [];
       for (let i = 0; i < n; i++) {
-        let s = data.slice(i * size, (i + 1) * size);
-        output.push(decoder.decode(s).replace(/\u0000+$/, ''));
+        let bytes = data.slice(i * size, (i + 1) * size);
+        // truncate at first null
+        const zero_match = bytes.findIndex((b) => (b === 0));
+        if (zero_match > -1) {
+          bytes = bytes.slice(0, zero_match);
+        }
+        output.push(decoder.decode(bytes));
       }
       output_data = output;
       // length = output_data.length;
@@ -137,10 +143,12 @@ function process_data(data: Uint8Array, metadata: Metadata): OutputData {
   }
 
   else {
+    known_type = false;
     output_data = data;
   }
 
-  if ((Array.isArray(output_data) || (ArrayBuffer.isView(output_data) && output_data instanceof DataView)) && output_data.length == 1) {
+  // if metadata.shape.length == 0 or metadata.shape is undefined...
+  if (known_type && (Array.isArray(output_data) || ArrayBuffer.isView(output_data)) && !metadata.shape?.length) {
     return output_data[0]
   }
   return output_data;
