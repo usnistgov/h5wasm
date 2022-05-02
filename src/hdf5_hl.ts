@@ -1,4 +1,4 @@
-import type {Status, Metadata, H5Module, CompoundType} from "./hdf5_util_helpers";
+import type {Status, Metadata, H5Module, CompoundTypeMetadata, ArrayTypeMetadata} from "./hdf5_util_helpers";
 
 import ModuleFactory from './hdf5_util.js';
 
@@ -76,16 +76,17 @@ function getAccessor(type: 0 | 1, size: Metadata["size"], signed: Metadata["sign
 }
 
 export type OutputData = TypedArray | string | number | bigint | (string | number | bigint | OutputData)[];
-export type Dtype = string | {compound: object};
+export type Dtype = string | {compound_type: CompoundTypeMetadata} | {array_type: ArrayTypeMetadata};
 
 function process_data(data: Uint8Array, metadata: Metadata): OutputData {
   // (for data coming out of Module)
   // If an appropriate TypedArray container can be constructed, it will
   // but otherwise returns Uint8Array raw bytes as loaded.
   let output_data: OutputData;
+  let { shape, type } = metadata;
   let known_type = true;
   // let length: number;
-  if (metadata.type === Module.H5T_class_t.H5T_STRING.value) {
+  if (type === Module.H5T_class_t.H5T_STRING.value) {
     if (metadata.vlen) {
       let output = [];
       let reader = (metadata.cset == 1) ? Module.UTF8ToString : Module.AsciiToString;
@@ -115,14 +116,14 @@ function process_data(data: Uint8Array, metadata: Metadata): OutputData {
       // length = output_data.length;
     }
   }
-  else if (metadata.type === Module.H5T_class_t.H5T_INTEGER.value || metadata.type === Module.H5T_class_t.H5T_FLOAT.value) {
-    const {type, size, signed} = metadata;
+  else if (type === Module.H5T_class_t.H5T_INTEGER.value || type === Module.H5T_class_t.H5T_FLOAT.value) {
+    const { size, signed} = metadata;
     const accessor = getAccessor(type, size, signed);
     output_data = new accessor(data.buffer);
   }
 
-  else if (metadata.type === Module.H5T_class_t.H5T_COMPOUND.value) {
-    const { size, compound_type } = <{size: Metadata["size"], compound_type: CompoundType}>metadata;
+  else if (type === Module.H5T_class_t.H5T_COMPOUND.value) {
+    const { size, compound_type } = <{size: Metadata["size"], compound_type: CompoundTypeMetadata}>metadata;
     let n = Math.floor(data.byteLength / size);
     let output = [];
     for (let i = 0; i < n; i++) {
@@ -137,8 +138,10 @@ function process_data(data: Uint8Array, metadata: Metadata): OutputData {
     output_data = output;
   }
 
-  else if (metadata.type === Module.H5T_class_t.H5T_ARRAY.value) {
-    const { array_type } = <{array_type: Metadata}>metadata;
+  else if (type === Module.H5T_class_t.H5T_ARRAY.value) {
+    const { array_type } = <{array_type: ArrayTypeMetadata}>metadata;
+    shape = shape.concat(array_type.dims);
+    array_type.shape = shape;
     output_data = process_data(data, array_type);
   }
 
@@ -148,7 +151,7 @@ function process_data(data: Uint8Array, metadata: Metadata): OutputData {
   }
 
   // if metadata.shape.length == 0 or metadata.shape is undefined...
-  if (known_type && (Array.isArray(output_data) || ArrayBuffer.isView(output_data)) && !metadata.shape?.length) {
+  if (known_type && (Array.isArray(output_data) || ArrayBuffer.isView(output_data)) && !shape?.length) {
     return output_data[0]
   }
   return output_data;
@@ -227,26 +230,30 @@ const fmts_float = map_reverse(float_fmts);
 const fmts_int = map_reverse(int_fmts);
 
 function metadata_to_dtype(metadata: Metadata): Dtype {
-  if (metadata.type == Module.H5T_class_t.H5T_STRING.value) {
-    let length_str = metadata.vlen ? "" : String(metadata.size);
+  const { type, size, littleEndian, signed, compound_type, array_type, vlen } = metadata;
+  if (type == Module.H5T_class_t.H5T_STRING.value) {
+    let length_str = vlen ? "" : String(size);
     return `S${length_str}`;
   }
-  else if (metadata.type == Module.H5T_class_t.H5T_INTEGER.value) {
-    let fmt = int_fmts.get(metadata.size);
+  else if (type == Module.H5T_class_t.H5T_INTEGER.value) {
+    let fmt = int_fmts.get(size);
     if (fmt === undefined) {
-      throw new Error(`int of size ${metadata.size} unsupported`);
+      throw new Error(`int of size ${size} unsupported`);
     }
-    if (!metadata.signed) {
+    if (!signed) {
       fmt = fmt.toUpperCase();
     }
-    return ((metadata.littleEndian) ? "<" : ">") + fmt;
+    return ((littleEndian) ? "<" : ">") + fmt;
   }
-  else if (metadata.type == Module.H5T_class_t.H5T_FLOAT.value) {
-    let fmt = float_fmts.get(metadata.size);
-    return ((metadata.littleEndian) ? "<" : ">") + fmt;
+  else if (type == Module.H5T_class_t.H5T_FLOAT.value) {
+    let fmt = float_fmts.get(size);
+    return ((littleEndian) ? "<" : ">") + fmt;
   }
-  else if (metadata.type == Module.H5T_class_t.H5T_COMPOUND.value) {
-    return { compound: metadata.compound_type as CompoundType};
+  else if (type == Module.H5T_class_t.H5T_COMPOUND.value) {
+    return { compound_type: compound_type as CompoundTypeMetadata};
+  }
+  else if (type === Module.H5T_class_t.H5T_ARRAY.value ) {
+    return { array_type: array_type as ArrayTypeMetadata }
   }
   else {
     return "unknown";
