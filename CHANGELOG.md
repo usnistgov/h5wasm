@@ -1,4 +1,11 @@
 # Changelog
+## v0.4.1 2022-05-01
+### Added
+ - Minimal handling of reading datatype H5T_ENUM (treats as integer base type)
+### Fixed
+ - All strings now truncated at first null byte before decoding
+ - Fixed memory leak for opening of super dtype when processing compound datatypes 
+ - Handling of singleton values (shape = []) was broken, now fixed
 ## v0.4.0 2022-04-28
 ### Changed
  - **POSSIBLY BREAKING**: nodejs target is compiled as ESM instead of CommonJs
