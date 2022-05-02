@@ -69,6 +69,7 @@ val get_child_names(hid_t loc_id, const std::string& group_name_string)
     }
 
     H5Gclose(grp);
+    H5Pclose(gcpl_id);
     return names;
 }
 
@@ -108,6 +109,7 @@ val get_child_types(hid_t loc_id, const std::string& group_name_string)
         delete[] name;
     }
     status = H5Gclose(grp);
+    status = H5Pclose(gcpl_id);
     return names;
 }
 
@@ -230,6 +232,7 @@ val get_attribute_names(hid_t loc_id, const std::string& obj_name_string)
     }
 
     status = H5Oclose(obj_id);
+    status = H5Pclose(ocpl_id);
     return names;
 }
 
