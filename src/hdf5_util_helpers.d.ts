@@ -20,23 +20,27 @@ export interface H5T_class_t {
 export interface Metadata {
     signed: boolean,
     cset: number,
-    compound_type?: CompoundType,
+    compound_type?: CompoundTypeMetadata,
     vlen: boolean,
     littleEndian: boolean,
     type: number,
     size: number,
     shape: Array<number>,
     total_size: number,
-    array_type?: Metadata,
+    array_type?: ArrayTypeMetadata,
 }
 
 export interface CompoundMember extends Metadata {
     offset: number;
 }
 
-export interface CompoundType {
+export interface CompoundTypeMetadata {
     name: string,
     members: Array<CompoundMember>
+}
+
+export interface ArrayTypeMetadata extends Metadata {
+    dims: Array<number>;
 }
 
 export interface H5Module extends EmscriptenModule {
