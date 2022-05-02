@@ -264,11 +264,13 @@ val get_dtype_metadata(hid_t dtype)
         {
             hid_t member_dtype = H5Tget_member_type(dtype, n);
             val member = get_dtype_metadata(member_dtype);
+            H5Tclose(member_dtype);
             char *member_name = H5Tget_member_name(dtype, n);
             member.set("name", std::string(member_name));
             H5free_memory(member_name);
             size_t member_offset = H5Tget_member_offset(dtype, n);
             member.set("offset", (int)member_offset);
+            member.set("shape", val::array());
             members.set(n, member);
         }
         compound_type.set("members", members);
