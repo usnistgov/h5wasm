@@ -393,7 +393,7 @@ abstract class HasAttrs {
 
   get attrs() {
     let attr_names = Module.get_attribute_names(this.file_id, this.path) as string[];
-    let attrs: {[key: string]: {get(): Attribute, enumerable: true}}  = {};
+    let attrs: {[key: string]: Attribute}  = {};
     for (let name of attr_names) {
       let metadata = Module.get_attribute_metadata(this.file_id, this.path, name);
       Object.defineProperty(attrs, name, {

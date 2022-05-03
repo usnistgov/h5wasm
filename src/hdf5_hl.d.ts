@@ -49,10 +49,7 @@ declare abstract class HasAttrs {
     path: string;
     type: OBJECT_TYPE;
     get attrs(): {
-        [key: string]: {
-            get(): Attribute;
-            enumerable: true;
-        };
+        [key: string]: Attribute;
     };
     get_attribute(name: string): void;
     create_attribute(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null): void;
