@@ -28,6 +28,7 @@ export interface Metadata {
     shape: Array<number>,
     total_size: number,
     array_type?: ArrayTypeMetadata,
+    enum_type?: EnumTypeMetadata
 }
 
 export interface CompoundMember extends Metadata {
@@ -41,6 +42,12 @@ export interface CompoundTypeMetadata {
 
 export interface ArrayTypeMetadata extends Metadata {
     dims: Array<number>;
+}
+
+export interface EnumTypeMetadata {
+    members: string[];
+    nmembers: number;
+    type: number;
 }
 
 export interface H5Module extends EmscriptenModule {
