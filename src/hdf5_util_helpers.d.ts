@@ -47,7 +47,6 @@ export interface ArrayTypeMetadata extends Metadata {
 export interface EnumTypeMetadata {
     members: string[];
     nmembers: number;
-    type: number;
 }
 
 export interface H5Module extends EmscriptenModule {

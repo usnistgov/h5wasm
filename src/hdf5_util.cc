@@ -298,7 +298,7 @@ val get_dtype_metadata(hid_t dtype)
         val members = val::array();
         hid_t base_dtype = H5Tget_super(dtype);
         H5T_class_t base_dtype_class = H5Tget_class(base_dtype);
-        enum_type.set("type", (int)base_dtype_class);
+        attr.set("type", (int)base_dtype_class);
         H5Tclose(base_dtype);
         int nmembers = H5Tget_nmembers(dtype);
         enum_type.set("nmembers", nmembers);
