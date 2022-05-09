@@ -19,6 +19,7 @@ export declare type Dtype = string | {
 } | {
     array_type: ArrayTypeMetadata;
 };
+export type { Metadata };
 declare type TypedArray = Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | BigInt64Array | BigUint64Array | Float32Array | Float64Array;
 export declare type GuessableDataTypes = TypedArray | number | number[] | string | string[];
 declare enum OBJECT_TYPE {

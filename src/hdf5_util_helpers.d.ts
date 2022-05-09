@@ -18,25 +18,26 @@ export interface H5T_class_t {
 }
 
 export interface Metadata {
-    signed: boolean,
-    cset: number,
-    compound_type?: CompoundTypeMetadata,
-    vlen: boolean,
-    littleEndian: boolean,
-    type: number,
-    size: number,
-    shape: Array<number>,
-    total_size: number,
     array_type?: ArrayTypeMetadata,
+    compound_type?: CompoundTypeMetadata,
+    cset: number,
+    littleEndian: boolean,
+    shape: Array<number>,
+    signed: boolean,
+    size: number,
+    total_size: number,
+    type: number,
+    vlen: boolean,
 }
 
 export interface CompoundMember extends Metadata {
+    name: string;
     offset: number;
 }
 
 export interface CompoundTypeMetadata {
-    name: string,
     members: Array<CompoundMember>
+    nmembers: number;
 }
 
 export interface ArrayTypeMetadata extends Metadata {

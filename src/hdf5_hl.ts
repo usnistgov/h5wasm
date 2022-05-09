@@ -77,6 +77,7 @@ function getAccessor(type: 0 | 1, size: Metadata["size"], signed: Metadata["sign
 
 export type OutputData = TypedArray | string | number | bigint | (string | number | bigint | OutputData)[];
 export type Dtype = string | {compound_type: CompoundTypeMetadata} | {array_type: ArrayTypeMetadata};
+export type { Metadata };
 
 function process_data(data: Uint8Array, metadata: Metadata): OutputData {
   // (for data coming out of Module)
