@@ -287,10 +287,13 @@ val get_dtype_metadata(hid_t dtype)
         int ndims = H5Tget_array_ndims(dtype);
         std::vector<hsize_t> array_dims(ndims);
         H5Tget_array_dims2(dtype, &array_dims[0]);
+        int total_size = 1;
         for (int i=0; i<ndims; i++) {
             array_dims_out.set(i, (int)array_dims[i]);
+            total_size *= (int)array_dims[i];
         }
-        array_type.set("dims", array_dims_out);
+        array_type.set("shape", array_dims_out);
+        array_type.set("total_size", total_size);
         attr.set("array_type", array_type);
     }
 

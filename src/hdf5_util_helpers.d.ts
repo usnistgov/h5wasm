@@ -18,7 +18,7 @@ export interface H5T_class_t {
 }
 
 export interface Metadata {
-    array_type?: ArrayTypeMetadata,
+    array_type?: Metadata,
     compound_type?: CompoundTypeMetadata,
     cset: number,
     littleEndian: boolean,
@@ -38,10 +38,6 @@ export interface CompoundMember extends Metadata {
 export interface CompoundTypeMetadata {
     members: Array<CompoundMember>
     nmembers: number;
-}
-
-export interface ArrayTypeMetadata extends Metadata {
-    dims: Array<number>;
 }
 
 export interface H5Module extends EmscriptenModule {
