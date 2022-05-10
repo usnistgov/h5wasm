@@ -34,10 +34,11 @@ async function compound_array_test() {
         {
           array_type: {
             cset: -1,
-            dims: [2, 2],
+            shape: [2, 2],
             littleEndian: true,
             signed: false,
             size: 8,
+            total_size: 4,
             type: 1,
             vlen: false,
           },
@@ -54,10 +55,11 @@ async function compound_array_test() {
         {
           array_type: {
             cset: 0,
-            dims: [2, 2],
+            shape: [2, 2],
             littleEndian: false,
             signed: false,
             size: 5,
+            total_size: 4,
             type: 3,
             vlen: false,
           },
