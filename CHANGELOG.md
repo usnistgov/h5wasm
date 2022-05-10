@@ -1,4 +1,9 @@
 # Changelog
+## v0.4.2 2022-05-10
+### Added
+ - extended metadata for ENUM type (including names of members)
+### Fixed
+ - Typings for metadata on attributes and datasets
 ## v0.4.1 2022-05-02
 ### Added
  - Minimal handling of reading datatype H5T_ENUM (treats as integer base type)
