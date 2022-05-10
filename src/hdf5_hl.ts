@@ -1,4 +1,4 @@
-import type {Status, Metadata, H5Module, CompoundTypeMetadata, ArrayTypeMetadata} from "./hdf5_util_helpers";
+import type {Status, Metadata, H5Module, CompoundTypeMetadata} from "./hdf5_util_helpers";
 
 import ModuleFactory from './hdf5_util.js';
 
@@ -76,7 +76,7 @@ function getAccessor(type: 0 | 1, size: Metadata["size"], signed: Metadata["sign
 }
 
 export type OutputData = TypedArray | string | number | bigint | (string | number | bigint | OutputData)[];
-export type Dtype = string | {compound_type: CompoundTypeMetadata} | {array_type: ArrayTypeMetadata};
+export type Dtype = string | {compound_type: CompoundTypeMetadata} | {array_type: Metadata};
 export type { Metadata };
 
 function process_data(data: Uint8Array, metadata: Metadata): OutputData {
@@ -140,8 +140,8 @@ function process_data(data: Uint8Array, metadata: Metadata): OutputData {
   }
 
   else if (type === Module.H5T_class_t.H5T_ARRAY.value) {
-    const { array_type } = <{array_type: ArrayTypeMetadata}>metadata;
-    shape = shape.concat(array_type.dims);
+    const { array_type } = <{array_type: Metadata}>metadata;
+    shape = shape.concat(array_type.shape);
     array_type.shape = shape;
     output_data = process_data(data, array_type);
   }
@@ -254,7 +254,7 @@ function metadata_to_dtype(metadata: Metadata): Dtype {
     return { compound_type: compound_type as CompoundTypeMetadata};
   }
   else if (type === Module.H5T_class_t.H5T_ARRAY.value ) {
-    return { array_type: array_type as ArrayTypeMetadata }
+    return { array_type: array_type as Metadata }
   }
   else {
     return "unknown";
