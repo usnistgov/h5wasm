@@ -1,4 +1,4 @@
-import type {Status, Metadata, H5Module, CompoundTypeMetadata} from "./hdf5_util_helpers";
+import type {Status, Metadata, H5Module, CompoundTypeMetadata, EnumTypeMetadata} from "./hdf5_util_helpers";
 
 import ModuleFactory from './hdf5_util.js';
 
@@ -144,6 +144,12 @@ function process_data(data: Uint8Array, metadata: Metadata): OutputData {
     shape = shape.concat(array_type.shape);
     array_type.shape = shape;
     output_data = process_data(data, array_type);
+  }
+
+  else if (type === Module.H5T_class_t.H5T_ENUM.value) {
+    const base_metadata = {...metadata};
+    base_metadata.type = (base_metadata.enum_type as EnumTypeMetadata).type;
+    output_data = process_data(data, base_metadata);
   }
 
   else {
