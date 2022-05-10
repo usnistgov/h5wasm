@@ -245,6 +245,8 @@ val get_dtype_metadata(hid_t dtype)
 
     size_t size = H5Tget_size(dtype);
     H5T_class_t dtype_class = H5Tget_class(dtype);
+    attr.set("type", (int)dtype_class);
+
     H5T_order_t order = H5Tget_order(dtype);
     H5T_sign_t is_signed = H5T_SGN_2;
 
@@ -301,7 +303,7 @@ val get_dtype_metadata(hid_t dtype)
         val members = val::array();
         hid_t base_dtype = H5Tget_super(dtype);
         H5T_class_t base_dtype_class = H5Tget_class(base_dtype);
-        attr.set("type", (int)base_dtype_class);
+        enum_type.set("type", (int)base_dtype_class);
         H5Tclose(base_dtype);
         int nmembers = H5Tget_nmembers(dtype);
         enum_type.set("nmembers", nmembers);
@@ -313,9 +315,6 @@ val get_dtype_metadata(hid_t dtype)
         }
         enum_type.set("members", members);
         attr.set("enum_type", enum_type);
-    }
-    else {
-        attr.set("type", (int)dtype_class);
     }
 
     bool littleEndian = (order == H5T_ORDER_LE);
