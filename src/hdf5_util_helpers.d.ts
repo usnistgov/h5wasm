@@ -21,6 +21,7 @@ export interface Metadata {
     array_type?: Metadata,
     compound_type?: CompoundTypeMetadata,
     cset: number,
+    enum_type?: EnumTypeMetadata,
     littleEndian: boolean,
     shape: Array<number>,
     signed: boolean,
@@ -38,6 +39,12 @@ export interface CompoundMember extends Metadata {
 export interface CompoundTypeMetadata {
     members: Array<CompoundMember>
     nmembers: number;
+}
+
+export interface EnumTypeMetadata {
+    members: string[];
+    nmembers: number;
+    type: number;
 }
 
 export interface H5Module extends EmscriptenModule {
