@@ -14,12 +14,17 @@ async function bool_test() {
 
   assert.deepEqual(f.get('bool').metadata, {
     cset: -1,
+    enum_type: {
+      type: 0,
+      nmembers: 2,
+      members: [ 'FALSE', 'TRUE' ]
+    },
     littleEndian: true,
     shape: [2],
     signed: true,
     size: 1,
     total_size: 2,
-    type: 0,
+    type: 8,
     vlen: false,
   });
 }
