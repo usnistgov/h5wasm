@@ -179,9 +179,9 @@ function isIterable(x: any): x is Iterable<unknown> {
 }
 
 function isH5PYBooleanEnum(enum_type: EnumTypeMetadata) {
-  return enum_type.members.length === 2 && 
-         enum_type.members[0] === "FALSE" &&
-         enum_type.members[1] === "TRUE";
+  return Object.keys(enum_type.members).length === 2 &&
+         enum_type.members["FALSE"] === 0 &&
+         enum_type.members["TRUE"] === 1;
 }
 
 function prepare_data(data: any, metadata: Metadata, shape?: Array<number> | null): {data: Uint8Array | string[], shape: number[]} {
