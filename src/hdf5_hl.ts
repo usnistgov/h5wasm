@@ -75,7 +75,7 @@ function getAccessor(type: 0 | 1, size: Metadata["size"], signed: Metadata["sign
   }
 }
 
-export type OutputData = TypedArray | string | number | bigint | (string | number | bigint | OutputData)[];
+export type OutputData = TypedArray | string | number | bigint | boolean | (string | number | bigint | boolean | OutputData)[];
 export type Dtype = string | {compound_type: CompoundTypeMetadata} | {array_type: Metadata};
 export type { Metadata };
 
@@ -150,6 +150,16 @@ function process_data(data: Uint8Array, metadata: Metadata): OutputData {
     const base_metadata = {...metadata};
     base_metadata.type = (base_metadata.enum_type as EnumTypeMetadata).type;
     output_data = process_data(data, base_metadata);
+    // Following the convention of h5py, treat all enum datasets where the
+    // enum members are ["FALSE", "TRUE"] as boolean arrays
+    if (isH5PYBooleanEnum(metadata.enum_type as EnumTypeMetadata)) {
+      if (isIterable(output_data)) {
+        output_data = [...output_data].map((x) => !!x);
+      }
+      else {
+        output_data = !!output_data;
+      }
+    }
   }
 
   else {
@@ -162,6 +172,16 @@ function process_data(data: Uint8Array, metadata: Metadata): OutputData {
     return output_data[0]
   }
   return output_data;
+}
+
+function isIterable(x: any): x is Iterable<unknown> {
+  return Symbol.iterator in x;
+}
+
+function isH5PYBooleanEnum(enum_type: EnumTypeMetadata) {
+  return enum_type.members.length === 2 && 
+         enum_type.members[0] === "FALSE" &&
+         enum_type.members[1] === "TRUE";
 }
 
 function prepare_data(data: any, metadata: Metadata, shape?: Array<number> | null): {data: Uint8Array | string[], shape: number[]} {
