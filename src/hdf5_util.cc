@@ -300,19 +300,22 @@ val get_dtype_metadata(hid_t dtype)
     }
     else if (dtype_class == H5T_ENUM) {
         val enum_type = val::object();
-        val members = val::array();
+        val members = val::object();
         hid_t base_dtype = H5Tget_super(dtype);
         H5T_class_t base_dtype_class = H5Tget_class(base_dtype);
         enum_type.set("type", (int)base_dtype_class);
-        H5Tclose(base_dtype);
         int nmembers = H5Tget_nmembers(dtype);
         enum_type.set("nmembers", nmembers);
         for (unsigned n = 0; n < nmembers; n++)
         {
             char *member_name = H5Tget_member_name(dtype, n);
-            members.set(n, std::string(member_name));
+            int64_t member_value;
+            herr_t status = H5Tget_member_value(dtype, n, &member_value);
+            H5Tconvert(base_dtype, H5T_NATIVE_INT, 1, &member_value, NULL, H5P_DEFAULT);
+            members.set(std::string(member_name), (int)member_value);
             H5free_memory(member_name);
         }
+        H5Tclose(base_dtype);
         enum_type.set("members", members);
         attr.set("enum_type", enum_type);
     }

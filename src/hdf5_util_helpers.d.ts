@@ -42,7 +42,7 @@ export interface CompoundTypeMetadata {
 }
 
 export interface EnumTypeMetadata {
-    members: string[];
+    members: {[key: string]: number};
     nmembers: number;
     type: number;
 }

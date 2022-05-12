@@ -17,7 +17,10 @@ async function bool_test() {
     enum_type: {
       type: 0,
       nmembers: 2,
-      members: [ 'FALSE', 'TRUE' ]
+      members: {
+        'FALSE': 0,
+        'TRUE': 1
+      }
     },
     littleEndian: true,
     shape: [2],
