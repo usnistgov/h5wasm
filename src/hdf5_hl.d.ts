@@ -39,11 +39,17 @@ export declare class ExternalLink {
     type: OBJECT_TYPE;
     constructor(filename: string, obj_path: string);
 }
-export interface Attribute {
+export declare class Attribute {
+    file_id: bigint;
+    path: string;
+    name: string;
+    metadata: Metadata;
     dtype: Dtype;
     shape: number[];
-    value: OutputData;
-    metadata: Metadata;
+    private _value?;
+    constructor(file_id: bigint, path: string, name: string);
+    get value(): OutputData;
+    to_array(): string | number | bigint | boolean | TypedArray | OutputData[];
 }
 declare abstract class HasAttrs {
     file_id: bigint;
@@ -85,6 +91,7 @@ export declare class Dataset extends HasAttrs {
     get shape(): number[];
     get value(): OutputData;
     slice(ranges: Array<Array<number>>): OutputData;
+    to_array(): string | number | bigint | boolean | TypedArray | OutputData[];
 }
 export declare const h5wasm: {
     File: typeof File;

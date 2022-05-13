@@ -406,11 +406,40 @@ export class ExternalLink {
   }
 }
 
-export interface Attribute {
-  dtype: Dtype,
-  shape: number[],
-  value: OutputData,
-  metadata: Metadata
+export class Attribute {
+  file_id: bigint;
+  path: string;
+  name: string;
+  metadata: Metadata;
+  dtype: Dtype;
+  shape: number[];
+  private _value?: OutputData;
+
+  constructor(file_id: bigint, path: string, name: string) {
+    this.file_id = file_id;
+    this.path = path;
+    this.name = name;
+    const metadata = Module.get_attribute_metadata(file_id, path, name);
+    this.metadata = metadata;
+    this.dtype = metadata_to_dtype(metadata);
+    this.shape = metadata.shape;
+  }
+
+  get value() {
+    if (typeof this._value === "undefined") {
+      this._value = get_attr(this.file_id, this.path, this.name);
+    }
+    return this._value;
+  }
+
+  to_array() {
+    const { value, metadata } = this;
+    const { shape } = metadata;
+    if (!isIterable(value) || typeof value === "string") {
+      return value;
+    }
+    return create_nested_array(value, shape);
+  }
 }
 
 abstract class HasAttrs {
@@ -421,19 +450,12 @@ abstract class HasAttrs {
   get attrs() {
     let attr_names = Module.get_attribute_names(this.file_id, this.path) as string[];
     let attrs: {[key: string]: Attribute}  = {};
+    const { file_id, path } = this;
     for (let name of attr_names) {
-      let metadata = Module.get_attribute_metadata(this.file_id, this.path, name);
       Object.defineProperty(attrs, name, {
-        get: (): Attribute => ({
-          value: get_attr(this.file_id, this.path, name),
-          shape: metadata.shape,
-          dtype: metadata_to_dtype(metadata),
-          metadata
-        }),
+        get: (): Attribute => (new Attribute(file_id, path, name)),
         enumerable: true
       });
-
-      //attrs[name] = get_attr(this.file_id, this.path, name);
     }
     return attrs;
 
@@ -648,7 +670,7 @@ export class Dataset extends HasAttrs {
     let metadata = this.metadata;
     let nbytes = metadata.size * metadata.total_size;
     let data_ptr = Module._malloc(nbytes);
-    var processed;
+    let processed: OutputData;
     try {
       Module.get_dataset_data(this.file_id, this.path, null, null, BigInt(data_ptr));
       let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
@@ -685,6 +707,40 @@ export class Dataset extends HasAttrs {
     }
     return processed;
   }
+
+  to_array() {
+    const { value, metadata } = this;
+    const { shape } = metadata;
+    if (!isIterable(value) || typeof value === "string") {
+      return value;
+    }
+    let nested =  create_nested_array(value, shape);
+    return nested;
+  }
+}
+
+function create_nested_array(value: TypedArray | OutputData[], shape: number[]) {
+  // check that shapes match:
+  const total_length = value.length;
+  const dims_product = shape.reduce((previous, current) => (previous * current), 1);
+  if (total_length !== dims_product) {
+    throw new Error(`shape product: ${dims_product} does not match length of flattened array: ${total_length}`);
+  }
+
+  // Get reshaped output:
+  let output = value;
+  const subdims = shape.slice(1).reverse();
+  for (let dim of subdims) {
+    // in each pass, replace input with array of slices of input
+    const new_output = [];
+    const { length } = output;
+    let cursor = 0;
+    while (cursor < length) {
+      new_output.push(output.slice(cursor, cursor += dim));
+    }
+    output = new_output;
+  }
+  return output;
 }
 
 export const h5wasm = {
