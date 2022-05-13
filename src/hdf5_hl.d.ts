@@ -13,7 +13,7 @@ export declare const ACCESS_MODES: {
     readonly Sr: "H5F_ACC_SWMR_READ";
 };
 declare type ACCESS_MODESTRING = keyof typeof ACCESS_MODES;
-export declare type OutputData = TypedArray | string | number | bigint | (string | number | bigint | OutputData)[];
+export declare type OutputData = TypedArray | string | number | bigint | boolean | (string | number | bigint | boolean | OutputData)[];
 export declare type Dtype = string | {
     compound_type: CompoundTypeMetadata;
 } | {
