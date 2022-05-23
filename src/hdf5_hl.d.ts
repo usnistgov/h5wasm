@@ -14,6 +14,7 @@ export declare const ACCESS_MODES: {
 };
 declare type ACCESS_MODESTRING = keyof typeof ACCESS_MODES;
 export declare type OutputData = TypedArray | string | number | bigint | boolean | (string | number | bigint | boolean | OutputData)[];
+export declare type JSONCompatibleOutputData = string | number | boolean | (string | number | boolean | JSONCompatibleOutputData)[];
 export declare type Dtype = string | {
     compound_type: CompoundTypeMetadata;
 } | {
@@ -47,9 +48,11 @@ export declare class Attribute {
     dtype: Dtype;
     shape: number[];
     private _value?;
+    private _json_value?;
     constructor(file_id: bigint, path: string, name: string);
     get value(): OutputData;
-    to_array(): string | number | bigint | boolean | TypedArray | OutputData[];
+    get json_value(): JSONCompatibleOutputData;
+    to_array(): string | number | boolean | JSONCompatibleOutputData[];
 }
 declare abstract class HasAttrs {
     file_id: bigint;
@@ -58,7 +61,7 @@ declare abstract class HasAttrs {
     get attrs(): {
         [key: string]: Attribute;
     };
-    get_attribute(name: string): void;
+    get_attribute(name: string, json_compatible: boolean): void;
     create_attribute(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null): void;
 }
 export declare class Group extends HasAttrs {
@@ -85,13 +88,16 @@ export declare class File extends Group {
     close(): Status;
 }
 export declare class Dataset extends HasAttrs {
+    private _metadata?;
     constructor(file_id: bigint, path: string);
     get metadata(): Metadata;
     get dtype(): Dtype;
     get shape(): number[];
     get value(): OutputData;
+    get json_value(): JSONCompatibleOutputData;
     slice(ranges: Array<Array<number>>): OutputData;
-    to_array(): string | number | bigint | boolean | TypedArray | OutputData[];
+    to_array(): string | number | boolean | JSONCompatibleOutputData[];
+    _value_getter(json_compatible?: boolean): OutputData;
 }
 export declare const h5wasm: {
     File: typeof File;
