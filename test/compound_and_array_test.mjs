@@ -9,24 +9,57 @@ async function compound_array_test() {
 
   assert.deepEqual(
     f.get('float_arr').value,
-    new Float64Array([0, 1, 2, 3, 4, 5, 6, 7])
+    [
+      [
+        [0,1],
+        [2,3]
+      ],
+      [
+        [4,5],
+        [6,7]
+      ]
+    ]
   );
 
-  assert.deepEqual(f.get('string_arr').value, [
-    'hello',
-    'there',
-    'hello',
-    'there',
-    'hello',
-    'there',
-    'hello',
-    'there',
-  ]);
+  assert.deepEqual(
+    f.get('string_arr').value,
+    [
+      [
+        ["hello","there"],
+        ["hello","there"]
+      ],
+      [
+        ["hello","there"],
+        ["hello","there"]
+      ]
+    ]
+  );
 
-  assert.deepEqual(f.get('compound').value, [
-    [new Float64Array([0, 1, 2, 3]), ['hello', 'there', 'hello', 'there']],
-    [new Float64Array([4, 5, 6, 7]), ['hello', 'there', 'hello', 'there']],
-  ]);
+  assert.deepEqual(
+    f.get('compound').value,
+    [
+      [
+        [
+          [0,1],
+          [2,3]
+        ],
+        [
+          ["hello","there"],
+          ["hello","there"]
+        ]
+      ],
+      [
+        [
+          [4,5],
+          [6,7]
+        ],
+        [
+          ["hello","there"],
+          ["hello","there"]
+        ]
+      ]
+    ]
+  );
 
   assert.deepEqual(f.get('compound').metadata, {
     compound_type: {
