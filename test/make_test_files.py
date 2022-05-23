@@ -15,5 +15,8 @@ f["string_arr"][:] = np.array([b"hello", b"there"] * 2 * 2).reshape((2,2,2))
 f.create_dataset("compound", (2,), dtype=[('floaty', array_type), ('stringy',sarray_type)])
 f['compound'][:] = np.array([(f['float_arr'][0], f['string_arr'][0]), (f['float_arr'][1], f['string_arr'][1])], dtype=f['compound'].dtype)
 
-f.create_dataset("bool", data=[False, True])
+f.create_dataset("bool", data=[False, True, True, False], shape=(2,2))
+
+f.create_dataset("bigint", data=np.arange(8).reshape(2,2,2), dtype="<i8", shape=(2,2,2))
+
 f.close()
