@@ -159,7 +159,11 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
     const { array_type } = <{array_type: Metadata}>metadata;
     shape = shape.concat(array_type.shape);
     array_type.shape = shape;
-    output_data = process_data(data, array_type, json_compatible);
+    // always convert ARRAY types to base JS types:
+    output_data = process_data(data, array_type, true);
+    if (isIterable(output_data) && typeof output_data !== "string") {
+      output_data = create_nested_array(output_data as JSONCompatibleOutputData[], array_type.shape);
+    }
   }
 
   else if (type === Module.H5T_class_t.H5T_ENUM.value) {
@@ -766,7 +770,7 @@ function create_nested_array(value: JSONCompatibleOutputData[], shape: number[])
   const total_length = value.length;
   const dims_product = shape.reduce((previous, current) => (previous * current), 1);
   if (total_length !== dims_product) {
-    throw new Error(`shape product: ${dims_product} does not match length of flattened array: ${total_length}`);
+    console.warn(`shape product: ${dims_product} does not match length of flattened array: ${total_length}`);
   }
 
   // Get reshaped output:
