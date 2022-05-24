@@ -13,8 +13,8 @@ export declare const ACCESS_MODES: {
     readonly Sr: "H5F_ACC_SWMR_READ";
 };
 declare type ACCESS_MODESTRING = keyof typeof ACCESS_MODES;
-export declare type OutputData = TypedArray | string | number | bigint | boolean | (string | number | bigint | boolean | OutputData)[];
-export declare type JSONCompatibleOutputData = string | number | boolean | (string | number | boolean | JSONCompatibleOutputData)[];
+export declare type OutputData = TypedArray | string | number | bigint | boolean | OutputData[];
+export declare type JSONCompatibleOutputData = string | number | boolean | JSONCompatibleOutputData[];
 export declare type Dtype = string | {
     compound_type: CompoundTypeMetadata;
 } | {
@@ -61,7 +61,8 @@ declare abstract class HasAttrs {
     get attrs(): {
         [key: string]: Attribute;
     };
-    get_attribute(name: string, json_compatible: boolean): void;
+    get_attribute(name: string, json_compatible: true): JSONCompatibleOutputData;
+    get_attribute(name: string, json_compatible: false): OutputData;
     create_attribute(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null): void;
 }
 export declare class Group extends HasAttrs {

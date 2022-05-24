@@ -81,8 +81,8 @@ function getAccessor(type: 0 | 1, size: Metadata["size"], signed: Metadata["sign
   }
 }
 
-export type OutputData = TypedArray | string | number | bigint | boolean | (string | number | bigint | boolean | OutputData)[];
-export type JSONCompatibleOutputData = string | number | boolean | (string | number | boolean | JSONCompatibleOutputData)[];
+export type OutputData = TypedArray | string | number | bigint | boolean | OutputData[];
+export type JSONCompatibleOutputData = string | number | boolean | JSONCompatibleOutputData[];
 export type Dtype = string | {compound_type: CompoundTypeMetadata} | {array_type: Metadata};
 export type { Metadata };
 
@@ -493,8 +493,10 @@ abstract class HasAttrs {
 
   }
 
-  get_attribute(name: string, json_compatible: boolean) {
-    get_attr(this.file_id, this.path, name, json_compatible);
+  get_attribute(name: string, json_compatible: true): JSONCompatibleOutputData;
+  get_attribute(name: string, json_compatible: false): OutputData;
+  get_attribute(name: string, json_compatible: boolean = false) {
+    return get_attr(this.file_id, this.path, name, json_compatible);
   }
 
   
