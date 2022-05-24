@@ -1,4 +1,12 @@
 # Changelog
+## v0.4.3 2022-05-24
+### Added
+ - ```to_array``` method on Dataset and Attribute classes: returns nested array of values with dimensions matching ```shape```.  Auto-converts all values to JSON-compatible types (BigInt -> Number, TypedArray -> Array)
+ - auto-convert h5py-style boolean datasets (where datatype = ENUM {FALSE:0, TRUE:1}) to JS booleans
+ - automated testing of code with Github Action
+### Fixed
+ - enum_type.members is now an object {[name: string]: value: number}
+   (previous implementation with Array could have wrong name order)
 ## v0.4.2 2022-05-10
 ### Added
  - extended metadata for ENUM type (including names of members)
