@@ -29,7 +29,10 @@ function normalizePath(path: string) {
   return path;
 }
 
-function get_attr(file_id: bigint, obj_name: string, attr_name: string) {
+function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_compatible: true): JSONCompatibleOutputData;
+function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_compatible: false): OutputData;
+function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_compatible: boolean): OutputData | JSONCompatibleOutputData;
+function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_compatible: boolean = false) {
   let metadata = Module.get_attribute_metadata(file_id, obj_name, attr_name);
   let nbytes = metadata.size * metadata.total_size;
   let data_ptr = Module._malloc(nbytes);
@@ -37,12 +40,15 @@ function get_attr(file_id: bigint, obj_name: string, attr_name: string) {
   try {
     Module.get_attribute_data(file_id, obj_name, attr_name, BigInt(data_ptr));
     let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
-    processed = process_data(data, metadata);
+    processed = process_data(data, metadata, json_compatible);
   } finally {
     if (metadata.vlen) {
       Module.reclaim_vlen_memory(file_id, obj_name, attr_name, BigInt(data_ptr));
     }
     Module._free(data_ptr);
+  }
+  if (json_compatible) {
+    return processed as JSONCompatibleOutputData;
   }
   return processed;
 }
@@ -75,12 +81,16 @@ function getAccessor(type: 0 | 1, size: Metadata["size"], signed: Metadata["sign
   }
 }
 
-export type OutputData = TypedArray | string | number | bigint | boolean | (string | number | bigint | boolean | OutputData)[];
+export type OutputData = TypedArray | string | number | bigint | boolean | OutputData[];
+export type JSONCompatibleOutputData = string | number | boolean | JSONCompatibleOutputData[];
 export type Dtype = string | {compound_type: CompoundTypeMetadata} | {array_type: Metadata};
 export type { Metadata };
 
-function process_data(data: Uint8Array, metadata: Metadata): OutputData {
-  // (for data coming out of Module)
+function process_data(data: Uint8Array, metadata: Metadata, json_compatible: true): JSONCompatibleOutputData;
+function process_data(data: Uint8Array, metadata: Metadata, json_compatible: false): OutputData;
+function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boolean): OutputData | JSONCompatibleOutputData;
+function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boolean = false): OutputData | JSONCompatibleOutputData {
+    // (for data coming out of Module)
   // If an appropriate TypedArray container can be constructed, it will
   // but otherwise returns Uint8Array raw bytes as loaded.
   let output_data: OutputData;
@@ -121,6 +131,12 @@ function process_data(data: Uint8Array, metadata: Metadata): OutputData {
     const { size, signed} = metadata;
     const accessor = getAccessor(type, size, signed);
     output_data = new accessor(data.buffer);
+    if (json_compatible) {
+      output_data = [...output_data];
+      if (accessor === BigInt64Array || accessor === BigUint64Array) {
+        output_data = output_data.map(Number);
+      }
+    }
   }
 
   else if (type === Module.H5T_class_t.H5T_COMPOUND.value) {
@@ -132,7 +148,7 @@ function process_data(data: Uint8Array, metadata: Metadata): OutputData {
       let row_data = data.slice(i * size, (i + 1) * size);
       for (let member of compound_type.members) {
         let member_data = row_data.slice(member.offset, member.offset + member.size);
-        row.push(process_data(member_data, member))
+        row.push(process_data(member_data, member, json_compatible))
       }
       output.push(row);
     }
@@ -143,13 +159,17 @@ function process_data(data: Uint8Array, metadata: Metadata): OutputData {
     const { array_type } = <{array_type: Metadata}>metadata;
     shape = shape.concat(array_type.shape);
     array_type.shape = shape;
-    output_data = process_data(data, array_type);
+    // always convert ARRAY types to base JS types:
+    output_data = process_data(data, array_type, true);
+    if (isIterable(output_data) && typeof output_data !== "string") {
+      output_data = create_nested_array(output_data as JSONCompatibleOutputData[], array_type.shape);
+    }
   }
 
   else if (type === Module.H5T_class_t.H5T_ENUM.value) {
     const base_metadata = {...metadata};
     base_metadata.type = (base_metadata.enum_type as EnumTypeMetadata).type;
-    output_data = process_data(data, base_metadata);
+    output_data = process_data(data, base_metadata, json_compatible);
     // Following the convention of h5py, treat all enum datasets where the
     // enum members are ["FALSE", "TRUE"] as boolean arrays
     if (isH5PYBooleanEnum(metadata.enum_type as EnumTypeMetadata)) {
@@ -169,9 +189,13 @@ function process_data(data: Uint8Array, metadata: Metadata): OutputData {
 
   // if metadata.shape.length == 0 or metadata.shape is undefined...
   if (known_type && (Array.isArray(output_data) || ArrayBuffer.isView(output_data)) && !shape?.length) {
-    return output_data[0]
+    output_data = output_data[0];
   }
-  return output_data;
+
+  if (json_compatible) {
+    return output_data as JSONCompatibleOutputData;
+  }
+  return output_data as OutputData;
 }
 
 function isIterable(x: any): x is Iterable<unknown> {
@@ -406,11 +430,48 @@ export class ExternalLink {
   }
 }
 
-export interface Attribute {
-  dtype: Dtype,
-  shape: number[],
-  value: OutputData,
-  metadata: Metadata
+export class Attribute {
+  file_id: bigint;
+  path: string;
+  name: string;
+  metadata: Metadata;
+  dtype: Dtype;
+  shape: number[];
+  private _value?: OutputData;
+  private _json_value?: JSONCompatibleOutputData;
+
+  constructor(file_id: bigint, path: string, name: string) {
+    this.file_id = file_id;
+    this.path = path;
+    this.name = name;
+    const metadata = Module.get_attribute_metadata(file_id, path, name);
+    this.metadata = metadata;
+    this.dtype = metadata_to_dtype(metadata);
+    this.shape = metadata.shape;
+  }
+
+  get value() {
+    if (typeof this._value === "undefined") {
+      this._value = get_attr(this.file_id, this.path, this.name, false);
+    }
+    return this._value;
+  }
+
+  get json_value() {
+    if (typeof this._json_value === "undefined") {
+      this._json_value = get_attr(this.file_id, this.path, this.name, true);
+    }
+    return this._json_value;
+  }
+
+  to_array() {
+    const { json_value, metadata } = this;
+    const { shape } = metadata;
+    if (!isIterable(json_value) || typeof json_value === "string") {
+      return json_value;
+    }
+    return create_nested_array(json_value, shape);
+  }
 }
 
 abstract class HasAttrs {
@@ -421,26 +482,21 @@ abstract class HasAttrs {
   get attrs() {
     let attr_names = Module.get_attribute_names(this.file_id, this.path) as string[];
     let attrs: {[key: string]: Attribute}  = {};
+    const { file_id, path } = this;
     for (let name of attr_names) {
-      let metadata = Module.get_attribute_metadata(this.file_id, this.path, name);
       Object.defineProperty(attrs, name, {
-        get: (): Attribute => ({
-          value: get_attr(this.file_id, this.path, name),
-          shape: metadata.shape,
-          dtype: metadata_to_dtype(metadata),
-          metadata
-        }),
+        get: (): Attribute => (new Attribute(file_id, path, name)),
         enumerable: true
       });
-
-      //attrs[name] = get_attr(this.file_id, this.path, name);
     }
     return attrs;
 
   }
 
-  get_attribute(name: string) {
-    get_attr(this.file_id, this.path, name);
+  get_attribute(name: string, json_compatible: true): JSONCompatibleOutputData;
+  get_attribute(name: string, json_compatible: false): OutputData;
+  get_attribute(name: string, json_compatible: boolean = false) {
+    return get_attr(this.file_id, this.path, name, json_compatible);
   }
 
   
@@ -625,6 +681,8 @@ export class File extends Group {
 }
 
 export class Dataset extends HasAttrs {
+  private _metadata?: Metadata;
+
   constructor(file_id: bigint, path: string) {
     super();
     this.path = path;
@@ -633,7 +691,10 @@ export class Dataset extends HasAttrs {
   }
 
   get metadata() {
-    return Module.get_dataset_metadata(this.file_id, this.path);
+    if (typeof this._metadata === "undefined") {
+      this._metadata = Module.get_dataset_metadata(this.file_id, this.path);
+    }
+    return this._metadata;
   }
 
   get dtype() {
@@ -645,23 +706,13 @@ export class Dataset extends HasAttrs {
   }
 
   get value() {
-    let metadata = this.metadata;
-    let nbytes = metadata.size * metadata.total_size;
-    let data_ptr = Module._malloc(nbytes);
-    var processed;
-    try {
-      Module.get_dataset_data(this.file_id, this.path, null, null, BigInt(data_ptr));
-      let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
-      processed = process_data(data, metadata);
-    } finally {
-      if (metadata.vlen) {
-        Module.reclaim_vlen_memory(this.file_id, this.path, "", BigInt(data_ptr));
-      }
-      Module._free(data_ptr);
-    }
-    return processed;
+    return this._value_getter(false);
   }
 
+  get json_value(): JSONCompatibleOutputData {
+    return this._value_getter(true) as JSONCompatibleOutputData;
+  }
+  
   slice(ranges: Array<Array<number>>) {
     // interpret ranges as [start, stop], with one per dim.
     let metadata = this.metadata;
@@ -676,7 +727,7 @@ export class Dataset extends HasAttrs {
     try {
       Module.get_dataset_data(this.file_id, this.path, count, offset, BigInt(data_ptr));
       let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
-      processed = process_data(data, metadata);
+      processed = process_data(data, metadata, false);
     } finally {
       if (metadata.vlen) {
         Module.reclaim_vlen_memory(this.file_id, this.path, "", BigInt(data_ptr));
@@ -685,6 +736,59 @@ export class Dataset extends HasAttrs {
     }
     return processed;
   }
+
+  to_array() {
+    const { json_value, metadata } = this;
+    const { shape } = metadata;
+    if (!isIterable(json_value) || typeof json_value === "string") {
+      return json_value;
+    }
+    let nested =  create_nested_array(json_value, shape);
+    return nested;
+  }
+
+  _value_getter(json_compatible=false) {
+    let metadata = this.metadata;
+    let nbytes = metadata.size * metadata.total_size;
+    let data_ptr = Module._malloc(nbytes);
+    let processed: OutputData;
+    try {
+      Module.get_dataset_data(this.file_id, this.path, null, null, BigInt(data_ptr));
+      let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
+      processed = process_data(data, metadata, json_compatible);
+    } finally {
+      if (metadata.vlen) {
+        Module.reclaim_vlen_memory(this.file_id, this.path, "", BigInt(data_ptr));
+      }
+      Module._free(data_ptr);
+    }
+    return processed;
+  }
+
+}
+
+function create_nested_array(value: JSONCompatibleOutputData[], shape: number[]) {
+  // check that shapes match:
+  const total_length = value.length;
+  const dims_product = shape.reduce((previous, current) => (previous * current), 1);
+  if (total_length !== dims_product) {
+    console.warn(`shape product: ${dims_product} does not match length of flattened array: ${total_length}`);
+  }
+
+  // Get reshaped output:
+  let output = value;
+  const subdims = shape.slice(1).reverse();
+  for (let dim of subdims) {
+    // in each pass, replace input with array of slices of input
+    const new_output = [];
+    const { length } = output;
+    let cursor = 0;
+    while (cursor < length) {
+      new_output.push(output.slice(cursor, cursor += dim));
+    }
+    output = new_output;
+  }
+  return output;
 }
 
 export const h5wasm = {

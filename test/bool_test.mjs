@@ -9,7 +9,7 @@ async function bool_test() {
 
   assert.deepEqual(
     f.get('bool').value,
-    [ false, true ]
+    [ false, true, true, false ]
   );
 
   assert.deepEqual(f.get('bool').metadata, {
@@ -23,10 +23,10 @@ async function bool_test() {
       }
     },
     littleEndian: true,
-    shape: [2],
+    shape: [2, 2],
     signed: true,
     size: 1,
-    total_size: 2,
+    total_size: 4,
     type: 8,
     vlen: false,
   });
