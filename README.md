@@ -164,7 +164,7 @@ data.to_array()
      76,  66,  51,  11,
     ... 28 more items
   ],
-  ... 48 more items
+  ... 46 more items
 */
 ```
 
