@@ -1,4 +1,7 @@
 # Changelog
+## v0.4.4 2022-05-25
+### Fixed
+ - error in ```isIterable``` when called on non-object (affects ```to_array``` method)
 ## v0.4.3 2022-05-24
 ### Added
  - ```to_array``` method on Dataset and Attribute classes: returns nested array of values with dimensions matching ```shape```.  Auto-converts all values to JSON-compatible types (BigInt -> Number, TypedArray -> Array)
