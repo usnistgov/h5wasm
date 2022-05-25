@@ -199,7 +199,7 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
 }
 
 function isIterable(x: any): x is Iterable<unknown> {
-  return Symbol.iterator in x;
+  return typeof x === 'object' && Symbol.iterator in x;
 }
 
 function isH5PYBooleanEnum(enum_type: EnumTypeMetadata) {
