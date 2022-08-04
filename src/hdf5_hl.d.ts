@@ -88,9 +88,9 @@ export declare class File extends Group {
     close(): Status;
 }
 export declare class Dataset extends HasAttrs {
-    auto_refresh: boolean;
     private _metadata?;
     constructor(file_id: bigint, path: string);
+    refresh(): void;
     get metadata(): Metadata;
     get dtype(): Dtype;
     get shape(): number[];

@@ -680,7 +680,6 @@ export class File extends Group {
 }
 
 export class Dataset extends HasAttrs {
-  public auto_refresh: boolean = false;
   private _metadata?: Metadata;
 
   constructor(file_id: bigint, path: string) {
@@ -690,9 +689,17 @@ export class Dataset extends HasAttrs {
     this.type = OBJECT_TYPE.DATASET;
   }
 
+  refresh() {
+    const status = Module.refresh_dataset(this.file_id, this.path);
+    if (status < 0) {
+      throw new Error(`Could not refresh. Error code: ${status}`);
+    }
+    delete this._metadata;
+  }
+
   get metadata() {
-    if (typeof this._metadata === "undefined" || this.auto_refresh) {
-      this._metadata = Module.get_dataset_metadata(this.file_id, this.path, this.auto_refresh);
+    if (typeof this._metadata === "undefined") {
+      this._metadata = Module.get_dataset_metadata(this.file_id, this.path);
     }
     return this._metadata;
   }
