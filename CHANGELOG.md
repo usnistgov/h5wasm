@@ -1,4 +1,20 @@
 # Changelog
+## v0.4.5 2022-08-04
+### Fixed
+ - H5Create should only be called with access modes H5F_ACC_TRUNC (w) and H5F_ACC_EXCL (x)
+### Added
+ - support for SWMR read with refresh on a dataset: e.g. 
+```js
+const file = new hdf5.File("swmr.h5", "Sr");
+let ds=file.get("data");
+ds.auto_refresh=true;
+ds.shape;
+// returns 12
+ds.shape;
+// returns 16 because dataset was updated with SWMR write
+ds.value
+// has size=16
+```
 ## v0.4.4 2022-05-25
 ### Fixed
  - error in ```isIterable``` when called on non-object (affects ```to_array``` method)
