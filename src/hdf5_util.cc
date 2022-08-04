@@ -374,7 +374,7 @@ val get_attribute_metadata(hid_t loc_id, const std::string& group_name_string, c
     return metadata;
 }
 
-val get_dataset_metadata(hid_t loc_id, const std::string& dataset_name_string)
+val get_dataset_metadata(hid_t loc_id, const std::string& dataset_name_string, bool refresh)
 {
     hid_t ds_id;
     hid_t dspace;
@@ -387,6 +387,13 @@ val get_dataset_metadata(hid_t loc_id, const std::string& dataset_name_string)
     {
         throw_error("error - name not defined!");
         return val::null();
+    }
+    if (refresh) {
+        status = H5Drefresh(ds_id);
+        if (status < 0) {
+            throw_error("could not refresh");
+            return val::null();
+        }
     }
     dtype = H5Dget_type(ds_id);
     dspace = H5Dget_space(ds_id);

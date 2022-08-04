@@ -69,7 +69,7 @@ export interface H5Module extends EmscriptenModule {
     create_group(file_id: bigint, name: string): number;
     create_vlen_str_dataset(file_id: bigint, dset_name: string, prepared_data: any, arg3: any, type: number, size: number, signed: boolean, vlen: boolean): number;
     get_dataset_data(file_id: bigint, path: string, arg2: bigint[] | null, arg3: bigint[] | null, arg4: bigint): number;
-    get_dataset_metadata(file_id: bigint, path: string): Metadata;
+    get_dataset_metadata(file_id: bigint, path: string, refresh: boolean): Metadata;
     flush(file_id: bigint): number;
     ccall: typeof ccall;
     get_names(file_id: bigint, path: string): string[];
