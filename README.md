@@ -168,6 +168,19 @@ data.to_array()
 */
 ```
 
+### SWMR Read
+(single writer multiple readers)
+```js
+const swmr_file = new h5wasm.File("swmr.h5", "Sr");
+let dset = swmr_file.get("data");
+dset.shape;
+// 12
+// ...later
+dset.refresh();
+dset.shape;
+// 16
+```
+
 ### Writing
 ```js
 let new_file = new h5wasm.File("myfile.h5", "w");
