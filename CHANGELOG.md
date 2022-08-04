@@ -1,4 +1,7 @@
 # Changelog
+## v0.4.6 2022-08-04
+### Changed
+ - removed ```Dataset.auto_refresh``` and replaced with ```.refresh()``` method (allows consistent access to metadata and data between refreshes)
 ## v0.4.5 2022-08-04
 ### Fixed
  - H5Create should only be called with access modes H5F_ACC_TRUNC (w) and H5F_ACC_EXCL (x)
