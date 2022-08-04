@@ -13,7 +13,6 @@ export const ACCESS_MODES = {
   "a": "H5F_ACC_RDWR",
   "w": "H5F_ACC_TRUNC",
   "x": "H5F_ACC_EXCL",
-  "c": "H5F_ACC_CREAT",
   "Sw": "H5F_ACC_SWMR_WRITE",
   "Sr": "H5F_ACC_SWMR_READ"
 } as const;
@@ -658,12 +657,12 @@ export class File extends Group {
     let file_id: bigint;
     let access_mode = ACCESS_MODES[mode];
     let h5_mode = Module[access_mode];
-    if (['H5F_ACC_RDWR', 'H5F_ACC_RDONLY'].includes(access_mode)) {
-      // then it's an existing file...
-      file_id = Module.ccall("H5Fopen", "bigint", ["string", "number", "bigint"], [filename, h5_mode, 0n]);
+    if (['H5F_ACC_TRUNC', 'H5F_ACC_EXCL'].includes(access_mode)) {
+      file_id = Module.ccall("H5Fcreate", "bigint", ["string", "number", "bigint", "bigint"], [filename, h5_mode, 0n, 0n]);
     }
     else {
-      file_id = Module.ccall("H5Fcreate", "bigint", ["string", "number", "bigint", "bigint"], [filename, h5_mode, 0n, 0n]);
+      // then it is an existing file...
+      file_id = Module.ccall("H5Fopen", "bigint", ["string", "number", "bigint"], [filename, h5_mode, 0n]);
     }
     super(file_id, "/");
     this.filename = filename;
@@ -681,6 +680,7 @@ export class File extends Group {
 }
 
 export class Dataset extends HasAttrs {
+  public auto_refresh: boolean = false;
   private _metadata?: Metadata;
 
   constructor(file_id: bigint, path: string) {
@@ -691,8 +691,8 @@ export class Dataset extends HasAttrs {
   }
 
   get metadata() {
-    if (typeof this._metadata === "undefined") {
-      this._metadata = Module.get_dataset_metadata(this.file_id, this.path);
+    if (typeof this._metadata === "undefined" || this.auto_refresh) {
+      this._metadata = Module.get_dataset_metadata(this.file_id, this.path, this.auto_refresh);
     }
     return this._metadata;
   }
@@ -716,6 +716,7 @@ export class Dataset extends HasAttrs {
   slice(ranges: Array<Array<number>>) {
     // interpret ranges as [start, stop], with one per dim.
     let metadata = this.metadata;
+    // if auto_refresh is on, getting the metadata has triggered a refresh of the dataset_id;
     const { shape } = metadata;
     let ndims = shape.length;
     let count = shape.map((s, i) => BigInt(Math.min(s, ranges?.[i]?.[1] ?? s) - Math.max(0, ranges?.[i]?.[0] ?? 0)));
@@ -749,6 +750,7 @@ export class Dataset extends HasAttrs {
 
   _value_getter(json_compatible=false) {
     let metadata = this.metadata;
+    // if auto_refresh is on, getting the metadata has triggered a refresh of the dataset_id;
     let nbytes = metadata.size * metadata.total_size;
     let data_ptr = Module._malloc(nbytes);
     let processed: OutputData;

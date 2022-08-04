@@ -8,7 +8,6 @@ export declare const ACCESS_MODES: {
     readonly a: "H5F_ACC_RDWR";
     readonly w: "H5F_ACC_TRUNC";
     readonly x: "H5F_ACC_EXCL";
-    readonly c: "H5F_ACC_CREAT";
     readonly Sw: "H5F_ACC_SWMR_WRITE";
     readonly Sr: "H5F_ACC_SWMR_READ";
 };
@@ -89,6 +88,7 @@ export declare class File extends Group {
     close(): Status;
 }
 export declare class Dataset extends HasAttrs {
+    auto_refresh: boolean;
     private _metadata?;
     constructor(file_id: bigint, path: string);
     get metadata(): Metadata;
@@ -110,7 +110,6 @@ export declare const h5wasm: {
         readonly a: "H5F_ACC_RDWR";
         readonly w: "H5F_ACC_TRUNC";
         readonly x: "H5F_ACC_EXCL";
-        readonly c: "H5F_ACC_CREAT";
         readonly Sw: "H5F_ACC_SWMR_WRITE";
         readonly Sr: "H5F_ACC_SWMR_READ";
     };
