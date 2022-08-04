@@ -374,7 +374,23 @@ val get_attribute_metadata(hid_t loc_id, const std::string& group_name_string, c
     return metadata;
 }
 
-val get_dataset_metadata(hid_t loc_id, const std::string& dataset_name_string, bool refresh)
+int refresh_dataset(hid_t loc_id, const std::string& dataset_name_string)
+{
+    hid_t ds_id;
+    herr_t status;
+    const char *dataset_name = dataset_name_string.c_str();
+
+    ds_id = H5Dopen2(loc_id, dataset_name, H5P_DEFAULT);
+    if (ds_id < 0)
+    {
+        throw_error("error - name not defined!");
+        return -1;
+    }
+    status = H5Drefresh(ds_id);
+    return (int)status;
+}
+
+val get_dataset_metadata(hid_t loc_id, const std::string& dataset_name_string)
 {
     hid_t ds_id;
     hid_t dspace;
@@ -387,13 +403,6 @@ val get_dataset_metadata(hid_t loc_id, const std::string& dataset_name_string, b
     {
         throw_error("error - name not defined!");
         return val::null();
-    }
-    if (refresh) {
-        status = H5Drefresh(ds_id);
-        if (status < 0) {
-            throw_error("could not refresh");
-            return val::null();
-        }
     }
     dtype = H5Dget_type(ds_id);
     dspace = H5Dget_space(ds_id);
@@ -707,6 +716,7 @@ EMSCRIPTEN_BINDINGS(hdf5)
     function("get_attribute_names", &get_attribute_names);
     function("get_attribute_metadata", &get_attribute_metadata);
     function("get_dataset_metadata", &get_dataset_metadata);
+    function("refresh_dataset", &refresh_dataset);
     function("get_dataset_data", &get_dataset_data);
     function("get_attribute_data", &get_attribute_data);
     function("reclaim_vlen_memory", &reclaim_vlen_memory);
