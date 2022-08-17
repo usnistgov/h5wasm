@@ -26,7 +26,8 @@ declare enum OBJECT_TYPE {
     DATASET = "Dataset",
     GROUP = "Group",
     BROKEN_SOFT_LINK = "BrokenSoftLink",
-    EXTERNAL_LINK = "ExternalLink"
+    EXTERNAL_LINK = "ExternalLink",
+    DATATYPE = "Datatype"
 }
 export declare class BrokenSoftLink {
     target: string;
@@ -38,6 +39,10 @@ export declare class ExternalLink {
     obj_path: string;
     type: OBJECT_TYPE;
     constructor(filename: string, obj_path: string);
+}
+export declare class Datatype {
+    type: OBJECT_TYPE;
+    constructor();
 }
 export declare class Attribute {
     file_id: bigint;
@@ -67,15 +72,15 @@ declare abstract class HasAttrs {
 export declare class Group extends HasAttrs {
     constructor(file_id: bigint, path: string);
     keys(): Array<string>;
-    values(): Generator<BrokenSoftLink | ExternalLink | Group | Dataset | null, void, unknown>;
-    items(): Generator<(string | BrokenSoftLink | ExternalLink | Group | Dataset | null)[], void, unknown>;
+    values(): Generator<BrokenSoftLink | ExternalLink | Datatype | Group | Dataset | null, void, unknown>;
+    items(): Generator<(string | BrokenSoftLink | ExternalLink | Datatype | Group | Dataset | null)[], void, unknown>;
     get_type(obj_path: string): number;
     get_link(obj_path: string): string;
     get_external_link(obj_path: string): {
         filename: string;
         obj_path: string;
     };
-    get(obj_name: string): BrokenSoftLink | ExternalLink | Group | Dataset | null;
+    get(obj_name: string): BrokenSoftLink | ExternalLink | Datatype | Group | Dataset | null;
     create_group(name: string): Group;
     create_dataset(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null): Dataset;
     toString(): string;
