@@ -1,4 +1,7 @@
 # Changelog
+## v0.4.7 ??
+### Added
+ - basic support for reading datatypes from files (see PR #34)
 ## v0.4.6 2022-08-04
 ### Changed
  - removed ```Dataset.auto_refresh``` and replaced with ```.refresh()``` method (allows consistent access to metadata and data between refreshes)
