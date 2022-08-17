@@ -407,7 +407,8 @@ enum OBJECT_TYPE {
   DATASET = "Dataset",
   GROUP = "Group",
   BROKEN_SOFT_LINK = "BrokenSoftLink",
-  EXTERNAL_LINK = "ExternalLink"
+  EXTERNAL_LINK = "ExternalLink",
+  DATATYPE = 'Datatype'
 }
 
 export class BrokenSoftLink {
@@ -427,6 +428,11 @@ export class ExternalLink {
     this.filename = filename;
     this.obj_path = obj_path;
   }
+}
+
+export class Datatype {
+  type: OBJECT_TYPE = OBJECT_TYPE.DATATYPE
+  constructor() {}
 }
 
 export class Attribute {
@@ -598,6 +604,9 @@ export class Group extends HasAttrs {
       // if get_type succeeds, then get_external_link must as well
       let {filename, obj_path} = this.get_external_link(fullpath) as {filename: string, obj_path: string};
       return new ExternalLink(filename, obj_path);
+    }
+    else if (type === Module.H5G_TYPE) {
+      return new Datatype()
     }
     // unknown type or object not found
     return null
