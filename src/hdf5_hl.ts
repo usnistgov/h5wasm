@@ -813,6 +813,7 @@ export const h5wasm = {
   File,
   Group,
   Dataset,
+  Datatype,
   ready,
   ACCESS_MODES
 }

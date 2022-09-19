@@ -109,6 +109,7 @@ export declare const h5wasm: {
     File: typeof File;
     Group: typeof Group;
     Dataset: typeof Dataset;
+    Datatype: typeof Datatype;
     ready: Promise<H5Module>;
     ACCESS_MODES: {
         readonly r: "H5F_ACC_RDONLY";
