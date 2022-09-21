@@ -66,11 +66,21 @@ export interface H5Module extends EmscriptenModule {
     H5F_ACC_CREAT: 16;
     H5F_ACC_SWMR_WRITE: 32;
     H5F_ACC_SWMR_READ: 64;
+    H5Z_FILTER_NONE: 0;
+    H5Z_FILTER_DEFLATE: 1;
+    H5Z_FILTER_SHUFFLE: 2;
+    H5Z_FILTER_FLETCHER32: 3;
+    H5Z_FILTER_SZIP: 4;
+    H5Z_FILTER_NBIT: 5;
+    H5Z_FILTER_SCALEOFFSET: 6;
+    H5Z_FILTER_RESERVED: 256;
+    H5Z_FILTER_MAX: 65535;
     create_group(file_id: bigint, name: string): number;
     create_vlen_str_dataset(file_id: bigint, dset_name: string, prepared_data: any, arg3: any, type: number, size: number, signed: boolean, vlen: boolean): number;
     get_dataset_data(file_id: bigint, path: string, arg2: bigint[] | null, arg3: bigint[] | null, arg4: bigint): number;
     refresh_dataset(file_id: bigint, path: string): number;
     get_dataset_metadata(file_id: bigint, path: string): Metadata;
+    get_dataset_filters(file_id: bigint, path: string): Filter[];
     flush(file_id: bigint): number;
     ccall: typeof ccall;
     get_names(file_id: bigint, path: string): string[];
@@ -86,4 +96,9 @@ export interface H5Module extends EmscriptenModule {
     FS: FS.FileSystemType,
     get_keys_vector(group_id: bigint, H5_index_t: number): Array<string>,
     get_attribute_metadata(loc_id: bigint, group_name_string: string, attribute_name_string: string): Metadata
+}
+
+export declare type Filter = {
+    id: number; 
+    name: string;
 }

@@ -1,4 +1,4 @@
-import type {Status, Metadata, H5Module, CompoundTypeMetadata, EnumTypeMetadata} from "./hdf5_util_helpers";
+import type {Status, Metadata, H5Module, CompoundTypeMetadata, EnumTypeMetadata, Filter} from "./hdf5_util_helpers";
 
 import ModuleFactory from './hdf5_util.js';
 
@@ -84,6 +84,7 @@ export type OutputData = TypedArray | string | number | bigint | boolean | Outpu
 export type JSONCompatibleOutputData = string | number | boolean | JSONCompatibleOutputData[];
 export type Dtype = string | {compound_type: CompoundTypeMetadata} | {array_type: Metadata};
 export type { Metadata };
+export type { Filter };
 
 function process_data(data: Uint8Array, metadata: Metadata, json_compatible: true): JSONCompatibleOutputData;
 function process_data(data: Uint8Array, metadata: Metadata, json_compatible: false): OutputData;
@@ -719,6 +720,10 @@ export class Dataset extends HasAttrs {
 
   get shape() {
     return this.metadata.shape;
+  }
+  
+  get filters(): Filter[] {
+    return Module.get_dataset_filters(this.file_id, this.path);
   }
 
   get value() {

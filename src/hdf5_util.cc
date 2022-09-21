@@ -414,6 +414,43 @@ val get_dataset_metadata(hid_t loc_id, const std::string& dataset_name_string)
     return metadata;
 }
 
+val get_dataset_filters(hid_t loc_id, const std::string& dataset_name_string)
+{
+    hid_t ds_id;
+    hid_t plist_id;
+    herr_t status;
+    const char *dataset_name = dataset_name_string.c_str();
+
+    ds_id = H5Dopen2(loc_id, dataset_name, H5P_DEFAULT);
+    if (ds_id < 0)
+    {
+        throw_error("error - name not defined!");
+        return val::null();
+    }
+
+    plist_id = H5Dget_create_plist(ds_id);
+
+    val filters = val::array();
+    int nfilters = H5Pget_nfilters(plist_id);
+    for (size_t i = 0; i < nfilters; i++)
+    {
+        unsigned int flags;
+        char name[257];
+        size_t nelements;
+        unsigned int cd_values[16];
+        H5Z_filter_t filter_id = H5Pget_filter2(plist_id, i, &flags, &nelements, cd_values, 256, name, NULL);
+        
+        val filter = val::object();
+        filter.set("id", filter_id);
+        filter.set("name", name);
+        filters.set(i, filter);
+    }
+
+    H5Dclose(ds_id);
+    H5Pclose(plist_id);
+    return filters;
+}
+
 int get_dataset_data(hid_t loc_id, const std::string& dataset_name_string, val count_out, val offset_out, uint64_t rdata_uint64)
 {
     hid_t ds_id;
@@ -716,6 +753,7 @@ EMSCRIPTEN_BINDINGS(hdf5)
     function("get_attribute_names", &get_attribute_names);
     function("get_attribute_metadata", &get_attribute_metadata);
     function("get_dataset_metadata", &get_dataset_metadata);
+    function("get_dataset_filters", &get_dataset_filters);
     function("refresh_dataset", &refresh_dataset);
     function("get_dataset_data", &get_dataset_data);
     function("get_attribute_data", &get_attribute_data);
@@ -763,6 +801,7 @@ EMSCRIPTEN_BINDINGS(hdf5)
     constant("H5F_ACC_EXCL", H5F_ACC_EXCL);
     constant("H5F_ACC_CREAT", H5F_ACC_CREAT);
     constant("H5F_ACC_SWMR_WRITE", H5F_ACC_SWMR_WRITE);
+    
     constant("H5F_ACC_SWMR_READ", H5F_ACC_SWMR_READ);
 
     constant("H5G_GROUP", (int)H5G_GROUP);     //    0    Object is a group.
@@ -775,6 +814,16 @@ EMSCRIPTEN_BINDINGS(hdf5)
     constant("H5O_TYPE_GROUP", (int)H5O_TYPE_GROUP);
     constant("H5O_TYPE_DATASET", (int)H5O_TYPE_DATASET);
     constant("H5O_TYPE_NAMED_DATATYPE", (int)H5O_TYPE_NAMED_DATATYPE);
+
+    constant("H5Z_FILTER_NONE", H5Z_FILTER_NONE);
+    constant("H5Z_FILTER_DEFLATE", H5Z_FILTER_DEFLATE);
+    constant("H5Z_FILTER_SHUFFLE", H5Z_FILTER_SHUFFLE);
+    constant("H5Z_FILTER_FLETCHER32", H5Z_FILTER_FLETCHER32);
+    constant("H5Z_FILTER_SZIP", H5Z_FILTER_SZIP);
+    constant("H5Z_FILTER_NBIT", H5Z_FILTER_NBIT);
+    constant("H5Z_FILTER_SCALEOFFSET", H5Z_FILTER_SCALEOFFSET);
+    constant("H5Z_FILTER_RESERVED", H5Z_FILTER_RESERVED);
+    constant("H5Z_FILTER_MAX", H5Z_FILTER_MAX);
 
     register_vector<std::string>("vector<string>");
 }
