@@ -436,7 +436,7 @@ val get_dataset_filters(hid_t loc_id, const std::string& dataset_name_string)
     {
         unsigned int flags;
         char name[257];
-        size_t nelements;
+        size_t nelements = 16;
         unsigned int cd_values[16];
         H5Z_filter_t filter_id = H5Pget_filter2(plist_id, i, &flags, &nelements, cd_values, 256, name, NULL);
         
