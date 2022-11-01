@@ -5,7 +5,7 @@ import h5wasm from '../dist/node/hdf5_hl.js';
 
 async function to_array_test() {
   await h5wasm.ready;
-  var f = new h5wasm.File('./test/array.h5', 'r');
+  const f = new h5wasm.File('./test/array.h5', 'r');
 
   assert.deepEqual(
     f.get('bigint').to_array(),
