@@ -21,6 +21,7 @@ target_link_libraries(hdf5_util hdf5-wasm)
 set_target_properties(hdf5_util PROPERTIES
     LINK_FLAGS "-O3 --bind  \
     -lidbfs.js \
+    -lworkerfs.js \
     -s ALLOW_TABLE_GROWTH=1 \
     -s ALLOW_MEMORY_GROWTH=1 \
     -s WASM_BIGINT \
