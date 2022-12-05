@@ -1,4 +1,9 @@
 # Changelog
+## v0.4.8 2022-12-05
+### Added
+ - IIFE build at `./dist/iife/h5wasm.js`, to support use in Firefox workers (which don't currently support ESM)
+ - WORKERFS support in ESM/IIFE builds, for loading local files with random access instead of copying whole file into memory
+
 ## v0.4.7 2022-11-01
 ### Added
  - basic support for reading datatypes from files (see PR #34)
