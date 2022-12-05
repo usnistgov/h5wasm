@@ -45,6 +45,26 @@ let f = new h5wasm.File("sans59510.nxs.ngv", "r");
 // File {path: "/", file_id: 72057594037927936n, filename: "data.h5", mode: "r"}
 ```
 
+### Worker usage
+Since ESM is not supported in all web worker contexts (e.g. Firefox), an additional  ```./dist/iife/h5wasm.js``` is provided in the package for `h5wasm>=0.4.8`; it can be loaded in a worker and used as in the example below (which uses the WORKERFS file system for random access on local files):
+```js
+// worker.js
+onmessage = async function(e) {
+    const { FS } = await h5wasm.ready;
+    
+    // send in a file opened from an <input type="file" />
+    const f_in = e.data[0];
+
+    FS.mkdir('/work');
+    FS.mount(FS.filesystems.WORKERFS, { files: [f_in] }, '/work');
+
+    const f = new h5wasm.File(`/work/${f_in.name}`, 'r');
+    console.log(f);
+}
+
+self.importScripts('../dist/iife/h5wasm.js');
+```
+
 ## Browser target (build system)
 ```npm i h5wasm``` or ```yarn add h5wasm```
 then in your file
