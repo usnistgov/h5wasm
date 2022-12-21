@@ -49,6 +49,9 @@ export interface EnumTypeMetadata {
 
 export interface H5Module extends EmscriptenModule {
     create_dataset(file_id: bigint, arg1: string, arg2: bigint, arg3: bigint[], type: number, size: number, signed: boolean, vlen: boolean): number;
+    create_soft_link(file_id: bigint, link_target: string, link_name: string): number;
+    create_hard_link(file_id: bigint, link_target: string, link_name: string): number;
+    create_external_link(file_id: bigint, file_name: string, link_target: string, link_name: string): number;
     get_type(file_id: bigint, obj_path: string): number;
     get_symbolic_link(file_id: bigint, obj_path: string): string;
     get_external_link(file_id: bigint, obj_path: string): {filename: string, obj_path: string};
