@@ -655,6 +655,25 @@ export class Group extends HasAttrs {
     }
     return this.get(name) as Dataset;
   }
+
+  create_soft_link(target: string, name: string) {
+    // create a soft link in this group named *name* to *target* (absolute path)
+    const link_name = this.path + '/' + name;
+    return Module.create_soft_link(this.file_id, target, link_name);
+  }
+
+  create_hard_link(target: string, name: string) {
+    // create a hard link in this group named *name* to *target* (absolute path)
+    const link_name = this.path + '/' + name;
+    return Module.create_hard_link(this.file_id, target, link_name);
+  }
+
+  create_external_link(file_name: string, target: string, name: string) {
+    // create a soft link in this group named *name* to *target* (absolute path)
+    const link_name = this.path + '/' + name;
+    return Module.create_external_link(this.file_id, file_name, target, link_name);
+  }
+
   toString() {
     return `Group(file_id=${this.file_id}, path=${this.path})`;
   }

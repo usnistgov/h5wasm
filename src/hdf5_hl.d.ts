@@ -84,6 +84,9 @@ export declare class Group extends HasAttrs {
     get(obj_name: string): BrokenSoftLink | ExternalLink | Datatype | Group | Dataset | null;
     create_group(name: string): Group;
     create_dataset(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null): Dataset;
+    create_soft_link(target: string, name: string): number;
+    create_hard_link(target: string, name: string): number;
+    create_external_link(file_name: string, target: string, name: string): number;
     toString(): string;
 }
 export declare class File extends Group {
