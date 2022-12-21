@@ -260,6 +260,41 @@ new_file.close()
 
 ```
 
+### Links
+```js
+let new_file = new h5wasm.File("myfile.h5", "w");
+new_file.create_group("entry");
+new_file.get("entry").create_dataset("auto", [3.1, 4.1, 0.0, -1.0]);
+
+// create a soft link in root:
+new_file.create_soft_link("/entry/auto", "my_soft_link");
+new_file.get("my_soft_link").value;
+// Float64Array(4) [3.1, 4.1, 0, -1]
+
+// create a hard link:
+new_file.create_hard_link("/entry/auto", "my_hard_link");
+new_file.get("my_hard_link").value;
+// Float64Array(4) [3.1, 4.1, 0, -1]
+
+// create an external link:
+new_file.create_external_link("other_file.h5", "other_dataset", "my_external_link");
+new_file.get_external_link("my_external_link");
+// {filename: "other_file.h5", obj_path: "other_dataset"}
+
+// create a soft link in a group:
+new_file.create_group("links");
+const links_group = new_file.get("links");
+links_group.create_soft_link("/entry/auto", "soft_link");
+new_file.get("/links/soft_link").value;
+// Float64Array(4) [3.1, 4.1, 0, -1]
+new_file.get_link("/links/soft_link");
+// "/entry/auto"
+new_file.get_link("/entry/auto");
+// null // (null is returned if the path is not a symbolic link);
+
+new_file.close()
+```
+
 ### Edit
 One can also open an existing file and write to it:
 ```js
