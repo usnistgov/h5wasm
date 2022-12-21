@@ -737,6 +737,31 @@ int create_vlen_str_dataset(hid_t loc_id, std::string dset_name_string, val data
     return create_dataset(loc_id, dset_name_string, wdata_uint64, dims_in, dtype, dsize, is_signed, is_vlstr);
 }
 
+int create_soft_link(hid_t loc_id, std::string link_target_string, std::string link_name_string) {
+    const char *link_target = link_target_string.c_str();
+    const char *link_name = link_name_string.c_str();
+
+    return H5Lcreate_soft(link_target, loc_id, link_name, H5P_DEFAULT, H5P_DEFAULT);
+}
+
+int create_hard_link(hid_t loc_id, std::string link_target_string, std::string link_name_string) {
+    // only supports linking target with absolute paths (relative to root)
+    // will return non-zero value if target does not already exist.
+    const char *link_target = link_target_string.c_str();
+    const char *link_name = link_name_string.c_str();
+
+    return H5Lcreate_hard(loc_id, link_target, loc_id, link_name, H5P_DEFAULT, H5P_DEFAULT);
+}
+
+int create_external_link(hid_t loc_id, std::string file_name_string, std::string link_target_string, std::string link_name_string) {
+    const char *file_name = file_name_string.c_str();
+    const char *link_target = link_target_string.c_str();
+    const char *link_name = link_name_string.c_str();
+
+    return H5Lcreate_external(file_name, link_target, loc_id, link_name, H5P_DEFAULT, H5P_DEFAULT);
+}
+
+
 int flush(hid_t file_id) {
     herr_t status = H5Fflush(file_id, H5F_SCOPE_GLOBAL);
     return (int)status;
@@ -763,6 +788,9 @@ EMSCRIPTEN_BINDINGS(hdf5)
     function("create_attribute", &create_attribute, allow_raw_pointers());
     function("create_vlen_str_attribute", &create_vlen_str_attribute);
     function("create_vlen_str_dataset", &create_vlen_str_dataset);
+    function("create_soft_link", &create_soft_link);
+    function("create_hard_link", &create_hard_link);
+    function("create_external_link", &create_external_link);
     function("flush", &flush);
 
     class_<H5L_info2_t>("H5L_info2_t")
