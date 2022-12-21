@@ -1,4 +1,11 @@
 # Changelog
+## v0.4.9 2022-12-21
+### Added
+ - Group.create_soft_link(target: string, name: string): number; // creates a soft link in a group with name: name (target must be absolute path)
+ - Group.create_hard_link(target:string, name: string): number; //
+ - Group.create_external_link(file_name: string, target: string, name: string): number; 
+
+All of these return non-zero values on error.  To create links with absolute path, just use e.g. File.create_soft_link(target_path, link_path);
 ## v0.4.8 2022-12-05
 ### Added
  - IIFE build at `./dist/iife/h5wasm.js`, to support use in Firefox workers (which don't currently support ESM)
