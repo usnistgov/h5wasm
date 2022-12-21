@@ -7,6 +7,7 @@ import datatype_test from "./datatype_test.mjs";
 import create_dataset from './create_group_dataset.mjs';
 import read_to_array from './to_array_test.mjs';
 import filters_test from './filters_test.mjs';
+import test_links from './create_read_links.mjs';
 
 let tests = [];
 const add_tests = (tests_in) => { /*global*/ tests = tests.concat(tests_in)}
@@ -17,6 +18,7 @@ add_tests(create_dataset);
 add_tests(read_to_array);
 add_tests(datatype_test);
 add_tests(filters_test);
+add_tests(test_links);
 
 async function run_test(test) {
     try {
