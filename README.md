@@ -23,7 +23,7 @@ The Emscripten filesystem is important for operations, and it can be accessed af
 
 ## Browser (no-build)
 ```js
-import h5wasm from "https://cdn.jsdelivr.net/npm/h5wasm@0.4.0/dist/esm/hdf5_hl.js";
+import h5wasm from "https://cdn.jsdelivr.net/npm/h5wasm@0.4.9/dist/esm/hdf5_hl.js";
 
 // the WASM loads asychronously, and you can get the module like this:
 const Module = await h5wasm.ready;
