@@ -767,6 +767,38 @@ int flush(hid_t file_id) {
     return (int)status;
 }
 
+
+struct match_obj_name_data {
+    std::vector<std::string> matches;
+    std::string to_match;
+};
+
+static int match_obj_name_cb(hid_t unused_group_id, const char *name, const H5O_info_t *oinfo, void *_op_data) {
+    match_obj_name_data *op_data = (match_obj_name_data *)_op_data;
+    const std::string name_str = std::string(name);
+    size_t found = name_str.find(op_data->to_match);
+    if (found != std::string::npos) {
+        op_data->matches.push_back(name_str);
+    }
+    return 0;
+}
+
+val search_object_names(hid_t loc_id, const std::string& search_string) {
+    match_obj_name_data op_data;
+    op_data.matches = std::vector<std::string> {};
+    op_data.to_match = search_string;
+
+    herr_t status = H5Ovisit3(loc_id, H5_INDEX_NAME, H5_ITER_INC, match_obj_name_cb, (void *)&op_data, H5O_INFO_BASIC);
+
+    val names = val::array();
+    size_t numObjs = op_data.matches.size();
+    for (size_t i = 0; i < numObjs; i++)
+    {
+        names.set(i, op_data.matches.at(i));
+    }
+    return names;
+}
+
 EMSCRIPTEN_BINDINGS(hdf5)
 {
     function("get_keys", &get_keys_vector);
@@ -792,6 +824,7 @@ EMSCRIPTEN_BINDINGS(hdf5)
     function("create_hard_link", &create_hard_link);
     function("create_external_link", &create_external_link);
     function("flush", &flush);
+    function("search", &search_object_names);
 
     class_<H5L_info2_t>("H5L_info2_t")
         .constructor<>()
