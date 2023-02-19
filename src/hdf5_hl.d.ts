@@ -88,6 +88,7 @@ export declare class Group extends HasAttrs {
     create_hard_link(target: string, name: string): number;
     create_external_link(file_name: string, target: string, name: string): number;
     toString(): string;
+    paths(): string[];
 }
 export declare class File extends Group {
     filename: string;

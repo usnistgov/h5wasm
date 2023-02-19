@@ -86,7 +86,7 @@ export interface H5Module extends EmscriptenModule {
     get_dataset_filters(file_id: bigint, path: string): Filter[];
     flush(file_id: bigint): number;
     ccall: typeof ccall;
-    get_names(file_id: bigint, path: string): string[];
+    get_names(file_id: bigint, path: string, recursive: boolean): string[];
     create_attribute(file_id: bigint, path: string, name: any, arg3: bigint, arg4: any, type: number, size: number, signed: boolean, vlen: boolean): number;
     create_vlen_str_attribute(file_id: bigint, path: string, name: any, prepared_data: any, arg4: any, type: number, size: number, signed: boolean, vlen: boolean): number;
     get_attribute_names(file_id: any, path: any): string[];

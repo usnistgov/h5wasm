@@ -556,7 +556,7 @@ export class Group extends HasAttrs {
   }
 
   keys(): Array<string> {
-    return Module.get_names(this.file_id, this.path) as string[];
+    return Module.get_names(this.file_id, this.path, false) as string[];
   }
 
   * values() {
@@ -676,6 +676,11 @@ export class Group extends HasAttrs {
 
   toString() {
     return `Group(file_id=${this.file_id}, path=${this.path})`;
+  }
+
+  paths() {
+    // get all paths below this group in the tree
+    return Module.get_names(this.file_id, this.path, true);
   }
 }
 

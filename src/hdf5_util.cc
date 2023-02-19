@@ -39,7 +39,7 @@ std::vector<std::string> get_keys_vector(hid_t group_id, H5_index_t index = H5_I
     return namelist;
 }
 
-val get_child_names(hid_t loc_id, const std::string& group_name_string)
+val get_child_names(hid_t loc_id, const std::string& group_name_string, bool recursive)
 {
     hid_t gcpl_id;
     unsigned crt_order_flags;
@@ -59,7 +59,12 @@ val get_child_names(hid_t loc_id, const std::string& group_name_string)
     H5_index_t index = (crt_order_flags & H5P_CRT_ORDER_INDEXED) ? H5_INDEX_CRT_ORDER : H5_INDEX_NAME;
 
     std::vector<std::string> names_vector;
-    herr_t idx = H5Literate(grp, index, H5_ITER_INC, NULL, link_name_callback, &names_vector);
+    if (recursive) {
+        status = H5Lvisit2(grp, H5_INDEX_NAME, H5_ITER_INC, link_name_callback, &names_vector);
+    }
+    else {
+        status = H5Literate2(grp, index, H5_ITER_INC, NULL, link_name_callback, &names_vector);
+    }
 
     val names = val::array();
     size_t numObjs = names_vector.size();
