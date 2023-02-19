@@ -1,4 +1,7 @@
 # Changelog
+## v0.4.10 2023-02-19
+### Added
+ - Group.paths(): string[]; // returns a list of all link paths found below the group in the tree.  (Use on root object to get all paths in the file)
 ## v0.4.9 2022-12-21
 ### Added
  - Group.create_soft_link(target: string, name: string): number; // creates a soft link in a group with name: name (target must be absolute path)
