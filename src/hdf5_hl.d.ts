@@ -69,6 +69,7 @@ declare abstract class HasAttrs {
     get_attribute(name: string, json_compatible: true): JSONCompatibleOutputData;
     get_attribute(name: string, json_compatible: false): OutputData;
     create_attribute(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null): void;
+    delete_attribute(name: string): number;
 }
 export declare class Group extends HasAttrs {
     constructor(file_id: bigint, path: string);

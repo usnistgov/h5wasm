@@ -545,6 +545,11 @@ abstract class HasAttrs {
     }
   }
 
+  delete_attribute(name: string): number {
+    // returns non-zero value if delete failed.
+    return Module.delete_attribute(this.file_id, this.path, name);
+  }
+
 }
 
 export class Group extends HasAttrs {
