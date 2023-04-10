@@ -681,6 +681,12 @@ int create_attribute(hid_t loc_id, std::string obj_name_string, std::string attr
     return (int)status;
 }
 
+int delete_attribute(hid_t loc_id, const std::string obj_name_string, const std::string attr_name_string)
+{
+    herr_t status = H5Adelete_by_name(loc_id, obj_name_string.c_str(), attr_name_string.c_str(), H5P_DEFAULT);
+    return (int) status;
+}
+
 int create_vlen_str_attribute(hid_t loc_id, std::string obj_name_string, std::string attr_name_string, val data, val dims_in, int dtype, int dsize, bool is_signed, bool is_vlstr)
 {
     uint64_t wdata_uint64; // ptr as uint64_t (webassembly will be 64-bit someday)
@@ -791,6 +797,7 @@ EMSCRIPTEN_BINDINGS(hdf5)
     function("create_group", &create_group);
     function("create_dataset", &create_dataset);
     function("create_attribute", &create_attribute, allow_raw_pointers());
+    function("delete_attribute", &delete_attribute);
     function("create_vlen_str_attribute", &create_vlen_str_attribute);
     function("create_vlen_str_dataset", &create_vlen_str_dataset);
     function("create_soft_link", &create_soft_link);
