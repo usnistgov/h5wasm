@@ -84,7 +84,7 @@ export declare class Group extends HasAttrs {
     };
     get(obj_name: string): BrokenSoftLink | ExternalLink | Datatype | Group | Dataset | null;
     create_group(name: string): Group;
-    create_dataset(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null): Dataset;
+    create_dataset(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null, maxshape?: (number | null)[] | null, chunks?: number[] | null): Dataset;
     create_soft_link(target: string, name: string): number;
     create_hard_link(target: string, name: string): number;
     create_external_link(file_name: string, target: string, name: string): number;
@@ -109,7 +109,9 @@ export declare class Dataset extends HasAttrs {
     get value(): OutputData;
     get json_value(): JSONCompatibleOutputData;
     slice(ranges: Array<Array<number>>): OutputData;
+    write_slice(ranges: Array<Array<number>>, data: any): void;
     to_array(): string | number | boolean | JSONCompatibleOutputData[];
+    resize(new_shape: number[]): number;
     _value_getter(json_compatible?: boolean): OutputData;
 }
 export declare const h5wasm: {

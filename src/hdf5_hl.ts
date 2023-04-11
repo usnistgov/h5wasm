@@ -208,24 +208,35 @@ function isH5PYBooleanEnum(enum_type: EnumTypeMetadata) {
          enum_type.members["TRUE"] === 1;
 }
 
-function prepare_data(data: any, metadata: Metadata, shape?: Array<number> | null): {data: Uint8Array | string[], shape: number[]} {
+const H5S_UNLIMITED = 18446744073709551615n; // not exportable by emscripten_bindings because it's outside int32 range
+
+function prepare_data(data: any, metadata: Metadata, shape?: number[] | bigint[] | null, maxshape?: (number | null)[] | null | undefined): {data: Uint8Array | string[], shape: bigint[], maxshape: (bigint | null)[] } {
   // for data being sent to Module
 
   // set shape to size of array if it is not specified:
-  let final_shape: number[];
+  let final_shape: bigint[];
+  let final_maxshape: (bigint | null)[] | null;
   if (shape === undefined || shape === null) {
     if (data != null && data.length != null && !(typeof data === 'string')) {
-      final_shape = [data.length];
+      final_shape = [BigInt(data.length)];
     }
     else {
       final_shape = [];
     }
   }
   else {
-    final_shape = shape;
+    final_shape = shape.map(BigInt);
   }
+
+  if (maxshape === undefined || maxshape === null) {
+    final_maxshape = final_shape;
+  }
+  else {
+    final_maxshape = maxshape.map((dim) => ((dim === null) ? H5S_UNLIMITED : BigInt(dim)));
+  }
+
   data = (Array.isArray(data) || ArrayBuffer.isView(data)) ? data : [data];
-  let total_size = final_shape.reduce((previous, current) => current * previous, 1);
+  let total_size = Number(final_shape.reduce((previous, current) => current * previous, 1n));
 
   if (data.length != total_size) {
     throw `Error: shape ${final_shape} does not match number of elements in data`;
@@ -268,7 +279,7 @@ function prepare_data(data: any, metadata: Metadata, shape?: Array<number> | nul
   else {
     throw new Error(`data with type ${metadata.type} can not be prepared for write`);
   }
-  return {data: output, shape: final_shape}
+  return {data: output, shape: final_shape, maxshape: final_maxshape}
 }
 
 function map_reverse<Key, Value>(map: Map<Key, Value>): Map<Value, Key> {
@@ -509,15 +520,15 @@ abstract class HasAttrs {
   create_attribute(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null) {
     const final_dtype = dtype ?? guess_dtype(data);
     let metadata = dtype_to_metadata(final_dtype);
-    let {data: prepared_data, shape: guessed_shape} = prepare_data(data, metadata, shape);
-    const final_shape = shape ?? guessed_shape;
+    const {data: prepared_data, shape: guessed_shape} = prepare_data(data, metadata, shape, shape);
+    const final_shape = shape?.map(BigInt) ?? guessed_shape;
     if (metadata.vlen) {
       Module.create_vlen_str_attribute(
         this.file_id,
         this.path,
         name,
         prepared_data as string[],
-        final_shape.map(BigInt),
+        final_shape,
         metadata.type,
         metadata.size,
         metadata.signed,
@@ -533,7 +544,7 @@ abstract class HasAttrs {
           this.path,
           name,
           BigInt(data_ptr),
-          final_shape.map(BigInt),
+          final_shape,
           metadata.type,
           metadata.size,
           metadata.signed,
@@ -623,17 +634,20 @@ export class Group extends HasAttrs {
     return this.get(name) as Group;
   }
 
-  create_dataset(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null): Dataset {
+  create_dataset(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null, maxshape?: (number | null)[] | null, chunks?: number[] | null): Dataset {
     const final_dtype = dtype ?? guess_dtype(data);
     let metadata = dtype_to_metadata(final_dtype);
-    let {data: prepared_data, shape: guessed_shape} = prepare_data(data, metadata, shape);
-    const final_shape: number[] = shape ?? guessed_shape;
+    const {data: prepared_data, shape: guessed_shape, maxshape: final_maxshape} = prepare_data(data, metadata, shape, maxshape);
+    const final_shape: bigint[] = shape?.map(BigInt) ?? guessed_shape;
+    const final_chunks = (chunks) ? chunks.map(BigInt) : null;
     if (metadata.vlen) {
       Module.create_vlen_str_dataset(
         this.file_id,
         this.path + "/" + name,
         prepared_data as string[],
-        final_shape.map(BigInt),
+        final_shape,
+        final_maxshape,
+        final_chunks,
         metadata.type,
         metadata.size,
         metadata.signed,
@@ -648,7 +662,9 @@ export class Group extends HasAttrs {
           this.file_id,
           this.path + "/" + name,
           BigInt(data_ptr),
-          final_shape.map(BigInt),
+          final_shape,
+          final_maxshape,
+          final_chunks,
           metadata.type,
           metadata.size,
           metadata.signed,
@@ -788,6 +804,32 @@ export class Dataset extends HasAttrs {
     return processed;
   }
 
+  write_slice(ranges: Array<Array<number>>, data: any) {
+    // interpret ranges as [start, stop], with one per dim.
+    let metadata = this.metadata;
+    if (metadata.vlen) {
+      throw new Error("writing to a slice of vlen dtype is not implemented");
+    }
+    // if auto_refresh is on, getting the metadata has triggered a refresh of the dataset_id;
+    const { shape } = metadata;
+    let ndims = shape.length;
+    let count = shape.map((s, i) => BigInt(Math.min(s, ranges?.[i]?.[1] ?? s) - Math.max(0, ranges?.[i]?.[0] ?? 0)));
+    let offset = shape.map((s, i) => BigInt(Math.min(s, Math.max(0, ranges?.[i]?.[0] ?? 0))));
+    let total_size = count.reduce((previous, current) => current * previous, 1n);
+    let nbytes = metadata.size * Number(total_size);
+
+    const { data: prepared_data, shape: guessed_shape } = prepare_data(data, metadata, count);
+    let data_ptr = Module._malloc((prepared_data as Uint8Array).byteLength);
+    Module.HEAPU8.set(prepared_data as Uint8Array, data_ptr);
+
+    try {
+      Module.set_dataset_data(this.file_id, this.path, count, offset, BigInt(data_ptr));
+    }
+    finally {
+      Module._free(data_ptr);
+    }
+  }
+
   to_array() {
     const { json_value, metadata } = this;
     const { shape } = metadata;
@@ -796,6 +838,13 @@ export class Dataset extends HasAttrs {
     }
     let nested =  create_nested_array(json_value, shape);
     return nested;
+  }
+
+  resize(new_shape: number[]) {
+    const result = Module.resize_dataset(this.file_id, this.path, new_shape.map(BigInt));
+    // reset metadata, pull from file on next read.
+    this._metadata = undefined;
+    return result;
   }
 
   _value_getter(json_compatible=false) {
