@@ -456,7 +456,7 @@ val get_dataset_filters(hid_t loc_id, const std::string& dataset_name_string)
     return filters;
 }
 
-int get_dataset_data(hid_t loc_id, const std::string& dataset_name_string, val count_out, val offset_out, uint64_t rdata_uint64)
+int read_write_dataset_data(hid_t loc_id, const std::string& dataset_name_string, val count_out, val offset_out, uint64_t rwdata_uint64, bool write=false)
 {
     hid_t ds_id;
     hid_t dspace;
@@ -464,7 +464,7 @@ int get_dataset_data(hid_t loc_id, const std::string& dataset_name_string, val c
     hid_t memspace;
     herr_t status;
     const char *dataset_name = dataset_name_string.c_str();
-    void *rdata = (void *)rdata_uint64;
+    void *rwdata = (void *)rwdata_uint64;
 
     ds_id = H5Dopen2(loc_id, dataset_name, H5P_DEFAULT);
     if (ds_id < 0)
@@ -473,6 +473,8 @@ int get_dataset_data(hid_t loc_id, const std::string& dataset_name_string, val c
         return -1;
     }
     dspace = H5Dget_space(ds_id);
+    dtype = H5Dget_type(ds_id);
+
     if (count_out != val::null() && offset_out != val::null())
     {
         std::vector<hsize_t> count = vecFromJSArray<hsize_t>(count_out);
@@ -487,15 +489,28 @@ int get_dataset_data(hid_t loc_id, const std::string& dataset_name_string, val c
         memspace = H5Scopy(dspace);
     }
 
-    dtype = H5Dget_type(ds_id);
-
-    status = H5Dread(ds_id, dtype, memspace, dspace, H5P_DEFAULT, rdata);
+    if (write) {
+        status = H5Dwrite(ds_id, dtype, memspace, dspace, H5P_DEFAULT, rwdata);
+    }
+    else {
+        status = H5Dread(ds_id, dtype, memspace, dspace, H5P_DEFAULT, rwdata);
+    }
     
     H5Dclose(ds_id);
     H5Sclose(dspace);
     H5Sclose(memspace);
     H5Tclose(dtype);
     return (int)status;
+}
+
+int get_dataset_data(hid_t loc_id, const std::string& dataset_name_string, val count_out, val offset_out, uint64_t rdata_uint64)
+{
+    return read_write_dataset_data(loc_id, dataset_name_string, count_out, offset_out, rdata_uint64, false);
+}
+
+int set_dataset_data(hid_t loc_id, const std::string& dataset_name_string, val count_out, val offset_out, uint64_t wdata_uint64)
+{
+    return read_write_dataset_data(loc_id, dataset_name_string, count_out, offset_out, wdata_uint64, true);
 }
 
 int reclaim_vlen_memory(hid_t loc_id, const std::string& object_name_string, const std::string& attribute_name_string, uint64_t rdata_uint64)
@@ -566,18 +581,38 @@ int create_group(hid_t loc_id, std::string grp_name_string)
     return (int)status;
 }
 
-herr_t setup_dataset(val dims_in, int dtype, int dsize, bool is_signed, bool is_vlstr, hid_t *filetype, hid_t *space)
+herr_t setup_dataset(val dims_in, val maxdims_in, val chunks_in, int dtype, int dsize, bool is_signed, bool is_vlstr, hid_t *filetype, hid_t *space, hid_t *dcpl)
 {
     herr_t status;
 
     std::vector<hsize_t> dims_vec = vecFromJSArray<hsize_t>(dims_in);
     int ndims = dims_vec.size();
     hsize_t *dims = dims_vec.data();
+
+    std::vector<hsize_t> maxdims_vec = vecFromJSArray<hsize_t>(maxdims_in);
+    hsize_t *maxdims = maxdims_vec.data();
+
     /*
     * Create dataspace.  Setting maximum size to NULL sets the maximum
     * size to be the current size.
     */
-    *space = H5Screate_simple(ndims, dims, NULL);
+    *space = H5Screate_simple(ndims, dims, maxdims);
+
+    /*
+    * Create dataset creation property list (dcpl),
+    * defining chunking if chunks_in is not null
+    */
+
+    if (chunks_in == val::null()) {
+        *dcpl = H5P_DEFAULT;
+    }
+    else {
+        std::vector<hsize_t> chunks_vec = vecFromJSArray<hsize_t>(chunks_in);
+        hsize_t *chunks = chunks_vec.data();
+        int nchunks = chunks_vec.size();
+        *dcpl = H5Pcreate(H5P_DATASET_CREATE);
+        H5Pset_chunk(*dcpl, nchunks, chunks);
+    }
 
     if (dtype == H5T_STRING)
     {
@@ -615,7 +650,7 @@ herr_t setup_dataset(val dims_in, int dtype, int dsize, bool is_signed, bool is_
 
 int create_attribute(hid_t loc_id, std::string obj_name_string, std::string attr_name_string, uint64_t wdata_uint64, val dims_in, int dtype, int dsize, bool is_signed, bool is_vlstr)
 {
-    hid_t filetype, space, dset, attr, obj_id;
+    hid_t filetype, space, dset, attr, obj_id, dcpl;
     herr_t status;
     // data is pointer to raw bytes
     void *wdata = (void *)wdata_uint64;
@@ -658,7 +693,7 @@ int create_attribute(hid_t loc_id, std::string obj_name_string, std::string attr
     //     throw_error("data type not supported");
     // }
 
-    status = setup_dataset(dims_in, dtype, dsize, is_signed, is_vlstr, &filetype, &space);
+    status = setup_dataset(dims_in, dims_in, val::null(), dtype, dsize, is_signed, is_vlstr, &filetype, &space, &dcpl);
     /*
     * Create the attribute and write the data to it.
     */
@@ -713,16 +748,16 @@ int create_vlen_str_attribute(hid_t loc_id, std::string obj_name_string, std::st
     return create_attribute(loc_id, obj_name_string, attr_name_string, wdata_uint64, dims_in, dtype, dsize, is_signed, is_vlstr);
 }
 
-int create_dataset(hid_t loc_id, std::string dset_name_string, uint64_t wdata_uint64, val dims_in, int dtype, int dsize, bool is_signed, bool is_vlstr)
+int create_dataset(hid_t loc_id, std::string dset_name_string, uint64_t wdata_uint64, val dims_in, val maxdims_in, val chunks_in, int dtype, int dsize, bool is_signed, bool is_vlstr)
 {
-    hid_t filetype, space, dset;
+    hid_t filetype, space, dset, dcpl;
     herr_t status;
     // data is pointer to raw bytes
     void *wdata = (void *)wdata_uint64;
     const char *dset_name = dset_name_string.c_str();
 
-    status = setup_dataset(dims_in, dtype, dsize, is_signed, is_vlstr, &filetype, &space);
-    dset = H5Dcreate2(loc_id, dset_name, filetype, space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    status = setup_dataset(dims_in, maxdims_in, chunks_in, dtype, dsize, is_signed, is_vlstr, &filetype, &space, &dcpl);
+    dset = H5Dcreate2(loc_id, dset_name, filetype, space, H5P_DEFAULT, dcpl, H5P_DEFAULT);
     status = H5Dwrite(dset, filetype, space, space, H5P_DEFAULT, wdata);
     if (is_vlstr) {
         status = H5Treclaim(filetype, space, H5P_DEFAULT, wdata);
@@ -733,7 +768,7 @@ int create_dataset(hid_t loc_id, std::string dset_name_string, uint64_t wdata_ui
     return (int)status;
 }
 
-int create_vlen_str_dataset(hid_t loc_id, std::string dset_name_string, val data, val dims_in, int dtype, int dsize, bool is_signed, bool is_vlstr) {
+int create_vlen_str_dataset(hid_t loc_id, std::string dset_name_string, val data, val dims_in, val maxdims_in, val chunks_in, int dtype, int dsize, bool is_signed, bool is_vlstr) {
     uint64_t wdata_uint64; // ptr as uint64_t (webassembly will be 64-bit someday)
     
     std::vector<std::string> data_string_vec = vecFromJSArray<std::string>(data);
@@ -745,7 +780,20 @@ int create_vlen_str_dataset(hid_t loc_id, std::string dset_name_string, val data
     }
     // pass the pointer as an int...
     wdata_uint64 = (uint64_t)data_char_vec.data();
-    return create_dataset(loc_id, dset_name_string, wdata_uint64, dims_in, dtype, dsize, is_signed, is_vlstr);
+    return create_dataset(loc_id, dset_name_string, wdata_uint64, dims_in, maxdims_in, chunks_in, dtype, dsize, is_signed, is_vlstr);
+}
+
+int resize_dataset(hid_t loc_id, const std::string dset_name_string, val new_size_in)
+{
+    const char *dset_name = dset_name_string.c_str();
+    hid_t dset_id = H5Dopen2(loc_id, dset_name, H5P_DEFAULT);
+
+    std::vector<hsize_t> new_size_vec = vecFromJSArray<hsize_t>(new_size_in);
+    hsize_t *new_size = new_size_vec.data();
+
+    herr_t status = H5Dset_extent(dset_id, new_size);
+    H5Dclose(dset_id);
+    return (int) status;
 }
 
 int create_soft_link(hid_t loc_id, std::string link_target_string, std::string link_name_string) {
@@ -792,10 +840,12 @@ EMSCRIPTEN_BINDINGS(hdf5)
     function("get_dataset_filters", &get_dataset_filters);
     function("refresh_dataset", &refresh_dataset);
     function("get_dataset_data", &get_dataset_data);
+    function("set_dataset_data", &set_dataset_data);
     function("get_attribute_data", &get_attribute_data);
     function("reclaim_vlen_memory", &reclaim_vlen_memory);
     function("create_group", &create_group);
     function("create_dataset", &create_dataset);
+    function("resize_dataset", &resize_dataset);
     function("create_attribute", &create_attribute, allow_raw_pointers());
     function("delete_attribute", &delete_attribute);
     function("create_vlen_str_attribute", &create_vlen_str_attribute);

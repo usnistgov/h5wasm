@@ -48,7 +48,7 @@ export interface EnumTypeMetadata {
 }
 
 export interface H5Module extends EmscriptenModule {
-    create_dataset(file_id: bigint, arg1: string, arg2: bigint, arg3: bigint[], type: number, size: number, signed: boolean, vlen: boolean): number;
+    create_dataset(file_id: bigint, arg1: string, arg2: bigint, shape: bigint[], maxshape: (bigint | null)[], chunks: bigint[] | null, type: number, size: number, signed: boolean, vlen: boolean): number;
     create_soft_link(file_id: bigint, link_target: string, link_name: string): number;
     create_hard_link(file_id: bigint, link_target: string, link_name: string): number;
     create_external_link(file_id: bigint, file_name: string, link_target: string, link_name: string): number;
@@ -79,9 +79,11 @@ export interface H5Module extends EmscriptenModule {
     H5Z_FILTER_RESERVED: 256;
     H5Z_FILTER_MAX: 65535;
     create_group(file_id: bigint, name: string): number;
-    create_vlen_str_dataset(file_id: bigint, dset_name: string, prepared_data: any, arg3: any, type: number, size: number, signed: boolean, vlen: boolean): number;
-    get_dataset_data(file_id: bigint, path: string, arg2: bigint[] | null, arg3: bigint[] | null, arg4: bigint): number;
+    create_vlen_str_dataset(file_id: bigint, dset_name: string, prepared_data: any, shape: bigint[], maxshape: (bigint | null)[], chunks: bigint[] | null, type: number, size: number, signed: boolean, vlen: boolean): number;
+    get_dataset_data(file_id: bigint, path: string, count: bigint[] | null, offset: bigint[] | null, rdata_ptr: bigint): number;
+    set_dataset_data(file_id: bigint, path: string, count: bigint[] | null, offset: bigint[] | null, wdata_ptr: bigint): number;
     refresh_dataset(file_id: bigint, path: string): number;
+    resize_dataset(file_id: bigint, path: string, new_size: bigint[]): number;
     get_dataset_metadata(file_id: bigint, path: string): Metadata;
     get_dataset_filters(file_id: bigint, path: string): Filter[];
     flush(file_id: bigint): number;
@@ -89,7 +91,7 @@ export interface H5Module extends EmscriptenModule {
     get_names(file_id: bigint, path: string, recursive: boolean): string[];
     create_attribute(file_id: bigint, path: string, name: any, arg3: bigint, arg4: any, type: number, size: number, signed: boolean, vlen: boolean): number;
     delete_attribute(file_id: bigint, path: string, name: string): number;
-    create_vlen_str_attribute(file_id: bigint, path: string, name: any, prepared_data: any, arg4: any, type: number, size: number, signed: boolean, vlen: boolean): number;
+    create_vlen_str_attribute(file_id: bigint, path: string, name: any, prepared_data: any, shape: bigint[], type: number, size: number, signed: boolean, vlen: boolean): number;
     get_attribute_names(file_id: any, path: any): string[];
     // things from ModuleFactory:
     UTF8ToString(ptr: number): string,
