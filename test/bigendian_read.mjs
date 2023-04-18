@@ -8,7 +8,7 @@ async function bigendian_read() {
   var f = new h5wasm.File('./test/array.h5', 'r');
 
   const dset = f.get('bigendian');
-  console.log(dset.metadata);
+  assert.equal(dset.metadata.littleEndian, false);
   assert.deepEqual([...dset.value].map(Number), [3,2,1]);
 }
 
