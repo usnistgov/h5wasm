@@ -18,6 +18,8 @@ with h5py.File("array.h5", "w") as f:
     f.create_dataset("bigint", data=np.arange(8).reshape(2,2,2), dtype="<i8", shape=(2,2,2))
     f["datatype/value"] = np.dtype("S10")
 
+    f.create_dataset("bigendian", data=[3,2,1], dtype='>f4')
+
 
 with h5py.File("compressed.h5", "w") as f:
     data = np.random.random((1000, 1000))
