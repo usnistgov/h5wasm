@@ -461,6 +461,7 @@ int read_write_dataset_data(hid_t loc_id, const std::string& dataset_name_string
     hid_t ds_id;
     hid_t dspace;
     hid_t dtype;
+    hid_t memtype;
     hid_t memspace;
     herr_t status;
     const char *dataset_name = dataset_name_string.c_str();
@@ -474,6 +475,14 @@ int read_write_dataset_data(hid_t loc_id, const std::string& dataset_name_string
     }
     dspace = H5Dget_space(ds_id);
     dtype = H5Dget_type(ds_id);
+    // assumes that data to write will match type of dataset (exept endianness)
+    memtype = H5Tcopy(dtype);
+    // inputs and outputs from javascript will always be little-endian
+    H5T_order_t dorder = H5Tget_order(dtype);
+    if (dorder == H5T_ORDER_BE || dorder == H5T_ORDER_VAX)
+    {
+        status = H5Tset_order(memtype, H5T_ORDER_LE);
+    }
 
     if (count_out != val::null() && offset_out != val::null())
     {
@@ -490,16 +499,17 @@ int read_write_dataset_data(hid_t loc_id, const std::string& dataset_name_string
     }
 
     if (write) {
-        status = H5Dwrite(ds_id, dtype, memspace, dspace, H5P_DEFAULT, rwdata);
+        status = H5Dwrite(ds_id, memtype, memspace, dspace, H5P_DEFAULT, rwdata);
     }
     else {
-        status = H5Dread(ds_id, dtype, memspace, dspace, H5P_DEFAULT, rwdata);
+        status = H5Dread(ds_id, memtype, memspace, dspace, H5P_DEFAULT, rwdata);
     }
     
     H5Dclose(ds_id);
     H5Sclose(dspace);
     H5Sclose(memspace);
     H5Tclose(dtype);
+    H5Tclose(memtype);
     return (int)status;
 }
 
