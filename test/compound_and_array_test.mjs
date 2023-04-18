@@ -62,6 +62,7 @@ async function compound_array_test() {
   );
 
   assert.deepEqual(f.get('compound').metadata, {
+    chunks: null,
     compound_type: {
       members: [
         {
@@ -111,6 +112,7 @@ async function compound_array_test() {
     },
     cset: -1,
     littleEndian: true,
+    maxshape: [2],
     shape: [2],
     signed: false,
     size: 52,

@@ -333,23 +333,42 @@ val get_dtype_metadata(hid_t dtype)
     return attr;
 }
 
-val get_abstractDS_metadata(hid_t dspace, hid_t dtype)
+val get_abstractDS_metadata(hid_t dspace, hid_t dtype, hid_t dcpl)
 {
     val attr = get_dtype_metadata(dtype);
 
     int rank = H5Sget_simple_extent_ndims(dspace);
     int total_size = H5Sget_simple_extent_npoints(dspace);
     hsize_t dims_out[rank];
-    int ndims = H5Sget_simple_extent_dims(dspace, dims_out, nullptr);
+    hsize_t maxdims_out[rank];
+    int ndims = H5Sget_simple_extent_dims(dspace, dims_out, maxdims_out);
     val shape = val::array();
+    val maxshape = val::array();
     for (int d = 0; d < ndims; d++)
     {
         shape.set(d, (uint)dims_out[d]);
+        maxshape.set(d, (uint)maxdims_out[d]);
     }
 
     attr.set("shape", shape);
-    attr.set("total_size", total_size);
+    attr.set("maxshape", maxshape);
+    attr.set("chunks", val::null());
 
+    if (dcpl) {
+        H5D_layout_t layout = H5Pget_layout(dcpl);
+        if (layout == H5D_CHUNKED) {
+            hsize_t chunk_dims_out[ndims];
+            H5Pget_chunk(dcpl, ndims, chunk_dims_out);
+            val chunks = val::array();
+            for (int c = 0; c < ndims; c++)
+            {
+                chunks.set(c, (uint)chunk_dims_out[c]);
+            }
+            attr.set("chunks", chunks);
+        }
+    }
+
+    attr.set("total_size", total_size);
     return attr;
 }
 
@@ -371,7 +390,7 @@ val get_attribute_metadata(hid_t loc_id, const std::string& group_name_string, c
     attr_id = H5Aopen_by_name(loc_id, group_name, attribute_name, H5P_DEFAULT, H5P_DEFAULT);
     dtype = H5Aget_type(attr_id);
     dspace = H5Aget_space(attr_id);
-    val metadata = get_abstractDS_metadata(dspace, dtype);
+    val metadata = get_abstractDS_metadata(dspace, dtype, NULL);
 
     H5Aclose(attr_id);
     H5Sclose(dspace);
@@ -400,6 +419,7 @@ val get_dataset_metadata(hid_t loc_id, const std::string& dataset_name_string)
     hid_t ds_id;
     hid_t dspace;
     hid_t dtype;
+    hid_t dcpl;
     herr_t status;
     const char *dataset_name = dataset_name_string.c_str();
 
@@ -411,11 +431,13 @@ val get_dataset_metadata(hid_t loc_id, const std::string& dataset_name_string)
     }
     dtype = H5Dget_type(ds_id);
     dspace = H5Dget_space(ds_id);
-    val metadata = get_abstractDS_metadata(dspace, dtype);
+    dcpl = H5Dget_create_plist(ds_id);
+    val metadata = get_abstractDS_metadata(dspace, dtype, dcpl);
 
     H5Dclose(ds_id);
     H5Sclose(dspace);
     H5Tclose(dtype);
+    H5Pclose(dcpl);
     return metadata;
 }
 

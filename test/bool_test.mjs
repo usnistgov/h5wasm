@@ -13,6 +13,7 @@ async function bool_test() {
   );
 
   assert.deepEqual(f.get('bool').metadata, {
+    chunks: null,
     cset: -1,
     enum_type: {
       type: 0,
@@ -23,6 +24,7 @@ async function bool_test() {
       }
     },
     littleEndian: true,
+    maxshape: [2, 2],
     shape: [2, 2],
     signed: true,
     size: 1,
