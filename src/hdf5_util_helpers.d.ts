@@ -19,10 +19,12 @@ export interface H5T_class_t {
 
 export interface Metadata {
     array_type?: Metadata,
+    chunks: Array<number> | null,
     compound_type?: CompoundTypeMetadata,
     cset: number,
     enum_type?: EnumTypeMetadata,
     littleEndian: boolean,
+    maxshape: Array<number> | null,
     shape: Array<number>,
     signed: boolean,
     size: number,
