@@ -1,4 +1,17 @@
 # Changelog
+## v0.4.11 2023-04-19
+### Fixed
+ - all datasets and attributes are read out in little-endian order (closes #49)
+### Added
+ - New method to overwrite slice of an existing dataset: `Dataset.write_slice(ranges: Array<Array<number>>, data: any): void;`
+ - Method to delete an attribute from a dataset or group (can be used to update an attribute by deleting it then re-creating it)
+   - `Dataset.delete_attribute(name: str): number` (returns non-zero value if it fails for some reason)
+   - `Group.delete_attribute(name: str): number`
+ - Ability to specify chunks and maxshape when creating dataset (to make a resizable dataset): `Group.create_dataset(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null, maxshape?: (number | null)[] | null, chunks?: number[] | null): Dataset`
+ - New method to resize datasets (only works if chunks and maxshape were defined): `Dataset.resize(new_shape: number[]): void`
+ ### Changed
+  - Metadata now includes `chunks: Array<number> | null,` information and `maxshape: Array<number> | null`
+
 ## v0.4.10 2023-02-19
 ### Added
  - Group.paths(): string[]; // returns a list of all link paths found below the group in the tree.  (Use on root object to get all paths in the file)
