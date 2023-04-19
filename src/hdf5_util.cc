@@ -580,8 +580,8 @@ int reclaim_vlen_memory(hid_t loc_id, const std::string& object_name_string, con
 int get_attribute_data(hid_t loc_id, const std::string& group_name_string, const std::string& attribute_name_string, uint64_t rdata_uint64)
 {
     hid_t attr_id;
-    hid_t dspace;
     hid_t dtype;
+    hid_t memtype;
     herr_t status;
     const char *group_name = &group_name_string[0];
     const char *attribute_name = &attribute_name_string[0];
@@ -595,14 +595,19 @@ int get_attribute_data(hid_t loc_id, const std::string& group_name_string, const
     }
     attr_id = H5Aopen_by_name(loc_id, group_name, attribute_name, H5P_DEFAULT, H5P_DEFAULT);
     dtype = H5Aget_type(attr_id);
-    dspace = H5Aget_space(attr_id);
+    memtype = H5Tcopy(dtype);
+    // inputs and outputs from javascript will always be little-endian
+    H5T_order_t dorder = H5Tget_order(dtype);
+    if (dorder == H5T_ORDER_BE || dorder == H5T_ORDER_VAX)
+    {
+        status = H5Tset_order(memtype, H5T_ORDER_LE);
+    }
 
-    status = H5Sselect_all(dspace);
-    status = H5Aread(attr_id, dtype, rdata);
+    status = H5Aread(attr_id, memtype, rdata);
 
     H5Aclose(attr_id);
-    H5Sclose(dspace);
     H5Tclose(dtype);
+    H5Tclose(memtype);
     return (int)status;
 }
 
