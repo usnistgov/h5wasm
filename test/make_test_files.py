@@ -19,6 +19,7 @@ with h5py.File("array.h5", "w") as f:
     f["datatype/value"] = np.dtype("S10")
 
     f.create_dataset("bigendian", data=[3,2,1], dtype='>f4')
+    f['bigendian'].attrs.create("bigendian_attr", [3,2,1], dtype='>i8')
 
 
 with h5py.File("compressed.h5", "w") as f:

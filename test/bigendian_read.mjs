@@ -10,6 +10,10 @@ async function bigendian_read() {
   const dset = f.get('bigendian');
   assert.equal(dset.metadata.littleEndian, false);
   assert.deepEqual([...dset.value].map(Number), [3,2,1]);
+
+  const attr = dset.attrs['bigendian_attr'];
+  assert.equal(attr.metadata.littleEndian, false);
+  assert.deepEqual([...attr.value].map(Number), [3,2,1]);
 }
 
 export const tests = [
