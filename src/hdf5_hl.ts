@@ -520,6 +520,9 @@ abstract class HasAttrs {
   create_attribute(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null) {
     const final_dtype = dtype ?? guess_dtype(data);
     let metadata = dtype_to_metadata(final_dtype);
+    if (!metadata.littleEndian) {
+      throw new Error("create_attribute with big-endian dtype is not supported");
+    }
     const {data: prepared_data, shape: guessed_shape} = prepare_data(data, metadata, shape, shape);
     const final_shape = shape?.map(BigInt) ?? guessed_shape;
     if (metadata.vlen) {
@@ -637,6 +640,9 @@ export class Group extends HasAttrs {
   create_dataset(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null, maxshape?: (number | null)[] | null, chunks?: number[] | null): Dataset {
     const final_dtype = dtype ?? guess_dtype(data);
     let metadata = dtype_to_metadata(final_dtype);
+    if (!metadata.littleEndian) {
+      throw new Error("create_dataset with big-endian dtype is not supported");
+    }
     const {data: prepared_data, shape: guessed_shape, maxshape: final_maxshape} = prepare_data(data, metadata, shape, maxshape);
     const final_shape: bigint[] = shape?.map(BigInt) ?? guessed_shape;
     const final_chunks = (chunks) ? chunks.map(BigInt) : null;
