@@ -7,6 +7,7 @@
   "main": "./dist/node/hdf5_hl.js",
   "module": "./dist/esm/hdf5_hl.js",
   "exports": {
+    "types": "./src/hdf5_hl.d.ts",
     "node": "./dist/node/hdf5_hl.js",
     "import": "./dist/esm/hdf5_hl.js"
   },
