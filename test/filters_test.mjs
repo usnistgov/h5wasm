@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { strict as assert } from "assert";
-import h5wasm from "../dist/node/hdf5_hl.js";
+import h5wasm from "h5wasm";
 
 async function filters_test() {
   await h5wasm.ready;

@@ -3,7 +3,7 @@
 import { strict as assert } from 'assert';
 import { existsSync, mkdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
-import h5wasm from "../dist/node/hdf5_hl.js";
+import h5wasm from "h5wasm";
 
 async function create_chunked() {
 
