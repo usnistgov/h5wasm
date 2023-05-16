@@ -1,4 +1,16 @@
 # Changelog
+## v0.5.0 2023-05-15
+### Fixed
+ - with emscripten >= 3.1.28, the shim for ES6 builds in nodejs is no longer needed (see https://github.com/emscripten-core/emscripten/pull/17915)
+ - added `malloc` and `free` to the list of explicit exports for the `Module` (newer emscripten was optimizing them away)
+### Changed
+ - **POSSIBLY BREAKING**: building as MAIN_MODULE=2 with `POSITION_INDEPENDENT_CODE ON` (to allow dynamic linking)
+ - Using newer HDF5 version 1.12.2 libraries
+ - compiled using Emscripten 3.1.28
+ - simplified imports for tests to use "h5wasm" directly
+### Added
+ - Plugins can now be used if they are compiled as SIDE_MODULE, by loading them into the expected plugin folder `/usr/local/hdf5/lib/plugin` in the emscripten virtual file system (might need the name of the plugin file to end in .so, even if it is WASM)
+
 ## v0.4.11 2023-04-19
 ### Fixed
  - all datasets and attributes are read out in little-endian order (closes #49)
