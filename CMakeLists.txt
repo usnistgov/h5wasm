@@ -9,8 +9,8 @@ project(H5WASM
 FetchContent_Declare(
   libhdf5-wasm
 #  URL file:///home/brian/dev/libhdf5-wasm/libhdf5-wasm.tar.gz
-   URL https://github.com/usnistgov/libhdf5-wasm/releases/download/v0.1.1/libhdf5-1_12_1-wasm.tar.gz
-   URL_HASH SHA256=e9bb11d89c4f26fa79b9cf1dab6159640c7b184ebf00dc97b098cd4f6de49bfe
+   URL https://github.com/usnistgov/libhdf5-wasm/releases/download/v0.3.0_3.1.28/libhdf5-1_12_2-wasm.tar.gz
+   URL_HASH SHA256=7089f9bf29dc3759d7aa77848cfa12d546eabd152d40dd00a90aace99c056600
 )
 FetchContent_MakeAvailable(libhdf5-wasm)
 
