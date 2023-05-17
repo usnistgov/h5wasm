@@ -1,4 +1,4 @@
-import type { Status, Metadata, H5Module, CompoundTypeMetadata, Filter } from "./hdf5_util_helpers";
+import type { Status, Metadata, H5Module, CompoundMember, CompoundTypeMetadata, EnumTypeMetadata, Filter } from "./hdf5_util_helpers";
 export declare var Module: H5Module;
 export declare var FS: (FS.FileSystemType | null);
 declare const ready: Promise<H5Module>;
@@ -19,8 +19,7 @@ export declare type Dtype = string | {
 } | {
     array_type: Metadata;
 };
-export type { Metadata };
-export type { Filter };
+export type { Metadata, Filter, CompoundMember, CompoundTypeMetadata, EnumTypeMetadata };
 declare type TypedArray = Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | BigInt64Array | BigUint64Array | Float32Array | Float64Array;
 export declare type GuessableDataTypes = TypedArray | number | number[] | string | string[];
 declare enum OBJECT_TYPE {
