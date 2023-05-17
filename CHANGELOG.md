@@ -1,4 +1,8 @@
 # Changelog
+## v0.5.1 2023-05-17
+### Added
+ - Support TS 5's moduleResolution: "bundler" (thanks, @axelboc)
+
 ## v0.5.0 2023-05-15
 ### Fixed
  - with emscripten >= 3.1.28, the shim for ES6 builds in nodejs is no longer needed (see https://github.com/emscripten-core/emscripten/pull/17915)
