@@ -1,4 +1,4 @@
-import type {Status, Metadata, H5Module, CompoundTypeMetadata, EnumTypeMetadata, Filter} from "./hdf5_util_helpers";
+import type {Status, Metadata, H5Module, CompoundMember, CompoundTypeMetadata, EnumTypeMetadata, Filter} from "./hdf5_util_helpers";
 
 import ModuleFactory from './hdf5_util.js';
 
@@ -83,8 +83,7 @@ function getAccessor(type: 0 | 1, size: Metadata["size"], signed: Metadata["sign
 export type OutputData = TypedArray | string | number | bigint | boolean | OutputData[];
 export type JSONCompatibleOutputData = string | number | boolean | JSONCompatibleOutputData[];
 export type Dtype = string | {compound_type: CompoundTypeMetadata} | {array_type: Metadata};
-export type { Metadata };
-export type { Filter };
+export type { Metadata, Filter, CompoundMember, CompoundTypeMetadata, EnumTypeMetadata };
 
 function process_data(data: Uint8Array, metadata: Metadata, json_compatible: true): JSONCompatibleOutputData;
 function process_data(data: Uint8Array, metadata: Metadata, json_compatible: false): OutputData;
