@@ -1,4 +1,40 @@
 # Changelog
+## v0.6.0 2023-07-03
+### Added
+ - `compression: number | 'gzip'` and `compression_opts: number[]` arguments to `create_dataset`.
+   - **Must specify chunks when using `compression`**
+   - **Can not specify `compression` with VLEN datasets**
+   - if `compression` is supplied as a number without `compression_opts`, the 'gzip' (DEFLATE, filter_id=1) filter is applied, and the compression level used is taken from the value of `compression`.  An integer value of 0-9 is required for the compression level of the 'gzip' filter.
+   - if `compression` and `compression_opts` are supplied, the `compression` value is passed as the filter_id (or 1 if 'gzip' is supplied), and the value of `compression_opts` is promoted to a list if it is a number, or passed as-is if it is a list.  *Use both compression (numeric filter_id) and compression_opts when specifying any filter other than 'gzip', e.g. with a filter plugin*
+   - if `compression === 'gzip'` and `compression_opts === undefined`, the default gzip compression level of 4 is applied. 
+
+#### Example usage:
+  ```js
+  // short form: uses default compression (DEFLATE, filter_id=1)
+  // with compression level specified (here, 9)
+  Group.create_dataset({..., compression=9});
+
+  // specify gzip and compression level:
+  Group.create_dataset({..., compression='gzip', compression_opts=[4]});
+
+  // specify another filter, e.g. BLOSC plugin:
+  Group.create_dataset({..., compression=32001, compression_opts=[]});
+  ```
+
+### Changed
+ - **BREAKING**: for `create_dataset`, all arguments are supplied in a single object, as
+  ```ts
+  Group.create_dataset(args: {
+      name: string,
+      data: GuessableDataTypes,
+      shape?: number[] | null,
+      dtype?: string | null,
+      maxshape?: (number | null)[] | null,
+      chunks?: number[] | null,
+      compression?: (number | 'gzip'),
+      compression_opts?: number | number[]
+  }): Dataset {}
+  ```
 ## v0.5.2 2023-05-17
 (v0.5.1 release was removed as incomplete)
 ### Added

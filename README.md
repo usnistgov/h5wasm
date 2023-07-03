@@ -74,7 +74,7 @@ import h5wasm from "h5wasm";
 const { FS } = await h5wasm.ready;
 
 let f = new h5wasm.File("test.h5", "w");
-f.create_dataset("text_data", ["this", "that"]);
+f.create_dataset({name: "text_data", data: ["this", "that"]});
 // ...
 ```
 __note__: you must configure your build system to target >= ES2020 (for bigint support)
@@ -208,7 +208,7 @@ let new_file = new h5wasm.File("myfile.h5", "w");
 new_file.create_group("entry");
 
 // shape and dtype will match input if omitted
-new_file.get("entry").create_dataset("auto", [3.1, 4.1, 0.0, -1.0]);
+new_file.get("entry").create_dataset({name: "auto", data: [3.1, 4.1, 0.0, -1.0]});
 new_file.get("entry/auto").shape
 // [4]
 new_file.get("entry/auto").dtype
@@ -217,7 +217,7 @@ new_file.get("entry/auto").value
 // Float64Array(4) [3.1, 4.1, 0, -1]
 
 // make float array instead of double (shape will still match input if it is set to null)
-new_file.get("entry").create_dataset("data", [3.1, 4.1, 0.0, -1.0], null, '<f');
+new_file.get("entry").create_dataset({name: "data", data: [3.1, 4.1, 0.0, -1.0], shape: null, dtype: '<f'});
 new_file.get("entry/data").shape
 // [4]
 new_file.get("entry/data").value
@@ -226,11 +226,22 @@ new_file.get("entry/data").value
 // create a dataset with shape=[2,2]
 // The dataset stored in the HDF5 file with the correct shape, 
 // but no attempt is made to make a 2x2 array out of it in javascript
-new_file.get("entry").create_dataset("square_data", [3.1, 4.1, 0.0, -1.0], [2,2], '<d');
+new_file.get("entry").create_dataset({name: "square_data", data: [3.1, 4.1, 0.0, -1.0], shape: [2,2], dtype: '<d'});
 new_file.get("entry/square_data").shape
 // (2) [2, 2]
 new_file.get("entry/square_data").value
 //Float64Array(4) [3.1, 4.1, 0, -1]
+
+// create a dataset with compression
+const long_data = [...new Array(1000000)].map((_, i) => i);
+new_file.get("entry").create_dataset({name: "compressed", data: long_data, shape: [1000, 1000], dtype: '<f', chunks: [100,100], compression: 9});
+// equivalent to:
+// new_file.get("entry").create_dataset({name: "compressed", data: long_data, shape: [1000, 1000], dtype: '<f', chunks=[100,100], compression='gzip', compression_opts=[9]});
+new_file.get("entry/compressed").filters
+// [{id: 1, name: 'deflate'}]);
+new_file.get("entry/compressed").slice([[2,3]]);
+// Float32Array(1000) [ 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, … ]
+
 
 // create an attribute (creates a VLEN string by default for a string)
 new_file.get("entry").create_attribute("myattr", "a string");
@@ -264,7 +275,7 @@ new_file.close()
 ```js
 let new_file = new h5wasm.File("myfile.h5", "w");
 new_file.create_group("entry");
-new_file.get("entry").create_dataset("auto", [3.1, 4.1, 0.0, -1.0]);
+new_file.get("entry").create_dataset({name: "auto", data: [3.1, 4.1, 0.0, -1.0]});
 
 // create a soft link in root:
 new_file.create_soft_link("/entry/auto", "my_soft_link");
@@ -320,7 +331,7 @@ let new_file = new h5wasm.File("myfile.h5", "w");
 new_file.create_group("entry");
 
 // shape and dtype will match input if omitted
-new_file.get("entry").create_dataset("auto", [3.1, 4.1, 0.0, -1.0]);
+new_file.get("entry").create_dataset({name: "auto", data: [3.1, 4.1, 0.0, -1.0]});
 
 // this will download a snapshot of the HDF5 in its current state, with the same name
 // (in this case, a file named "myfile.h5" would be downloaded)
