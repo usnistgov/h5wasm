@@ -268,7 +268,7 @@ function prepare_data(data: any, metadata: Metadata, shape?: number[] | bigint[]
     }
     else {
       // convert...
-      if (metadata.size > 4) {
+      if (metadata.size > 4 && metadata.type === Module.H5T_class_t.H5T_INTEGER.value) {
         data = data.map(BigInt);
       }
       typed_array = new accessor(data);
@@ -636,15 +636,60 @@ export class Group extends HasAttrs {
     return this.get(name) as Group;
   }
 
-  create_dataset(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null, maxshape?: (number | null)[] | null, chunks?: number[] | null): Dataset {
+  create_dataset(args: {
+      name: string,
+      data: GuessableDataTypes,
+      shape?: number[] | null,
+      dtype?: string | null,
+      maxshape?: (number | null)[] | null,
+      chunks?: number[] | null,
+      compression?: (number | 'gzip'),
+      compression_opts?: number | number[]
+  }): Dataset {
+    const { name, data, shape, dtype, maxshape, chunks, compression, compression_opts } = args;
     const final_dtype = dtype ?? guess_dtype(data);
     let metadata = dtype_to_metadata(final_dtype);
+    if (compression && !chunks) {
+      throw new Error("cannot specify compression without chunks");
+    }
+    if (compression && metadata.vlen) {
+      throw new Error("cannot specify compression with VLEN data");
+    }
     if (!metadata.littleEndian) {
       throw new Error("create_dataset with big-endian dtype is not supported");
     }
     const {data: prepared_data, shape: guessed_shape, maxshape: final_maxshape} = prepare_data(data, metadata, shape, maxshape);
     const final_shape: bigint[] = shape?.map(BigInt) ?? guessed_shape;
     const final_chunks = (chunks) ? chunks.map(BigInt) : null;
+    let compression_opts_out: number[];
+    let compression_id: number = 0;
+    if (compression && typeof compression === 'number') {
+      if (typeof compression_opts === 'undefined') {
+        // handle special case where no opts are given, use 'gzip'
+        // and numeric value of compression as compression_opts
+        compression_id = 1;
+        compression_opts_out = [compression];
+      }
+      else {
+        // promote single number to opts list.
+        compression_id = compression;
+        compression_opts_out = (typeof compression_opts === 'number') ? [compression_opts] : compression_opts;
+      }
+    }
+    else if (compression === 'gzip') {
+      compression_id = 1;
+      if (compression_opts === undefined) {
+        compression_opts_out = [4]; // default compression level
+      }
+      else {
+        compression_opts_out = (typeof compression_opts === 'number') ? [compression_opts] : compression_opts;
+      }
+    }
+    else {
+      compression_id = 0;
+      compression_opts_out = [];
+    }
+
     if (metadata.vlen) {
       Module.create_vlen_str_dataset(
         this.file_id,
@@ -673,7 +718,9 @@ export class Group extends HasAttrs {
           metadata.type,
           metadata.size,
           metadata.signed,
-          metadata.vlen
+          metadata.vlen,
+          compression_id,
+          compression_opts_out
         );
       } finally {
         Module._free(data_ptr);

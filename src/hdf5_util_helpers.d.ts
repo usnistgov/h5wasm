@@ -50,7 +50,7 @@ export interface EnumTypeMetadata {
 }
 
 export interface H5Module extends EmscriptenModule {
-    create_dataset(file_id: bigint, arg1: string, arg2: bigint, shape: bigint[], maxshape: (bigint | null)[], chunks: bigint[] | null, type: number, size: number, signed: boolean, vlen: boolean): number;
+    create_dataset(file_id: bigint, arg1: string, arg2: bigint, shape: bigint[], maxshape: (bigint | null)[], chunks: bigint[] | null, type: number, size: number, signed: boolean, vlen: boolean, compression_id: number, compression_opts: number[]): number;
     create_soft_link(file_id: bigint, link_target: string, link_name: string): number;
     create_hard_link(file_id: bigint, link_target: string, link_name: string): number;
     create_external_link(file_id: bigint, file_name: string, link_target: string, link_name: string): number;

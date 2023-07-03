@@ -83,7 +83,16 @@ export declare class Group extends HasAttrs {
     };
     get(obj_name: string): BrokenSoftLink | ExternalLink | Datatype | Group | Dataset | null;
     create_group(name: string): Group;
-    create_dataset(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null, maxshape?: (number | null)[] | null, chunks?: number[] | null): Dataset;
+    create_dataset(args: {
+        name: string;
+        data: GuessableDataTypes;
+        shape?: number[] | null;
+        dtype?: string | null;
+        maxshape?: (number | null)[] | null;
+        chunks?: number[] | null;
+        compression?: (number | 'gzip');
+        compression_opts?: number | number[];
+    }): Dataset;
     create_soft_link(target: string, name: string): number;
     create_hard_link(target: string, name: string): number;
     create_external_link(file_name: string, target: string, name: string): number;

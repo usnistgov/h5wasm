@@ -618,7 +618,7 @@ int create_group(hid_t loc_id, std::string grp_name_string)
     return (int)status;
 }
 
-herr_t setup_dataset(val dims_in, val maxdims_in, val chunks_in, int dtype, int dsize, bool is_signed, bool is_vlstr, hid_t *filetype, hid_t *space, hid_t *dcpl)
+herr_t setup_dataset(val dims_in, val maxdims_in, val chunks_in, int dtype, int dsize, bool is_signed, bool is_vlstr, int compression, val compression_opts, hid_t *filetype, hid_t *space, hid_t *dcpl)
 {
     herr_t status;
 
@@ -649,6 +649,12 @@ herr_t setup_dataset(val dims_in, val maxdims_in, val chunks_in, int dtype, int 
         int nchunks = chunks_vec.size();
         *dcpl = H5Pcreate(H5P_DATASET_CREATE);
         H5Pset_chunk(*dcpl, nchunks, chunks);
+        if (compression != 0) {
+            std::vector<uint> compression_opts_vec = vecFromJSArray<uint>(compression_opts);
+            size_t cd_nelmts = compression_opts_vec.size();
+            uint *cd_values = compression_opts_vec.data();
+            H5Pset_filter(*dcpl, compression, H5Z_FLAG_MANDATORY, cd_nelmts, cd_values);
+        }
     }
 
     if (dtype == H5T_STRING)
@@ -730,7 +736,7 @@ int create_attribute(hid_t loc_id, std::string obj_name_string, std::string attr
     //     throw_error("data type not supported");
     // }
 
-    status = setup_dataset(dims_in, dims_in, val::null(), dtype, dsize, is_signed, is_vlstr, &filetype, &space, &dcpl);
+    status = setup_dataset(dims_in, dims_in, val::null(), dtype, dsize, is_signed, is_vlstr, 0, val::null(), &filetype, &space, &dcpl);
     /*
     * Create the attribute and write the data to it.
     */
@@ -785,7 +791,7 @@ int create_vlen_str_attribute(hid_t loc_id, std::string obj_name_string, std::st
     return create_attribute(loc_id, obj_name_string, attr_name_string, wdata_uint64, dims_in, dtype, dsize, is_signed, is_vlstr);
 }
 
-int create_dataset(hid_t loc_id, std::string dset_name_string, uint64_t wdata_uint64, val dims_in, val maxdims_in, val chunks_in, int dtype, int dsize, bool is_signed, bool is_vlstr)
+int create_dataset(hid_t loc_id, std::string dset_name_string, uint64_t wdata_uint64, val dims_in, val maxdims_in, val chunks_in, int dtype, int dsize, bool is_signed, bool is_vlstr, int compression, val compression_opts)
 {
     hid_t filetype, space, dset, dcpl;
     herr_t status;
@@ -793,7 +799,7 @@ int create_dataset(hid_t loc_id, std::string dset_name_string, uint64_t wdata_ui
     void *wdata = (void *)wdata_uint64;
     const char *dset_name = dset_name_string.c_str();
 
-    status = setup_dataset(dims_in, maxdims_in, chunks_in, dtype, dsize, is_signed, is_vlstr, &filetype, &space, &dcpl);
+    status = setup_dataset(dims_in, maxdims_in, chunks_in, dtype, dsize, is_signed, is_vlstr, compression, compression_opts, &filetype, &space, &dcpl);
     dset = H5Dcreate2(loc_id, dset_name, filetype, space, H5P_DEFAULT, dcpl, H5P_DEFAULT);
     status = H5Dwrite(dset, filetype, space, space, H5P_DEFAULT, wdata);
     if (is_vlstr) {
@@ -817,7 +823,7 @@ int create_vlen_str_dataset(hid_t loc_id, std::string dset_name_string, val data
     }
     // pass the pointer as an int...
     wdata_uint64 = (uint64_t)data_char_vec.data();
-    return create_dataset(loc_id, dset_name_string, wdata_uint64, dims_in, maxdims_in, chunks_in, dtype, dsize, is_signed, is_vlstr);
+    return create_dataset(loc_id, dset_name_string, wdata_uint64, dims_in, maxdims_in, chunks_in, dtype, dsize, is_signed, is_vlstr, 0, val::null());
 }
 
 int resize_dataset(hid_t loc_id, const std::string dset_name_string, val new_size_in)
