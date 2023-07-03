@@ -34,7 +34,7 @@ async function create_typedarray_datasets() {
   for (let typed_arrayname of TypedArray_to_dtype.keys()) {
     let write_values = (/^Big/.test(typed_arrayname)) ? VALUES.map(BigInt) : VALUES;
     let data = new globalThis[typed_arrayname](write_values);
-    write_file.create_dataset(typed_arrayname, data);
+    write_file.create_dataset({name: typed_arrayname, data: data});
   }
   write_file.flush();
   write_file.close();
@@ -64,7 +64,7 @@ async function create_vlen_string_dataset() {
   }
   
   const write_file = new h5wasm.File(FILEPATH, "w");
-  write_file.create_dataset(NAME, VALUES);
+  write_file.create_dataset({name: NAME, data: VALUES});
   write_file.flush();
   write_file.close();
 

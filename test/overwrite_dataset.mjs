@@ -24,7 +24,7 @@ async function overwrite_datasets() {
   
   let write_file = new h5wasm.File(FILEPATH, "w");
 
-  const dset = write_file.create_dataset(DSET_NAME, VALUES, SHAPE, DTYPE);
+  const dset = write_file.create_dataset({name: DSET_NAME, data: VALUES, shape: SHAPE, dtype: DTYPE});
   // select the first column (elements 0:1 of all rows)
   dset.write_slice([[null,null],[0,1]], COLUMN_OVERWRITE_VALUES);
   assert.deepEqual([...dset.value].map(Number), [20,2,3,21,5,6,22,8,9]);

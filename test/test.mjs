@@ -12,6 +12,7 @@ import test_attributes from './create_delete_attributes.mjs';
 import test_overwrite_dataset from './overwrite_dataset.mjs';
 import create_chunked from './chunks_resize.mjs';
 import bigendian_read from './bigendian_read.mjs';
+import create_compressed from './create_read_compressed.mjs';
 
 let tests = [];
 const add_tests = (tests_in) => { /*global*/ tests = tests.concat(tests_in)}
@@ -27,6 +28,7 @@ add_tests(test_attributes);
 add_tests(test_overwrite_dataset);
 add_tests(create_chunked);
 add_tests(bigendian_read);
+add_tests(create_compressed);
 
 async function run_test(test) {
     try {

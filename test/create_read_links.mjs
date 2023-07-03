@@ -33,7 +33,7 @@ async function test_links() {
 
     write_file.create_group(DATASET_GROUP);
     const dataset_group = write_file.get(DATASET_GROUP);
-    dataset_group.create_dataset(DATASET_NAME, DATA);
+    dataset_group.create_dataset({name: DATASET_NAME, data: DATA});
     
     write_file.create_group(LINKS_GROUP);
     const links_group = write_file.get(LINKS_GROUP);
