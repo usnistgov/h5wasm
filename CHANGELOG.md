@@ -1,4 +1,8 @@
 # Changelog
+## v0.6.1 2023-07-13
+### Fixed
+ - memory error from double-free when creating vlen str datasets (no need to call H5Treclaim when memory for vector will be automatically garbage-collected)
+
 ## v0.6.0 2023-07-03
 ### Added
  - `compression: number | 'gzip'` and `compression_opts: number[]` arguments to `create_dataset`.
