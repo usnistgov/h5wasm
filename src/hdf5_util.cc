@@ -744,9 +744,6 @@ int create_attribute(hid_t loc_id, std::string obj_name_string, std::string attr
     attr = H5Acreate(obj_id, attr_name, filetype, space, H5P_DEFAULT,
                      H5P_DEFAULT);
     status = H5Awrite(attr, filetype, wdata);
-    if (is_vlstr) {
-        status = H5Treclaim(filetype, space, H5P_DEFAULT, wdata);
-    }
     /*
     * Close and release resources.
     */
@@ -754,6 +751,7 @@ int create_attribute(hid_t loc_id, std::string obj_name_string, std::string attr
 
     status = H5Sclose(space);
     status = H5Tclose(filetype);
+    status = H5Pclose(dcpl);
     //status = H5Tclose(memtype);
     status = H5Oclose(obj_id);
     return (int)status;
@@ -802,12 +800,11 @@ int create_dataset(hid_t loc_id, std::string dset_name_string, uint64_t wdata_ui
     status = setup_dataset(dims_in, maxdims_in, chunks_in, dtype, dsize, is_signed, is_vlstr, compression, compression_opts, &filetype, &space, &dcpl);
     dset = H5Dcreate2(loc_id, dset_name, filetype, space, H5P_DEFAULT, dcpl, H5P_DEFAULT);
     status = H5Dwrite(dset, filetype, space, space, H5P_DEFAULT, wdata);
-    if (is_vlstr) {
-        status = H5Treclaim(filetype, space, H5P_DEFAULT, wdata);
-    }
+
     status = H5Dclose(dset);
     status = H5Sclose(space);
     status = H5Tclose(filetype);
+    status = H5Pclose(dcpl);
     return (int)status;
 }
 
