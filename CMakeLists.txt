@@ -42,6 +42,8 @@ add_executable(hdf5_util_node src/hdf5_util.cc)
 target_link_libraries(hdf5_util_node hdf5-wasm)
 set_target_properties(hdf5_util_node PROPERTIES
     LINK_FLAGS "-O3 --bind  \
+    -s NODEJS_CATCH_EXIT=0 \
+    -s NODEJS_CATCH_REJECTION=0 \
     -s ALLOW_TABLE_GROWTH=1 \
     -s ALLOW_MEMORY_GROWTH=1 \
     -s WASM_BIGINT \
