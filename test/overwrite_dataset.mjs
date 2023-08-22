@@ -67,6 +67,7 @@ async function overwrite_datasets_strides() {
   assert.deepEqual([...dset1D.slice([[null, null, 3]])], [0,3,6,9]);
   assert.deepEqual([...dset1D.slice([[1, null, 3]])], [1,4,7]);
   assert.deepEqual([...dset1D.slice([[3, 9, 3]])], [3,6]);
+  assert.deepEqual([...dset1D.slice([[null, null, 100]])], [0]);
 
   // write slices 1D
   dset1D.write_slice([[3, 9, 3]], [-1,-2])
@@ -88,6 +89,7 @@ async function overwrite_datasets_strides() {
   assert.deepEqual([...dset2D.slice([[1, null, 2], [null, null, null]])], [4,5,6]);
   assert.deepEqual([...dset2D.slice([[1, null, 2], [null, null, 2]])], [4,6]);
   assert.deepEqual([...dset2D.slice([[1, null, 2], [1, null, 2]])], [5]);
+  assert.deepEqual([...dset2D.slice([[null, null, 100], [null, null, 100]])], [1]);
 
   // write slices 2D
   dset2D.write_slice([[1, null, 2], [1, null, 2]], [-1])
@@ -102,8 +104,6 @@ async function overwrite_datasets_strides() {
   unlinkSync(FILEPATH);
 
 }
-
-overwrite_datasets_strides()
 
 export const tests = [
   {
