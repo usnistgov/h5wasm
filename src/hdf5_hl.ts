@@ -395,7 +395,7 @@ const TypedArray_to_dtype = new Map([
  * `[i0, i1]` - select all data in the range `i0` to `i1`
  * `[i0, i1, s]` - select every `s` values in the range `i0` to `i1`
  **/
-type Slice = [] | [number] | [number,number] | [number, number, number];
+type Slice = [] | [number|null] | [number|null,number|null] | [number|null, number|null, number|null];
 
 export type GuessableDataTypes = TypedArray | number | number[] | string | string[];
 
@@ -795,6 +795,17 @@ export class File extends Group {
   }
 }
 
+const calculateHyperslab = (shape: number[],ranges: Slice[]) => {
+  const strides = shape.map((s, i) => BigInt(ranges?.[i]?.[2] ?? 1));
+  const count = shape.map((s, i) => {
+    const N = BigInt((Math.min(s, ranges?.[i]?.[1] ?? s) - Math.max(0, ranges?.[i]?.[0] ?? 0)));
+    const st = strides[i];
+    return N / st + ((N % st) + st - 1n)/st
+  });
+  const offset = shape.map((s, i) => BigInt(Math.min(s, Math.max(0, ranges?.[i]?.[0] ?? 0))));
+  return {strides, count, offset}
+}
+
 export class Dataset extends HasAttrs {
   private _metadata?: Metadata;
 
@@ -840,14 +851,12 @@ export class Dataset extends HasAttrs {
     return this._value_getter(true) as JSONCompatibleOutputData;
   }
   
-  slice(ranges: Array<Slice>) {
+  slice(ranges: Slice[]) {
     // interpret ranges as [start, stop], with one per dim.
     const metadata = this.metadata;
     // if auto_refresh is on, getting the metadata has triggered a refresh of the dataset_id;
     const { shape } = metadata;
-    const strides = shape.map((s, i) => BigInt(ranges?.[i]?.[2] ?? 1));
-    const count = shape.map((s, i) => BigInt((Math.min(s, ranges?.[i]?.[1] ?? s) - Math.max(0, ranges?.[i]?.[0] ?? 0)))/strides[i]);
-    const offset = shape.map((s, i) => BigInt(Math.min(s, Math.max(0, ranges?.[i]?.[0] ?? 0))));
+    const {strides, count, offset} = calculateHyperslab(shape, ranges);
     const total_size = count.reduce((previous, current) => current * previous, 1n);
     const nbytes = metadata.size * Number(total_size);
     const data_ptr = Module._malloc(nbytes);
@@ -865,18 +874,15 @@ export class Dataset extends HasAttrs {
     return processed;
   }
 
-  write_slice(ranges: Array<Array<number>>, data: any) {
+  write_slice(ranges: Slice[], data: any) {
     // interpret ranges as [start, stop], with one per dim.
     let metadata = this.metadata;
     if (metadata.vlen) {
       throw new Error("writing to a slice of vlen dtype is not implemented");
     }
-    // if auto_refresh is on, getting the metadata has triggered a refresh of the dataset_id;
     const { shape } = metadata;
-    const strides = shape.map((s, i) => BigInt(ranges?.[i]?.[2] ?? 1));
-    const count = shape.map((s, i) => BigInt((Math.min(s, ranges?.[i]?.[1] ?? s) - Math.max(0, ranges?.[i]?.[0] ?? 0)))/strides[i]);
-    const offset = shape.map((s, i) => BigInt(Math.min(s, Math.max(0, ranges?.[i]?.[0] ?? 0))));
-    let total_size = count.reduce((previous, current) => current * previous, 1n);
+    // if auto_refresh is on, getting the metadata has triggered a refresh of the dataset_id;
+    const {strides, count, offset} = calculateHyperslab(shape, ranges);
 
     const { data: prepared_data, shape: guessed_shape } = prepare_data(data, metadata, count);
     let data_ptr = Module._malloc((prepared_data as Uint8Array).byteLength);

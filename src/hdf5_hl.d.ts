@@ -11,16 +11,16 @@ export declare const ACCESS_MODES: {
     readonly Sw: "H5F_ACC_SWMR_WRITE";
     readonly Sr: "H5F_ACC_SWMR_READ";
 };
-type ACCESS_MODESTRING = keyof typeof ACCESS_MODES;
-export type OutputData = TypedArray | string | number | bigint | boolean | OutputData[];
-export type JSONCompatibleOutputData = string | number | boolean | JSONCompatibleOutputData[];
-export type Dtype = string | {
+declare type ACCESS_MODESTRING = keyof typeof ACCESS_MODES;
+export declare type OutputData = TypedArray | string | number | bigint | boolean | OutputData[];
+export declare type JSONCompatibleOutputData = string | number | boolean | JSONCompatibleOutputData[];
+export declare type Dtype = string | {
     compound_type: CompoundTypeMetadata;
 } | {
     array_type: Metadata;
 };
 export type { Metadata, Filter, CompoundMember, CompoundTypeMetadata, EnumTypeMetadata };
-type TypedArray = Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | BigInt64Array | BigUint64Array | Float32Array | Float64Array;
+declare type TypedArray = Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | BigInt64Array | BigUint64Array | Float32Array | Float64Array;
 /**
  * Describes an array slice.
  * `[]` - all data
@@ -28,8 +28,8 @@ type TypedArray = Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint
  * `[i0, i1]` - select all data in the range `i0` to `i1`
  * `[i0, i1, s]` - select every `s` values in the range `i0` to `i1`
  **/
-type Slice = [] | [number] | [number, number] | [number, number, number];
-export type GuessableDataTypes = TypedArray | number | number[] | string | string[];
+declare type Slice = [] | [number] | [number, number] | [number, number, number];
+export declare type GuessableDataTypes = TypedArray | number | number[] | string | string[];
 declare enum OBJECT_TYPE {
     DATASET = "Dataset",
     GROUP = "Group",
