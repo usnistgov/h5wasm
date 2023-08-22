@@ -795,7 +795,7 @@ export class File extends Group {
   }
 }
 
-const calculateHyperslab = (shape: number[],ranges: Slice[]) => {
+const calculateHyperslabParams = (shape: number[],ranges: Slice[]) => {
   const strides = shape.map((s, i) => BigInt(ranges?.[i]?.[2] ?? 1));
   const count = shape.map((s, i) => {
     const N = BigInt((Math.min(s, ranges?.[i]?.[1] ?? s) - Math.max(0, ranges?.[i]?.[0] ?? 0)));
@@ -856,7 +856,7 @@ export class Dataset extends HasAttrs {
     const metadata = this.metadata;
     // if auto_refresh is on, getting the metadata has triggered a refresh of the dataset_id;
     const { shape } = metadata;
-    const {strides, count, offset} = calculateHyperslab(shape, ranges);
+    const {strides, count, offset} = calculateHyperslabParams(shape, ranges);
     const total_size = count.reduce((previous, current) => current * previous, 1n);
     const nbytes = metadata.size * Number(total_size);
     const data_ptr = Module._malloc(nbytes);
@@ -882,7 +882,7 @@ export class Dataset extends HasAttrs {
     }
     const { shape } = metadata;
     // if auto_refresh is on, getting the metadata has triggered a refresh of the dataset_id;
-    const {strides, count, offset} = calculateHyperslab(shape, ranges);
+    const {strides, count, offset} = calculateHyperslabParams(shape, ranges);
 
     const { data: prepared_data, shape: guessed_shape } = prepare_data(data, metadata, count);
     let data_ptr = Module._malloc((prepared_data as Uint8Array).byteLength);
