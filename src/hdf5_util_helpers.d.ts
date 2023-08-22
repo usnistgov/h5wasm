@@ -82,8 +82,8 @@ export interface H5Module extends EmscriptenModule {
     H5Z_FILTER_MAX: 65535;
     create_group(file_id: bigint, name: string): number;
     create_vlen_str_dataset(file_id: bigint, dset_name: string, prepared_data: any, shape: bigint[], maxshape: (bigint | null)[], chunks: bigint[] | null, type: number, size: number, signed: boolean, vlen: boolean): number;
-    get_dataset_data(file_id: bigint, path: string, count: bigint[] | null, offset: bigint[] | null, rdata_ptr: bigint): number;
-    set_dataset_data(file_id: bigint, path: string, count: bigint[] | null, offset: bigint[] | null, wdata_ptr: bigint): number;
+    get_dataset_data(file_id: bigint, path: string, count: bigint[] | null, offset: bigint[] | null, strides: bigint[] | null, rdata_ptr: bigint): number;
+    set_dataset_data(file_id: bigint, path: string, count: bigint[] | null, offset: bigint[] | null, strides: bigint[] | null, wdata_ptr: bigint): number;
     refresh_dataset(file_id: bigint, path: string): number;
     resize_dataset(file_id: bigint, path: string, new_size: bigint[]): number;
     get_dataset_metadata(file_id: bigint, path: string): Metadata;

@@ -388,6 +388,15 @@ const TypedArray_to_dtype = new Map([
   ['Float64Array', '<d']
 ])
 
+/** 
+ * Describes an array slice.
+ * `[]` - all data 
+ * `[i0]` - select all data starting from the index `i0`
+ * `[i0, i1]` - select all data in the range `i0` to `i1`
+ * `[i0, i1, s]` - select every `s` values in the range `i0` to `i1`
+ **/
+type Slice = [] | [number] | [number,number] | [number, number, number];
+
 export type GuessableDataTypes = TypedArray | number | number[] | string | string[];
 
 function guess_dtype(data: GuessableDataTypes): string {
@@ -831,20 +840,20 @@ export class Dataset extends HasAttrs {
     return this._value_getter(true) as JSONCompatibleOutputData;
   }
   
-  slice(ranges: Array<Array<number>>) {
+  slice(ranges: Array<Slice>) {
     // interpret ranges as [start, stop], with one per dim.
-    let metadata = this.metadata;
+    const metadata = this.metadata;
     // if auto_refresh is on, getting the metadata has triggered a refresh of the dataset_id;
     const { shape } = metadata;
-    let ndims = shape.length;
-    let count = shape.map((s, i) => BigInt(Math.min(s, ranges?.[i]?.[1] ?? s) - Math.max(0, ranges?.[i]?.[0] ?? 0)));
-    let offset = shape.map((s, i) => BigInt(Math.min(s, Math.max(0, ranges?.[i]?.[0] ?? 0))));
-    let total_size = count.reduce((previous, current) => current * previous, 1n);
-    let nbytes = metadata.size * Number(total_size);
-    let data_ptr = Module._malloc(nbytes);
-    var processed;
+    const strides = shape.map((s, i) => BigInt(ranges?.[i]?.[2] ?? 1));
+    const count = shape.map((s, i) => BigInt((Math.min(s, ranges?.[i]?.[1] ?? s) - Math.max(0, ranges?.[i]?.[0] ?? 0)))/strides[i]);
+    const offset = shape.map((s, i) => BigInt(Math.min(s, Math.max(0, ranges?.[i]?.[0] ?? 0))));
+    const total_size = count.reduce((previous, current) => current * previous, 1n);
+    const nbytes = metadata.size * Number(total_size);
+    const data_ptr = Module._malloc(nbytes);
+    let processed;
     try {
-      Module.get_dataset_data(this.file_id, this.path, count, offset, BigInt(data_ptr));
+      Module.get_dataset_data(this.file_id, this.path, count, offset, strides, BigInt(data_ptr));
       let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
       processed = process_data(data, metadata, false);
     } finally {
@@ -864,18 +873,17 @@ export class Dataset extends HasAttrs {
     }
     // if auto_refresh is on, getting the metadata has triggered a refresh of the dataset_id;
     const { shape } = metadata;
-    let ndims = shape.length;
-    let count = shape.map((s, i) => BigInt(Math.min(s, ranges?.[i]?.[1] ?? s) - Math.max(0, ranges?.[i]?.[0] ?? 0)));
-    let offset = shape.map((s, i) => BigInt(Math.min(s, Math.max(0, ranges?.[i]?.[0] ?? 0))));
+    const strides = shape.map((s, i) => BigInt(ranges?.[i]?.[2] ?? 1));
+    const count = shape.map((s, i) => BigInt((Math.min(s, ranges?.[i]?.[1] ?? s) - Math.max(0, ranges?.[i]?.[0] ?? 0)))/strides[i]);
+    const offset = shape.map((s, i) => BigInt(Math.min(s, Math.max(0, ranges?.[i]?.[0] ?? 0))));
     let total_size = count.reduce((previous, current) => current * previous, 1n);
-    let nbytes = metadata.size * Number(total_size);
 
     const { data: prepared_data, shape: guessed_shape } = prepare_data(data, metadata, count);
     let data_ptr = Module._malloc((prepared_data as Uint8Array).byteLength);
     Module.HEAPU8.set(prepared_data as Uint8Array, data_ptr);
 
     try {
-      Module.set_dataset_data(this.file_id, this.path, count, offset, BigInt(data_ptr));
+      Module.set_dataset_data(this.file_id, this.path, count, offset, strides, BigInt(data_ptr));
     }
     finally {
       Module._free(data_ptr);
@@ -906,7 +914,7 @@ export class Dataset extends HasAttrs {
     let data_ptr = Module._malloc(nbytes);
     let processed: OutputData;
     try {
-      Module.get_dataset_data(this.file_id, this.path, null, null, BigInt(data_ptr));
+      Module.get_dataset_data(this.file_id, this.path, null, null, null, BigInt(data_ptr));
       let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
       processed = process_data(data, metadata, json_compatible);
     } finally {

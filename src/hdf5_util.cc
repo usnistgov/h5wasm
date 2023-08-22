@@ -478,7 +478,7 @@ val get_dataset_filters(hid_t loc_id, const std::string& dataset_name_string)
     return filters;
 }
 
-int read_write_dataset_data(hid_t loc_id, const std::string& dataset_name_string, val count_out, val offset_out, uint64_t rwdata_uint64, bool write=false)
+int read_write_dataset_data(hid_t loc_id, const std::string& dataset_name_string, val count_out, val offset_out, val stride_out, uint64_t rwdata_uint64, bool write=false)
 {
     hid_t ds_id;
     hid_t dspace;
@@ -510,8 +510,10 @@ int read_write_dataset_data(hid_t loc_id, const std::string& dataset_name_string
     {
         std::vector<hsize_t> count = vecFromJSArray<hsize_t>(count_out);
         std::vector<hsize_t> offset = vecFromJSArray<hsize_t>(offset_out);
+        std::vector<hsize_t> strides = vecFromJSArray<hsize_t>(stride_out);
+
         memspace = H5Screate_simple(count.size(), &count[0], nullptr);
-        status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, &offset[0], NULL, &count[0], NULL);
+        status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, &offset[0], &strides[0], &count[0], NULL);
         status = H5Sselect_all(memspace);
     }
     else
@@ -535,14 +537,14 @@ int read_write_dataset_data(hid_t loc_id, const std::string& dataset_name_string
     return (int)status;
 }
 
-int get_dataset_data(hid_t loc_id, const std::string& dataset_name_string, val count_out, val offset_out, uint64_t rdata_uint64)
+int get_dataset_data(hid_t loc_id, const std::string& dataset_name_string, val count_out, val offset_out, val stride_out, uint64_t rdata_uint64)
 {
-    return read_write_dataset_data(loc_id, dataset_name_string, count_out, offset_out, rdata_uint64, false);
+    return read_write_dataset_data(loc_id, dataset_name_string, count_out, offset_out, stride_out, rdata_uint64, false);
 }
 
-int set_dataset_data(hid_t loc_id, const std::string& dataset_name_string, val count_out, val offset_out, uint64_t wdata_uint64)
+int set_dataset_data(hid_t loc_id, const std::string& dataset_name_string, val count_out, val offset_out, val stride_out, uint64_t wdata_uint64)
 {
-    return read_write_dataset_data(loc_id, dataset_name_string, count_out, offset_out, wdata_uint64, true);
+    return read_write_dataset_data(loc_id, dataset_name_string, count_out, offset_out, stride_out, wdata_uint64, true);
 }
 
 int reclaim_vlen_memory(hid_t loc_id, const std::string& object_name_string, const std::string& attribute_name_string, uint64_t rdata_uint64)
