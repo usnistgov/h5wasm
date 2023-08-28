@@ -1,4 +1,24 @@
 # Changelog
+## v0.6.2 2023-08-28
+### Added
+ - From PR #59 (thanks to @TheLartians !): allows slicing datasets with a specified step size. This is extremely useful if we want to query a high resolution dataset using a lower sample rate than originally recorded, e.g. for performance / bandwidth reasons.  Also can be used with `Dataset.write_slice`
+
+Example:
+
+```ts
+  const dset = write_file.create_dataset({
+    name: "data",
+    data: [0,1,2,3,4,5,6,7,8,9],
+    shape: [10],
+    dtype: "<f4"
+  });
+
+  const slice = dset.slice([[null, null, 2]]); // -> [0,2,4,6,8]
+
+  dset.write_slice([[null, 7, 2]], [-2,-3,-4,-5]);
+  dset.value; // -> Float32Array(10) [-2,  1, -3, 3, -4, 5, -5,  7, 8,  9];
+```
+
 ## v0.6.1 2023-07-13
 ### Fixed
  - memory error from double-free when creating vlen str datasets (no need to call H5Treclaim when memory for vector will be automatically garbage-collected)
