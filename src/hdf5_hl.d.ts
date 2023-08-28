@@ -21,6 +21,14 @@ export declare type Dtype = string | {
 };
 export type { Metadata, Filter, CompoundMember, CompoundTypeMetadata, EnumTypeMetadata };
 declare type TypedArray = Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | BigInt64Array | BigUint64Array | Float32Array | Float64Array;
+/**
+ * Describes an array slice.
+ * `[]` - all data
+ * `[i0]` - select all data starting from the index `i0`
+ * `[i0, i1]` - select all data in the range `i0` to `i1`
+ * `[i0, i1, s]` - select every `s` values in the range `i0` to `i1`
+ **/
+declare type Slice = [] | [number | null] | [number | null, number | null] | [number | null, number | null, number | null];
 export declare type GuessableDataTypes = TypedArray | number | number[] | string | string[];
 declare enum OBJECT_TYPE {
     DATASET = "Dataset",
@@ -116,8 +124,8 @@ export declare class Dataset extends HasAttrs {
     get filters(): Filter[];
     get value(): OutputData;
     get json_value(): JSONCompatibleOutputData;
-    slice(ranges: Array<Array<number>>): OutputData;
-    write_slice(ranges: Array<Array<number>>, data: any): void;
+    slice(ranges: Slice[]): OutputData;
+    write_slice(ranges: Slice[], data: any): void;
     to_array(): string | number | boolean | JSONCompatibleOutputData[];
     resize(new_shape: number[]): number;
     _value_getter(json_compatible?: boolean): OutputData;
