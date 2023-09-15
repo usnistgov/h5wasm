@@ -1,4 +1,10 @@
 # Changelog
+## v0.6.3 2023-09-15
+### Added
+ - extra symbols used by the LZ4 plugin added to EXPORTED_FUNCTIONS:
+   - from <arpa/inet.h>: `htonl`, `htons`, `ntohl`, `ntohs`
+   - from HDF5: `H5allocate_memory`, `H5free_memory`
+ - node.js library compiled as MAIN_MODULE, allowing plugin use (if they are installed in `/usr/local/hdf5/lib/plugin`)
 ## v0.6.2 2023-08-28
 ### Added
  - From PR #59 (thanks to @TheLartians !): allows slicing datasets with a specified step size. This is extremely useful if we want to query a high resolution dataset using a lower sample rate than originally recorded, e.g. for performance / bandwidth reasons.  Also can be used with `Dataset.write_slice`
