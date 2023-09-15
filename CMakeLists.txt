@@ -32,7 +32,7 @@ set_target_properties(hdf5_util PROPERTIES
     -s FORCE_FILESYSTEM=1 \
     -s USE_ZLIB=1 \
     -s EXPORTED_RUNTIME_METHODS=\"['ccall', 'cwrap', 'FS', 'AsciiToString', 'UTF8ToString']\" \
-    -s EXPORTED_FUNCTIONS=\"['_H5Fopen', '_H5Fclose', '_H5Fcreate', '_malloc', '_free', '_stderr', '_memset', '_memcpy']\""
+    -s EXPORTED_FUNCTIONS=\"['_H5Fopen', '_H5Fclose', '_H5Fcreate', '_malloc', '_free', '_stderr', '_memset', '_memcpy', '_htonl', '_htons', '_ntohl', '_ntohs', '_H5allocate_memory', '_H5free_memory']\""
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/esm
     RUNTIME_OUTPUT_NAME hdf5_util
     POSITION_INDEPENDENT_CODE ON
@@ -42,6 +42,7 @@ add_executable(hdf5_util_node src/hdf5_util.cc)
 target_link_libraries(hdf5_util_node hdf5-wasm)
 set_target_properties(hdf5_util_node PROPERTIES
     LINK_FLAGS "-O3 --bind  \
+    -s MAIN_MODULE=2 \
     -s NODEJS_CATCH_EXIT=0 \
     -s NODEJS_CATCH_REJECTION=0 \
     -s ALLOW_TABLE_GROWTH=1 \
@@ -55,7 +56,7 @@ set_target_properties(hdf5_util_node PROPERTIES
     -s USE_ZLIB=1 \
     -s ASSERTIONS=1 \
     -s EXPORTED_RUNTIME_METHODS=\"['ccall', 'cwrap', 'FS', 'AsciiToString', 'UTF8ToString']\" \
-    -s EXPORTED_FUNCTIONS=\"['_H5Fopen', '_H5Fclose', '_H5Fcreate', '_malloc', '_free', '_stderr', '_memset', '_memcpy']\""
+    -s EXPORTED_FUNCTIONS=\"['_H5Fopen', '_H5Fclose', '_H5Fcreate', '_malloc', '_free', '_stderr', '_memset', '_memcpy', '_htonl', '_htons', '_ntohl', '_ntohs', '_H5allocate_memory', '_H5free_memory']\""
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/node
     RUNTIME_OUTPUT_NAME hdf5_util
     POSITION_INDEPENDENT_CODE ON
