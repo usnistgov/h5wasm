@@ -3,6 +3,7 @@
 
 #include "hdf5.h"
 #include "hdf5_hl.h"
+#include "H5PLextern.h"
 #include <emscripten/bind.h>
 #include <emscripten.h>
 
