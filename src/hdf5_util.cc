@@ -883,6 +883,33 @@ int flush(hid_t file_id) {
     return (int)status;
 }
 
+val get_plugin_search_paths()
+{
+    herr_t status;
+    unsigned int num_paths;
+    ssize_t path_length;
+    char *initial_path_buf = {};
+    status = H5PLsize(&num_paths);
+
+    val paths = val::array();
+    for (unsigned int i = 0; i < num_paths; i++)
+    {
+        path_length = H5PLget(i, initial_path_buf, 0);
+        char * path_buf = (char *)malloc(path_length + 1);
+        H5PLget(i, path_buf, path_length + 1);
+        paths.set(i, std::string(path_buf));
+        free(path_buf);
+    }
+    return paths;
+}
+
+int insert_plugin_search_path(const std::string search_path_string, unsigned int index)
+{
+    const char *search_path = search_path_string.c_str();
+    herr_t status = H5PLinsert(search_path, index);
+    return (int)status;
+}
+
 EMSCRIPTEN_BINDINGS(hdf5)
 {
     function("get_keys", &get_keys_vector);
@@ -911,6 +938,9 @@ EMSCRIPTEN_BINDINGS(hdf5)
     function("create_hard_link", &create_hard_link);
     function("create_external_link", &create_external_link);
     function("flush", &flush);
+    function("get_plugin_search_paths", &get_plugin_search_paths);
+    function("insert_plugin_search_path", &insert_plugin_search_path);
+    function("remove_plugin_search_path", &H5PLremove);
 
     class_<H5L_info2_t>("H5L_info2_t")
         .constructor<>()

@@ -103,7 +103,10 @@ export interface H5Module extends EmscriptenModule {
     get_attribute_data(file_id: BigInt, obj_name: string, attr_name: string, arg3: bigint): Status;
     FS: FS.FileSystemType,
     get_keys_vector(group_id: bigint, H5_index_t: number): Array<string>,
-    get_attribute_metadata(loc_id: bigint, group_name_string: string, attribute_name_string: string): Metadata
+    get_attribute_metadata(loc_id: bigint, group_name_string: string, attribute_name_string: string): Metadata,
+    get_plugin_search_paths(): string[],
+    insert_plugin_search_path(search_path: string, index: number): number,
+    remove_plugin_search_path(index: number): number,
 }
 
 export declare type Filter = {
