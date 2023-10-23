@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.24)
 include(FetchContent)
 
 project(H5WASM
@@ -6,16 +6,42 @@ project(H5WASM
     LANGUAGES CXX C
 )
 
+set (BASE_URL "https://github.com/usnistgov/libhdf5-wasm/releases/download/v0.4.2_3.1.43" CACHE STRING "")
+# set (BASE_URL "$ENV{HOME}/dev/libhdf5-wasm" CACHE STRING "")
+
 FetchContent_Declare(
   libhdf5-wasm
-#  URL file:///home/brian/dev/libhdf5-wasm/libhdf5-wasm.tar.gz
-   URL https://github.com/usnistgov/libhdf5-wasm/releases/download/v0.3.0_3.1.28/libhdf5-1_12_2-wasm.tar.gz
-   URL_HASH SHA256=7089f9bf29dc3759d7aa77848cfa12d546eabd152d40dd00a90aace99c056600
+  URL ${BASE_URL}/HDF5-1.14.2-Emscripten.tar.gz
+  URL_HASH SHA256=af86c8fc16d07b37a3c7f17bd16895379f63f779796fb3db46758d67d5f8384e
 )
-FetchContent_MakeAvailable(libhdf5-wasm)
+if (NOT libhdf5-wasm_POPULATED)
+  FetchContent_MakeAvailable(libhdf5-wasm)
+endif()
+
+set(HDF5_DIR ${libhdf5-wasm_SOURCE_DIR}/cmake)
+find_package(HDF5 REQUIRED CONFIG)
 
 add_executable(hdf5_util src/hdf5_util.cc)
-target_link_libraries(hdf5_util hdf5-wasm)
+target_link_libraries(hdf5_util hdf5_hl-static)
+
+set (EXPORTED_FUNCTIONS)
+list (APPEND EXPORTED_FUNCTIONS
+    H5Fopen H5Fclose H5Fcreate H5open 
+    malloc calloc free memset memcpy memmove
+    htonl htons ntohl ntohs 
+    H5allocate_memory H5free_memory 
+    stdin stdout stderr
+    H5E_ERR_CLS_g H5E_PLINE_g H5E_CANTINIT_g H5E_CANTGET_g H5E_CANTFILTER_g 
+    H5E_BADTYPE_g H5E_BADVALUE_g H5E_ARGS_g H5E_CALLBACK_g 
+    H5E_RESOURCE_g H5E_NOSPACE_g H5E_OVERFLOW_g H5E_READERROR_g 
+    H5T_NATIVE_UINT_g H5T_STD_U32BE_g H5T_STD_U32LE_g H5T_NATIVE_UINT32_g 
+    H5T_STD_U64BE_g H5T_NATIVE_UINT64_g H5T_STD_U64LE_g H5P_CLS_DATASET_CREATE_ID_g 
+    ldexpf __THREW__ __threwValue
+)
+list (TRANSFORM EXPORTED_FUNCTIONS PREPEND "'_")
+list (TRANSFORM EXPORTED_FUNCTIONS APPEND "'")
+list(JOIN EXPORTED_FUNCTIONS ", " EXPORTED_FUNCTIONS_STRING)
+
 
 # Optional flags to set when building your project
 set_target_properties(hdf5_util PROPERTIES
@@ -30,16 +56,15 @@ set_target_properties(hdf5_util PROPERTIES
     -s SINGLE_FILE \
     -s EXPORT_ES6=1 \
     -s FORCE_FILESYSTEM=1 \
-    -s USE_ZLIB=1 \
     -s EXPORTED_RUNTIME_METHODS=\"['ccall', 'cwrap', 'FS', 'AsciiToString', 'UTF8ToString']\" \
-    -s EXPORTED_FUNCTIONS=\"['_H5Fopen', '_H5Fclose', '_H5Fcreate', '_malloc', '_free', '_stderr', '_memset', '_memcpy', '_htonl', '_htons', '_ntohl', '_ntohs', '_H5allocate_memory', '_H5free_memory']\""
+    -s EXPORTED_FUNCTIONS=\"${EXPORTED_FUNCTIONS_STRING}\""
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/esm
     RUNTIME_OUTPUT_NAME hdf5_util
     POSITION_INDEPENDENT_CODE ON
 )
 
 add_executable(hdf5_util_node src/hdf5_util.cc)
-target_link_libraries(hdf5_util_node hdf5-wasm)
+target_link_libraries(hdf5_util_node hdf5_hl-static)
 set_target_properties(hdf5_util_node PROPERTIES
     LINK_FLAGS "-O3 --bind  \
     -s MAIN_MODULE=2 \
@@ -53,10 +78,9 @@ set_target_properties(hdf5_util_node PROPERTIES
     -s ENVIRONMENT=node \
     -s SINGLE_FILE \
     -s EXPORT_ES6=1 \
-    -s USE_ZLIB=1 \
     -s ASSERTIONS=1 \
     -s EXPORTED_RUNTIME_METHODS=\"['ccall', 'cwrap', 'FS', 'AsciiToString', 'UTF8ToString']\" \
-    -s EXPORTED_FUNCTIONS=\"['_H5Fopen', '_H5Fclose', '_H5Fcreate', '_malloc', '_free', '_stderr', '_memset', '_memcpy', '_htonl', '_htons', '_ntohl', '_ntohs', '_H5allocate_memory', '_H5free_memory']\""
+    -s EXPORTED_FUNCTIONS=\"${EXPORTED_FUNCTIONS_STRING}\""
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/node
     RUNTIME_OUTPUT_NAME hdf5_util
     POSITION_INDEPENDENT_CODE ON
