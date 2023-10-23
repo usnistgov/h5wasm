@@ -467,10 +467,24 @@ val get_dataset_filters(hid_t loc_id, const std::string& dataset_name_string)
         size_t nelements = 16;
         unsigned int cd_values[16];
         H5Z_filter_t filter_id = H5Pget_filter2(plist_id, i, &flags, &nelements, cd_values, 256, name, NULL);
-        
+        val cd_values_out = val::array();
+        if (nelements > 16) {
+            unsigned int * full_cd_values = (unsigned int *)malloc(nelements);
+            H5Pget_filter2(plist_id, i, &flags, &nelements, full_cd_values, 256, name, NULL);
+            for (size_t i = 0; i < nelements; i++) {
+                cd_values_out.set(i, full_cd_values[i]);
+            }
+            free(full_cd_values);
+        }
+        else {
+            for (size_t i = 0; i < nelements; i++) {
+                cd_values_out.set(i, cd_values[i]);
+            }
+        }
         val filter = val::object();
         filter.set("id", filter_id);
         filter.set("name", name);
+        filter.set("cd_values", cd_values_out);
         filters.set(i, filter);
     }
 
