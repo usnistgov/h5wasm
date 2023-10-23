@@ -1,4 +1,8 @@
 # Changelog
+## v0.6.4
+### Added
+ - builtin support for `SZIP` compression (in addition to previously-included `GZIP`)
+ - a lot of extra symbols to support plugins `zstd`, `zfp`, `bzip2`, `SZ3`, etc.
 ## v0.6.3 2023-09-15
 ### Added
  - extra symbols used by the LZ4 plugin added to EXPORTED_FUNCTIONS:
