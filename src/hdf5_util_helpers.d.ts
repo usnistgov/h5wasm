@@ -109,4 +109,5 @@ export interface H5Module extends EmscriptenModule {
 export declare type Filter = {
     id: number; 
     name: string;
+    cd_values: number[];
 }
