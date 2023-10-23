@@ -1,5 +1,5 @@
 # Changelog
-## v0.6.5 2023-10-23
+## v0.6.6 2023-10-23
 ### Added
  - outputs filter settings when querying `Dataset.filters`
    - e.g. for default gzip compression from h5py, returns `{id: 1, name: 'deflate', cd_values: [4]}`
