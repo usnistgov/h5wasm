@@ -1,5 +1,9 @@
 # Changelog
-## v0.6.4
+## v0.6.5 2023-10-23
+### Added
+ - outputs filter settings when querying `Dataset.filters`
+   - e.g. for default gzip compression from h5py, returns `{id: 1, name: 'deflate', cd_values: [4]}`
+## v0.6.4 2023-10-23
 ### Added
  - builtin support for `SZIP` compression (in addition to previously-included `GZIP`)
  - a lot of extra symbols to support plugins `zstd`, `zfp`, `bzip2`, `SZ3`, etc.
