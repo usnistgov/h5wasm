@@ -7,15 +7,19 @@ async function filters_test() {
   await h5wasm.ready;
   const f = new h5wasm.File("./test/compressed.h5", "r");
 
-  assert.deepEqual(f.get("gzip").filters, [{ id: 1, name: "deflate" }]);
+  assert.deepEqual(f.get("gzip").filters, [{ id: 1, name: "deflate", cd_values: [4] }]);
 
   assert.deepEqual(f.get("gzip_shuffle").filters, [
-    { id: 2, name: "shuffle" },
-    { id: 1, name: "deflate" },
+    { id: 2, name: "shuffle", cd_values: [8] },
+    { id: 1, name: "deflate", cd_values: [4] },
   ]);
 
   assert.deepEqual(f.get("scaleoffset").filters, [
-    { id: 6, name: "scaleoffset" },
+    {
+      id: 6,
+      name: "scaleoffset",
+      cd_values: [0, 4, 3969, 1, 8, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    },
   ]);
 }
 

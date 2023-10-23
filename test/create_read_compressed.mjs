@@ -35,7 +35,7 @@ async function readwrite_compressed() {
   const read_dset = read_file.get(DSET_NAME);
   assert.deepEqual(read_dset.metadata.chunks, CHUNKS);
   assert.deepEqual([...read_dset.value], VALUES);
-  assert.deepEqual(read_dset.filters, [{id: 1, name: 'deflate'}]);
+  assert.deepEqual(read_dset.filters, [{id: 1, name: 'deflate', cd_values: COMPRESSION_OPTS}]);
 
   read_file.close()
 
@@ -71,7 +71,7 @@ async function readwrite_compressed_string() {
   const read_dset = read_file.get(DSET_NAME);
   assert.deepEqual(read_dset.metadata.chunks, CHUNKS);
   assert.deepEqual([...read_dset.value], VALUES);
-  assert.deepEqual(read_dset.filters, [{id: 1, name: 'deflate'}]);
+  assert.deepEqual(read_dset.filters, [{id: 1, name: 'deflate', cd_values: [COMPRESSION]}]);
 
   read_file.close()
 
