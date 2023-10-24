@@ -1,4 +1,27 @@
 # Changelog
+## v0.6.7 2023-10-24
+### Added
+ - Utility functions on the Module for manipulating/reading the plugin search path
+```ts
+get_plugin_search_paths(): string[],
+insert_plugin_search_path(search_path: string, index: number): number,
+remove_plugin_search_path(index: number): number,
+```
+e.g.
+```js
+import h5wasm from "h5wasm";
+await h5wasm.ready;
+
+h5wasm.Module.get_plugin_search_paths();
+// [ '/usr/local/hdf5/lib/plugin' ]
+h5wasm.Module.insert_plugin_search_path('/tmp/h5wasm-plugins', 0);
+h5wasm.Module.get_plugin_search_paths();
+// [ '/tmp/h5wasm-plugins', '/usr/local/hdf5/lib/plugin' ]
+h5wasm.Module.remove_plugin_search_path(1);
+// 0, success
+> h5wasm.Module.get_plugin_search_paths()
+// [ '/tmp/h5wasm-plugins' ]
+```
 ## v0.6.6 2023-10-23
 ### Added
  - outputs filter settings when querying `Dataset.filters`
@@ -7,6 +30,8 @@
 ### Added
  - builtin support for `SZIP` compression (in addition to previously-included `GZIP`)
  - a lot of extra symbols to support plugins `zstd`, `zfp`, `bzip2`, `SZ3`, etc.
+### Changed
+ - uses HDF5 version 1.14.2 (instead of 1.12.2)
 ## v0.6.3 2023-09-15
 ### Added
  - extra symbols used by the LZ4 plugin added to EXPORTED_FUNCTIONS:
