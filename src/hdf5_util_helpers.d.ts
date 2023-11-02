@@ -107,6 +107,9 @@ export interface H5Module extends EmscriptenModule {
     get_plugin_search_paths(): string[],
     insert_plugin_search_path(search_path: string, index: number): number,
     remove_plugin_search_path(index: number): number,
+    set_scale(loc_id: bigint, dset_name: string, dim_name: string): number,
+    attach_scale(loc_id: bigint, target_dset_name: string, dimscale_dset_name: string, index: number): number,
+    detach_scale(loc_id: bigint, target_dset_name: string, dimscale_dset_name: string, index: number): number,
 }
 
 export declare type Filter = {
