@@ -910,6 +910,41 @@ int insert_plugin_search_path(const std::string search_path_string, unsigned int
     return (int)status;
 }
 
+// Dimension scales
+int set_scale(hid_t loc_id, const std::string& dset_name_string, const std::string& dim_name_string)
+{
+    const char *dset_name = dset_name_string.c_str();
+    const char *dim_name = dim_name_string.c_str();
+    hid_t dset_id = H5Dopen2(loc_id, dset_name, H5P_DEFAULT);
+    herr_t status = H5DSset_scale(dset_id, dim_name);
+    status = H5Dclose(dset_id);
+    return (int)status;
+}
+
+int attach_scale(hid_t loc_id, const std::string& target_dset_name_string, const std::string& dimscale_dset_name_string, const unsigned int index)
+{
+    const char *target_dset_name = target_dset_name_string.c_str();
+    const char *dimscale_dset_name = dimscale_dset_name_string.c_str();
+    hid_t target_dset_id = H5Dopen2(loc_id, target_dset_name, H5P_DEFAULT);
+    hid_t dimscale_dset_id = H5Dopen2(loc_id, dimscale_dset_name, H5P_DEFAULT);
+    herr_t status = H5DSattach_scale(target_dset_id, dimscale_dset_id, index);
+    status = H5Dclose(target_dset_id);
+    status = H5Dclose(dimscale_dset_id);
+    return (int)status;
+}
+
+int detach_scale(hid_t loc_id, const std::string& target_dset_name_string, const std::string& dimscale_dset_name_string, const unsigned int index)
+{
+    const char *target_dset_name = target_dset_name_string.c_str();
+    const char *dimscale_dset_name = dimscale_dset_name_string.c_str();
+    hid_t target_dset_id = H5Dopen2(loc_id, target_dset_name, H5P_DEFAULT);
+    hid_t dimscale_dset_id = H5Dopen2(loc_id, dimscale_dset_name, H5P_DEFAULT);
+    herr_t status = H5DSdetach_scale(target_dset_id, dimscale_dset_id, index);
+    status = H5Dclose(target_dset_id);
+    status = H5Dclose(dimscale_dset_id);
+    return (int)status;
+}
+
 EMSCRIPTEN_BINDINGS(hdf5)
 {
     function("get_keys", &get_keys_vector);
@@ -941,6 +976,9 @@ EMSCRIPTEN_BINDINGS(hdf5)
     function("get_plugin_search_paths", &get_plugin_search_paths);
     function("insert_plugin_search_path", &insert_plugin_search_path);
     function("remove_plugin_search_path", &H5PLremove);
+    function("set_scale", &set_scale);
+    function("attach_scale", &attach_scale);
+    function("detach_scale", &detach_scale);
 
     class_<H5L_info2_t>("H5L_info2_t")
         .constructor<>()
