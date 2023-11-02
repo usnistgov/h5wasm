@@ -1,4 +1,22 @@
 # Changelog
+## v0.6.8 2023-11-02
+### Added
+ - Functions for creating, attaching and detaching dimension scales (no support for reading yet)
+   - h5wasm.Module.set_scale(file_id: bigint, dataset_name: string, dim_name: string) -> number // error code, zero on success
+   - h5wasm.Module.attach_scale(file_id: bigint, target_dataset_name: string, dimscale_dataset_name: string, index: number) -> number
+   - h5wasm.Module.detach_scale(file_id: bigint, target_dataset_name: string, dimscale_dataset_name: string, index: number) -> number
+Usage:
+```js
+import h5wasm from "h5wasm";
+await h5wasm.ready;
+
+f = new h5wasm.File('dimscales.h5', 'w');
+f.create_dataset({name: "data", data: [0,1,2,3,4,5], shape: [2,3], dtype: '<f4'});
+f.create_dataset({name: "dimscale", data: [2,4,6], dtype: '<f4'});
+h5wasm.Module.set_scale(f.file_id, 'dimscale', 'y1'); // -> 0 on success
+h5wasm.Module.attach_scale(f.file_id, 'data', 'dimscale', 1); // -> 0 on success
+f.close();
+```
 ## v0.6.7 2023-10-24
 ### Added
  - Utility functions on the Module for manipulating/reading the plugin search path
