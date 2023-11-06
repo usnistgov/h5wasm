@@ -128,6 +128,13 @@ export declare class Dataset extends HasAttrs {
     write_slice(ranges: Slice[], data: any): void;
     to_array(): string | number | boolean | JSONCompatibleOutputData[];
     resize(new_shape: number[]): number;
+    make_scale(scale_name?: string): void;
+    attach_scale(index: number, scale_dset_path: string): void;
+    detach_scale(index: number, scale_dset_path: string): void;
+    get_attached_scales(index: number): string[];
+    get_scale_name(): string | null;
+    set_dimension_label(index: number, label: string): void;
+    get_dimension_labels(): (string | null)[];
     _value_getter(json_compatible?: boolean): OutputData;
 }
 export declare const h5wasm: {

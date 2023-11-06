@@ -945,6 +945,97 @@ int detach_scale(hid_t loc_id, const std::string& target_dset_name_string, const
     return (int)status;
 }
 
+val get_scale_name(hid_t loc_id, const std::string& dimscale_dset_name_string)
+{
+    const char *dimscale_dset_name = dimscale_dset_name_string.c_str();
+    hid_t dimscale_dset_id = H5Dopen2(loc_id, dimscale_dset_name, H5P_DEFAULT);
+    htri_t is_scale = H5DSis_scale(dimscale_dset_id);
+    val output = val::null();
+    if (is_scale)
+    {
+        ssize_t namesize = H5DSget_scale_name(dimscale_dset_id, nullptr, 0);
+        if (namesize > 0)
+        {
+            char *name = new char[namesize + 1];
+            H5DSget_scale_name(dimscale_dset_id, name, namesize + 1);
+            output = val(std::string(name));
+            delete[] name;
+        }
+        else
+        {
+            output = val("");
+        }
+    }
+    herr_t status = H5Dclose(dimscale_dset_id);
+    return output;
+}
+
+herr_t scale_path_callback(hid_t dset_id, unsigned dim, hid_t dimscale_dset_id, void* opdata)
+{
+    ssize_t pathsize = H5Iget_name(dimscale_dset_id, nullptr, 0);
+    char *path = new char[pathsize + 1];
+    H5Iget_name(dimscale_dset_id, path, pathsize + 1);
+    std::vector<std::string> *pathlist = reinterpret_cast<std::vector<std::string> *>(opdata);
+    (*pathlist).push_back(path);
+    delete[] path;
+    return 0;
+}
+
+val get_attached_scales(hid_t loc_id, const std::string& target_dset_name_string, const unsigned int index)
+{
+    // returns paths to all attached scales
+    const char *target_dset_name = target_dset_name_string.c_str();
+    hid_t target_dset_id = H5Dopen2(loc_id, target_dset_name, H5P_DEFAULT);
+    std::vector<std::string> paths_vector;
+    herr_t status = H5DSiterate_scales(target_dset_id, index, nullptr, &scale_path_callback, &paths_vector);
+    status = H5Dclose(target_dset_id);
+
+    val pathlist = val::array();
+    size_t numObjs = paths_vector.size();
+    for (size_t i = 0; i < numObjs; i++)
+    {
+        pathlist.set(i, paths_vector.at(i));
+    }
+    return pathlist;
+}
+
+int set_dimension_label(hid_t loc_id, const std::string& target_dset_name_string, const unsigned int index, const std::string& label_string)
+{
+    const char *target_dset_name = target_dset_name_string.c_str();
+    const char *label = label_string.c_str();
+    hid_t target_dset_id = H5Dopen2(loc_id, target_dset_name, H5P_DEFAULT);
+    herr_t status = H5DSset_label(target_dset_id, index, label);
+    H5Dclose(target_dset_id);
+    return (int)status;
+}
+
+val get_dimension_labels(hid_t loc_id, const std::string& target_dset_name_string)
+{
+    const char *target_dset_name = target_dset_name_string.c_str();
+    hid_t target_dset_id = H5Dopen2(loc_id, target_dset_name, H5P_DEFAULT);
+    hid_t dspace = H5Dget_space(target_dset_id);
+    int ndims = H5Sget_simple_extent_dims(dspace, nullptr, nullptr);
+    val dim_labels = val::array();
+    for (int d = 0; d < ndims; d++)
+    {
+        ssize_t labelsize = H5DSget_label(target_dset_id, d, nullptr, 0);
+        if (labelsize > 0)
+        {
+            char *label = new char[labelsize + 1];
+            H5DSget_label(target_dset_id, d, label, labelsize + 1);
+            dim_labels.set(d, val(std::string(label)));
+            delete[] label;
+        }
+        else
+        {
+            dim_labels.set(d, val::null());
+        }
+    }
+    herr_t status = H5Dclose(target_dset_id);
+    status = H5Sclose(dspace);
+    return dim_labels;
+}
+
 EMSCRIPTEN_BINDINGS(hdf5)
 {
     function("get_keys", &get_keys_vector);
@@ -979,6 +1070,10 @@ EMSCRIPTEN_BINDINGS(hdf5)
     function("set_scale", &set_scale);
     function("attach_scale", &attach_scale);
     function("detach_scale", &detach_scale);
+    function("get_scale_name", &get_scale_name);
+    function("get_attached_scales", &get_attached_scales);
+    function("get_dimension_labels", &get_dimension_labels);
+    function("set_dimension_label", &set_dimension_label);
 
     class_<H5L_info2_t>("H5L_info2_t")
         .constructor<>()

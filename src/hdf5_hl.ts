@@ -913,6 +913,44 @@ export class Dataset extends HasAttrs {
     return result;
   }
 
+  make_scale(scale_name: string = "") {
+    // convert dataset to dimension scale
+    Module.set_scale(this.file_id, this.path, scale_name);
+  }
+
+  attach_scale(index: number, scale_dset_path: string) {
+    // attach a dimension scale to the "index" dimension of this dataset
+    Module.attach_scale(this.file_id, this.path, scale_dset_path, index);
+  }
+
+  detach_scale(index: number, scale_dset_path: string) {
+    // detach a dimension scale from the "index" dimension of this dataset
+    Module.detach_scale(this.file_id, this.path, scale_dset_path, index);
+  }
+
+  get_attached_scales(index: number) {
+    // get full paths to all datasets that are attached as dimension scales
+    // to the specified dimension (at "index") of this dataset.
+    return Module.get_attached_scales(this.file_id, this.path, index);
+  }
+
+  get_scale_name() {
+    // if this dataset is a dimension scale, returns name as string
+    // (returns empty string if no name defined, but it is a dimension scale)
+    // else returns null if it is not set as a dimension scale
+    return Module.get_scale_name(this.file_id, this.path);
+  }
+
+  set_dimension_label(index: number, label: string) {
+    // label dimension at "index" of this dataset with string "label"
+    Module.set_dimension_label(this.file_id, this.path, index, label)
+  }
+
+  get_dimension_labels() {
+    // fetch labels for all dimensions of this dataset (null if label not defined)
+    return Module.get_dimension_labels(this.file_id, this.path);
+  }
+
   _value_getter(json_compatible=false) {
     let metadata = this.metadata;
     // if auto_refresh is on, getting the metadata has triggered a refresh of the dataset_id;

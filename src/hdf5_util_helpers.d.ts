@@ -110,6 +110,10 @@ export interface H5Module extends EmscriptenModule {
     set_scale(loc_id: bigint, dset_name: string, dim_name: string): number,
     attach_scale(loc_id: bigint, target_dset_name: string, dimscale_dset_name: string, index: number): number,
     detach_scale(loc_id: bigint, target_dset_name: string, dimscale_dset_name: string, index: number): number,
+    get_scale_name(loc_id: bigint, dimscale_dset_name: string): string | null,
+    get_attached_scales(loc_id: bigint, target_dset_name: string, index: number): string[],
+    set_dimension_label(loc_id: bigint, target_dset_name: string, index: number, label: string): number,
+    get_dimension_labels(loc_id: bigint, target_dset_name: string): Array<string | null>,
 }
 
 export declare type Filter = {
