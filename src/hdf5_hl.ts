@@ -751,8 +751,8 @@ export class Group extends HasAttrs {
     return null
   }
 
-  create_group(name: string): Group {
-    Module.create_group(this.file_id, this.path + "/" + name);
+  create_group(name: string, track_order: boolean = false): Group {
+    Module.create_group(this.file_id, this.path + "/" + name, track_order);
     return this.get(name) as Group;
   }
 
@@ -764,9 +764,10 @@ export class Group extends HasAttrs {
       maxshape?: (number | null)[] | null,
       chunks?: number[] | null,
       compression?: (number | 'gzip'),
-      compression_opts?: number | number[]
+      compression_opts?: number | number[],
+      track_order?: boolean,
   }): Dataset {
-    const { name, data, shape, dtype, maxshape, chunks, compression, compression_opts } = args;
+    const { name, data, shape, dtype, maxshape, chunks, compression, compression_opts, track_order } = args;
     const final_dtype = dtype ?? guess_dtype(data);
     let metadata = dtype_to_metadata(final_dtype);
     if (compression && !chunks) {
@@ -821,7 +822,8 @@ export class Group extends HasAttrs {
         metadata.type,
         metadata.size,
         metadata.signed,
-        metadata.vlen
+        metadata.vlen,
+        track_order ?? false,
       );
     }
     else {
@@ -840,7 +842,8 @@ export class Group extends HasAttrs {
           metadata.signed,
           metadata.vlen,
           compression_id,
-          compression_opts_out
+          compression_opts_out,
+          track_order ?? false
         );
       } finally {
         Module._free(data_ptr);
@@ -880,20 +883,12 @@ export class Group extends HasAttrs {
 export class File extends Group {
   filename: string;
   mode: ACCESS_MODESTRING;
-  constructor(filename: string, mode: ACCESS_MODESTRING = "r") {
-    let file_id: bigint;
-    let access_mode = ACCESS_MODES[mode];
-    let h5_mode = Module[access_mode];
-    if (['H5F_ACC_TRUNC', 'H5F_ACC_EXCL'].includes(access_mode)) {
-      file_id = Module.ccall("H5Fcreate", "bigint", ["string", "number", "bigint", "bigint"], [filename, h5_mode, 0n, 0n]);
-    }
-    else {
-      // then it is an existing file...
-      file_id = Module.ccall("H5Fopen", "bigint", ["string", "number", "bigint"], [filename, h5_mode, 0n]);
-    }
+  constructor(filename: string, mode: ACCESS_MODESTRING = "r", track_order: boolean = false) {
+    const access_mode = ACCESS_MODES[mode];
+    const h5_mode = Module[access_mode];
+    const file_id = Module.open(filename, h5_mode, track_order);
     super(file_id, "/");
     this.filename = filename;
-
     this.mode = mode;
   }
 

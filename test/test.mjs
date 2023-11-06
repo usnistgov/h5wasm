@@ -19,6 +19,7 @@ import references from './create_read_references.mjs';
 import test_throwing_error_handler from './test_throwing_error_handler.mjs';
 import test_empty from './empty_dataset_and_attrs.mjs';
 import vlen_test from './vlen_test.mjs';
+import track_order from './track_order.mjs';
 
 let tests = [];
 const add_tests = (tests_in) => { /*global*/ tests = tests.concat(tests_in)}
@@ -41,6 +42,7 @@ add_tests(references);
 add_tests(test_throwing_error_handler);
 add_tests(test_empty);
 add_tests(vlen_test);
+add_tests(track_order);
 
 let passed = true;
 async function run_test(test) {
