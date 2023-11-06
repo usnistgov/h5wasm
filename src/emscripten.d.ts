@@ -185,6 +185,7 @@ declare namespace FS {
         unmount(mountpoint: string): void,
 
         mkdir(path: string, mode?: number): any,
+        mkdirTree(path: string, mode?: number): void,
         mkdev(path: string, mode?: number, dev?: number): any,
         symlink(oldpath: string, newpath: string): any,
         rename(old_path: string, new_path: string): void,
