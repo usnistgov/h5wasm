@@ -1,4 +1,32 @@
 # Changelog
+## v0.6.9 2023-11-06
+### Fixed
+ - added missing FileSystem API function `mkdirTree` to Emscripten typescript interface
+### Added
+ - Functions for working with dimension scales in typescript interface:
+```typescript
+// convert dataset to dimension scale:
+Dataset.make_scale(scale_name: string)
+// attach a dimension scale to the "index" dimension of this dataset:   
+Dataset.attach_scale(index: number, scale_dset_path: string)
+// detach a dimension scale from "index" dimension
+Dataset.detach_scale(index: number, scale_dset_path: string)
+// get full paths to all datasets that are attached as dimension scales
+// to the specified dimension (at "index") of this dataset:
+Dataset.get_attached_scales(index: number)
+// if this dataset is a dimension scale, returns name as string
+// (returns empty string if no name defined, but it is a dimension scale)
+// else returns null if it is not set as a dimension scale:
+Dataset.get_scale_name()
+```
+ - Functions for working with dimension labels (not related to dimension scales)
+```typescript
+// label dimension at "index" of this dataset with string "label":
+Dataset.set_dimension_label(index: number, label: string)
+// fetch labels for all dimensions of this dataset (null if label not defined):
+Dataset.get_dimension_labels()
+```
+
 ## v0.6.8 2023-11-02
 ### Added
  - Functions for creating, attaching and detaching dimension scales (no support for reading yet)
