@@ -1,4 +1,7 @@
 # Changelog
+## v0.6.10 2023-11-09
+### Added
+ - export more symbols to support `blosc2 ` filter
 ## v0.6.9 2023-11-06
 ### Fixed
  - added missing FileSystem API function `mkdirTree` to Emscripten typescript interface
