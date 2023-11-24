@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { strict as assert } from 'assert';
-import h5wasm from 'h5wasm';
+import h5wasm from 'h5wasm/node';
 
 async function bigendian_read() {
   await h5wasm.ready;
