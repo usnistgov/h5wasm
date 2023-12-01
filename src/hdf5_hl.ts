@@ -80,7 +80,7 @@ function getAccessor(type: 0 | 1, size: Metadata["size"], signed: Metadata["sign
   }
 }
 
-export type OutputData = TypedArray | string | number | bigint | boolean | OutputData[];
+export type OutputData = TypedArray | string | number | bigint | boolean | Reference | RegionReference | OutputData[];
 export type JSONCompatibleOutputData = string | number | boolean | JSONCompatibleOutputData[];
 export type Dtype = string | {compound_type: CompoundTypeMetadata} | {array_type: Metadata};
 export type { Metadata, Filter, CompoundMember, CompoundTypeMetadata, EnumTypeMetadata };
@@ -181,6 +181,16 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
     }
   }
 
+  else if (type === Module.H5T_class_t.H5T_REFERENCE.value) {
+    const { ref_type, size } = metadata; // as { ref_type: 'object' | 'region', size: number };
+    const cls = (ref_type === 'object') ? Reference : RegionReference;
+    output_data = Array.from({ length: metadata.total_size }).map((_, i) => {
+      const ref_data = data.slice(i*size, (i+1)*size);
+      return new cls(ref_data);
+    });
+    return output_data;
+  }
+
   else {
     known_type = false;
     output_data = data;
@@ -275,6 +285,10 @@ function prepare_data(data: any, metadata: Metadata, shape?: number[] | bigint[]
     }
     output = new Uint8Array(typed_array.buffer);
   }
+  else if (metadata.type === Module.H5T_class_t.H5T_REFERENCE.value) {
+    output = new Uint8Array(metadata.size * total_size);
+    (data as Reference[]).forEach((r, i) => (output as Uint8Array).set(r.ref_data, i*metadata.size));
+  }
   else {
     throw new Error(`data with type ${metadata.type} can not be prepared for write`);
   }
@@ -316,35 +330,45 @@ function metadata_to_dtype(metadata: Metadata): Dtype {
   else if (type === Module.H5T_class_t.H5T_ARRAY.value ) {
     return { array_type: array_type as Metadata }
   }
+  else if (type === Module.H5T_class_t.H5T_REFERENCE.value) {
+    return (metadata.ref_type === 'object') ? "Reference" : "RegionReference";
+  }
   else {
     return "unknown";
   }
 }
 
 function dtype_to_metadata(dtype_str: string) {
-  let match = dtype_str.match(/^([<>|]?)([bhiqefdsBHIQS])([0-9]*)$/);
-  if (match == null) {
-    throw dtype_str + " is not a recognized dtype"
-  }
-  let [full, endianness, typestr, length] = match;
   let metadata = { vlen: false, signed: false } as Metadata;
-  metadata.littleEndian = (endianness != '>');
-  if (fmts_int.has(typestr.toLowerCase())) {
-    metadata.type = Module.H5T_class_t.H5T_INTEGER.value;
-    metadata.size = (fmts_int.get(typestr.toLowerCase()) as number);
-    metadata.signed = (typestr.toLowerCase() == typestr);
-  }
-  else if (fmts_float.has(typestr)) {
-    metadata.type = Module.H5T_class_t.H5T_FLOAT.value;
-    metadata.size = (fmts_float.get(typestr) as number);
-  }
-  else if (typestr.toUpperCase() == 'S') {
-    metadata.type = Module.H5T_class_t.H5T_STRING.value;
-    metadata.size = (length == "") ? 4 : parseInt(length, 10);
-    metadata.vlen = (length == "");
+  if (dtype_str === "Reference" || dtype_str === "RegionReference") {
+    metadata.type = Module.H5T_class_t.H5T_REFERENCE.value;
+    metadata.size = (dtype_str === "Reference") ? Module.SIZEOF_OBJ_REF : Module.SIZEOF_DSET_REGION_REF;
+    metadata.littleEndian = true;
   }
   else {
-    throw "should never happen"
+    let match = dtype_str.match(/^([<>|]?)([bhiqefdsBHIQS])([0-9]*)$/);
+    if (match == null) {
+      throw dtype_str + " is not a recognized dtype"
+    }
+    let [full, endianness, typestr, length] = match;
+    metadata.littleEndian = (endianness != '>');
+    if (fmts_int.has(typestr.toLowerCase())) {
+      metadata.type = Module.H5T_class_t.H5T_INTEGER.value;
+      metadata.size = (fmts_int.get(typestr.toLowerCase()) as number);
+      metadata.signed = (typestr.toLowerCase() == typestr);
+    }
+    else if (fmts_float.has(typestr)) {
+      metadata.type = Module.H5T_class_t.H5T_FLOAT.value;
+      metadata.size = (fmts_float.get(typestr) as number);
+    }
+    else if (typestr.toUpperCase() === 'S') {
+      metadata.type = Module.H5T_class_t.H5T_STRING.value;
+      metadata.size = (length == "") ? 4 : parseInt(length, 10);
+      metadata.vlen = (length == "");
+    }
+    else {
+      throw "should never happen"
+    }
   }
   return metadata
 }
@@ -397,7 +421,7 @@ const TypedArray_to_dtype = new Map([
  **/
 type Slice = [] | [number|null] | [number|null,number|null] | [number|null, number|null, number|null];
 
-export type GuessableDataTypes = TypedArray | number | number[] | string | string[];
+export type GuessableDataTypes = TypedArray | number | number[] | string | string[] | Reference | Reference[] | RegionReference | RegionReference[];
 
 function guess_dtype(data: GuessableDataTypes): string {
   if (ArrayBuffer.isView(data)) {
@@ -417,7 +441,13 @@ function guess_dtype(data: GuessableDataTypes): string {
       return '<d'; // default float type: Float64
     }
     else if (arr_data.every((d) => (typeof d == 'string'))) {
-      return 'S'
+      return 'S';
+    }
+    else if (arr_data.every((d) => d instanceof RegionReference)) {
+      return 'RegionReference';
+    }
+    else if (arr_data.every((d) => d instanceof Reference)) {
+      return 'Reference';
     }
   }
   throw new Error("unguessable type for data");
@@ -428,7 +458,9 @@ enum OBJECT_TYPE {
   GROUP = "Group",
   BROKEN_SOFT_LINK = "BrokenSoftLink",
   EXTERNAL_LINK = "ExternalLink",
-  DATATYPE = 'Datatype'
+  DATATYPE = 'Datatype',
+  REFERENCE = 'Reference',
+  REGION_REFERENCE = 'RegionReference',
 }
 
 export class BrokenSoftLink {
@@ -453,6 +485,16 @@ export class ExternalLink {
 export class Datatype {
   type: OBJECT_TYPE = OBJECT_TYPE.DATATYPE
   constructor() {}
+}
+
+export class Reference {
+  ref_data: Uint8Array;
+  constructor(ref_data: Uint8Array) {
+    this.ref_data = ref_data;
+  }
+}
+
+export class RegionReference extends Reference {
 }
 
 export class Attribute {
@@ -572,6 +614,10 @@ abstract class HasAttrs {
     return Module.delete_attribute(this.file_id, this.path, name);
   }
 
+  create_reference(): Reference {
+    const ref_data = Module.create_object_reference(this.file_id, this.path);
+    return new Reference(ref_data);
+  }
 }
 
 export class Group extends HasAttrs {
@@ -638,6 +684,13 @@ export class Group extends HasAttrs {
     }
     // unknown type or object not found
     return null
+  }
+
+  dereference(ref: Reference | RegionReference) {
+    const is_region = (ref instanceof RegionReference);
+    const name = Module.get_referenced_name(this.file_id, ref.ref_data, !is_region);
+    const target = this.get(name);
+    return (is_region) ? new DatasetRegion(target as Dataset, ref) : target;
   }
 
   create_group(name: string): Group {
@@ -896,6 +949,15 @@ export class Dataset extends HasAttrs {
     }
   }
 
+  create_region_reference(ranges: Slice[]) {
+    const metadata = this.metadata;
+    // interpret ranges as [start, stop], with one per dim.
+    const { shape } = metadata;
+    const {strides, count, offset} = calculateHyperslabParams(shape, ranges);
+    const ref_data = Module.create_region_reference(this.file_id, this.path, count, offset, strides);
+    return new RegionReference(ref_data);
+  }
+
   to_array() {
     const { json_value, metadata } = this;
     const { shape } = metadata;
@@ -970,6 +1032,24 @@ export class Dataset extends HasAttrs {
     return processed;
   }
 
+}
+
+export class DatasetRegion {
+  source_dataset: Dataset;
+  region_reference: RegionReference;
+  private _metadata?: Metadata;
+
+  constructor(source_dataset: Dataset, region_reference: RegionReference) {
+    this.source_dataset = source_dataset;
+    this.region_reference = region_reference;
+  }
+
+  get metadata() {
+    if (typeof this._metadata === "undefined") {
+      this._metadata = Module.get_region_metadata(this.source_dataset.file_id, this.region_reference.ref_data);
+    }
+    return this._metadata;
+  }
 }
 
 function create_nested_array(value: JSONCompatibleOutputData[], shape: number[]) {
