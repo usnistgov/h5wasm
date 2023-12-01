@@ -706,6 +706,15 @@ herr_t setup_dataset(val dims_in, val maxdims_in, val chunks_in, int dtype, int 
             throw_error("data type not supported");
         }
     }
+    else if (dtype == H5T_REFERENCE)
+    {
+        if (dsize == sizeof(hobj_ref_t)) {
+            *filetype = H5Tcopy(H5T_STD_REF_OBJ);
+        }
+        else if (dsize == sizeof(hdset_reg_ref_t)) {
+            *filetype = H5Tcopy(H5T_STD_REF_DSETREG);
+        }
+    }
     else
     {
         throw_error("data type not supported");
@@ -1104,7 +1113,7 @@ val get_region_metadata(hid_t loc_id, const val ref_data_in)
     hid_t dtype;
     hid_t dcpl;
     herr_t status;
-    std::vector<uint8_t> ref_data_vec = convertJSArrayToNumberVector<uint8_t>(ref_data_in);
+    const std::vector<uint8_t> ref_data_vec = convertJSArrayToNumberVector<uint8_t>(ref_data_in);
     const hobj_ref_t *ref_ptr = (hobj_ref_t *)ref_data_vec.data();
     hid_t ds_id = H5Rdereference2(loc_id, H5P_DEFAULT, H5R_DATASET_REGION, ref_ptr);
 
