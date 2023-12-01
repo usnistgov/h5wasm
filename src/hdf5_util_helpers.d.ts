@@ -25,6 +25,7 @@ export interface Metadata {
     enum_type?: EnumTypeMetadata,
     littleEndian: boolean,
     maxshape: Array<number> | null,
+    ref_type?: 'object' | 'region',
     shape: Array<number>,
     signed: boolean,
     size: number,
@@ -59,6 +60,8 @@ export interface H5Module extends EmscriptenModule {
     get_external_link(file_id: bigint, obj_path: string): {filename: string, obj_path: string};
     H5O_TYPE_DATASET: number;
     H5O_TYPE_GROUP: number;
+    SIZEOF_OBJ_REF: number;
+    SIZEOF_DSET_REGION_REF: number;
     H5G_GROUP: number;
     H5G_DATASET: number;
     H5G_TYPE: number;
@@ -114,6 +117,10 @@ export interface H5Module extends EmscriptenModule {
     get_attached_scales(loc_id: bigint, target_dset_name: string, index: number): string[],
     set_dimension_label(loc_id: bigint, target_dset_name: string, index: number, label: string): number,
     get_dimension_labels(loc_id: bigint, target_dset_name: string): Array<string | null>,
+    create_object_reference(loc_id: bigint, target_name: string): Uint8Array,
+    create_region_reference(file_id: bigint, path: string, count: bigint[] | null, offset: bigint[] | null, strides: bigint[] | null): Uint8Array,
+    get_referenced_name(loc_id: bigint, ref_ptr: Uint8Array, is_object: boolean): string;
+    get_region_metadata(loc_id: bigint, ref_ptr: Uint8Array): Metadata;
 }
 
 export declare type Filter = {
