@@ -1104,6 +1104,7 @@ export const h5wasm = {
   Group,
   Dataset,
   Datatype,
+  DatasetRegion,
   ready,
   ACCESS_MODES
 }

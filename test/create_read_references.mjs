@@ -73,6 +73,11 @@ async function test_refs() {
     assert.strictEqual(obj_1.path, `/${DATASET_GROUP}/${DATASET_NAME}`);
     
     const region_refs = refs_group.get(REGION_REF_DATASET_NAME).value;
+    const [region_0, region_1] = region_refs.map((ref) => read_file.dereference(ref));
+    assert(region_0 instanceof h5wasm.DatasetRegion);
+    assert.deepEqual(region_0.value, new Float32Array(REGION_REF_DATA_0.flat()));
+    assert(region_1 instanceof h5wasm.DatasetRegion);
+    assert.deepEqual(region_1.value, new Float32Array(REGION_REF_DATA_1.flat()));
     // assert.deepEqual(hard_link_dataset.value, DATA);
 
     read_file.close()
