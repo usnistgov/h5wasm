@@ -36,6 +36,7 @@ add_tests(dimension_labels);
 add_tests(dimension_scales);
 add_tests(references);
 
+let passed = true;
 async function run_test(test) {
     try {
         await test.test();
@@ -44,6 +45,7 @@ async function run_test(test) {
     catch (error) {
         console.log('x', test.description);
         console.log(error.stack);
+        passed = false;
     }
 }
 
@@ -54,3 +56,6 @@ async function run_tests(tests) {
 }
 
 await run_tests(tests);
+if (!passed) {
+    throw new Error("Tests did not complete successfuly");
+}
