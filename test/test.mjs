@@ -15,6 +15,7 @@ import bigendian_read from './bigendian_read.mjs';
 import create_compressed from './create_read_compressed.mjs';
 import dimension_labels from './dimension_labels.mjs';
 import dimension_scales from './dimension_scales.mjs';
+import references from './create_read_references.mjs';
 
 let tests = [];
 const add_tests = (tests_in) => { /*global*/ tests = tests.concat(tests_in)}
@@ -33,6 +34,7 @@ add_tests(bigendian_read);
 add_tests(create_compressed);
 add_tests(dimension_labels);
 add_tests(dimension_scales);
+add_tests(references);
 
 async function run_test(test) {
     try {
