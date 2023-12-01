@@ -2,7 +2,7 @@ name: Test CI
 
 on:
   push:
-    branches: [ main, references ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
