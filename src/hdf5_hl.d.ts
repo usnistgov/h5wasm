@@ -154,6 +154,8 @@ export declare class DatasetRegion {
     private _metadata?;
     constructor(source_dataset: Dataset, region_reference: RegionReference);
     get metadata(): Metadata;
+    get value(): OutputData;
+    _value_getter(json_compatible?: boolean): OutputData;
 }
 export declare const h5wasm: {
     File: typeof File;

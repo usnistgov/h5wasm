@@ -121,6 +121,7 @@ export interface H5Module extends EmscriptenModule {
     create_region_reference(file_id: bigint, path: string, count: bigint[] | null, offset: bigint[] | null, strides: bigint[] | null): Uint8Array,
     get_referenced_name(loc_id: bigint, ref_ptr: Uint8Array, is_object: boolean): string;
     get_region_metadata(loc_id: bigint, ref_ptr: Uint8Array): Metadata;
+    get_region_data(loc_id: bigint, ref_data: Uint8Array, rdata_ptr: bigint): number;
 }
 
 export declare type Filter = {

@@ -1114,7 +1114,7 @@ val get_region_metadata(hid_t loc_id, const val ref_data_in)
     hid_t dcpl;
     herr_t status;
     const std::vector<uint8_t> ref_data_vec = convertJSArrayToNumberVector<uint8_t>(ref_data_in);
-    const hobj_ref_t *ref_ptr = (hobj_ref_t *)ref_data_vec.data();
+    const hdset_reg_ref_t *ref_ptr = (hdset_reg_ref_t *)ref_data_vec.data();
     hid_t ds_id = H5Rdereference2(loc_id, H5P_DEFAULT, H5R_DATASET_REGION, ref_ptr);
 
     dtype = H5Dget_type(ds_id);
@@ -1148,6 +1148,57 @@ val get_region_metadata(hid_t loc_id, const val ref_data_in)
     H5Tclose(dtype);
     H5Pclose(dcpl);
     return metadata;
+}
+
+int get_region_data(hid_t loc_id, val ref_data_in, uint64_t rdata_uint64)
+{
+    hid_t ds_id;
+    hid_t dspace;
+    hid_t dtype;
+    hid_t memtype;
+    hid_t memspace;
+    herr_t status;
+    void *rdata = (void *)rdata_uint64;
+    const std::vector<uint8_t> ref_data_vec = convertJSArrayToNumberVector<uint8_t>(ref_data_in);
+    const hdset_reg_ref_t *ref_ptr = (hdset_reg_ref_t *)ref_data_vec.data();
+    ds_id = H5Rdereference2(loc_id, H5P_DEFAULT, H5R_DATASET_REGION, ref_ptr);
+    dspace = H5Rget_region(ds_id, H5R_DATASET_REGION, ref_ptr);
+    dtype = H5Dget_type(ds_id);
+    // assumes that data to write will match type of dataset (exept endianness)
+    memtype = H5Tcopy(dtype);
+    // inputs and outputs from javascript will always be little-endian
+    H5T_order_t dorder = H5Tget_order(dtype);
+    if (dorder == H5T_ORDER_BE || dorder == H5T_ORDER_VAX)
+    {
+        status = H5Tset_order(memtype, H5T_ORDER_LE);
+    }
+    int rank = H5Sget_simple_extent_ndims(dspace);
+    htri_t is_regular = H5Sis_regular_hyperslab(dspace);
+    if (is_regular > 0)
+    {
+        std::vector<hsize_t> count(rank);
+        std::vector<hsize_t> block(rank);
+        std::vector<hsize_t> shape_out(rank);
+        htri_t success = H5Sget_regular_hyperslab(dspace, nullptr, nullptr, count.data(), block.data());
+        for (int d = 0; d < rank; d++)
+        {
+            int blocksize = (block.at(d) == NULL) ? 1 : block.at(d); 
+            shape_out.at(d) = (count.at(d) * blocksize);
+        }
+        memspace = H5Screate_simple(shape_out.size(), &shape_out[0], nullptr);
+    }
+    else
+    {
+        hsize_t total_size = H5Sget_select_npoints(dspace);
+        memspace = H5Screate_simple(1, &total_size, nullptr);
+    }
+    status = H5Dread(ds_id, memtype, memspace, dspace, H5P_DEFAULT, rdata);
+    H5Dclose(ds_id);
+    H5Sclose(dspace);
+    H5Sclose(memspace);
+    H5Tclose(dtype);
+    H5Tclose(memtype);
+    return (int)status;
 }
 
 EMSCRIPTEN_BINDINGS(hdf5)
@@ -1192,6 +1243,7 @@ EMSCRIPTEN_BINDINGS(hdf5)
     function("create_region_reference", &create_region_reference);
     function("get_referenced_name", &get_referenced_name);
     function("get_region_metadata", &get_region_metadata);
+    function("get_region_data", &get_region_data);
 
     class_<H5L_info2_t>("H5L_info2_t")
         .constructor<>()

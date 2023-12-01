@@ -1050,6 +1050,29 @@ export class DatasetRegion {
     }
     return this._metadata;
   }
+
+  get value() {
+    return this._value_getter(false);
+  }
+
+  _value_getter(json_compatible=false) {
+    let metadata = this.metadata;
+    // if auto_refresh is on, getting the metadata has triggered a refresh of the dataset_id;
+    let nbytes = metadata.size * metadata.total_size;
+    let data_ptr = Module._malloc(nbytes);
+    let processed: OutputData;
+    try {
+      Module.get_region_data(this.source_dataset.file_id, this.region_reference.ref_data, BigInt(data_ptr));
+      let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
+      processed = process_data(data, metadata, json_compatible);
+    } finally {
+      if (metadata.vlen) {
+        Module.reclaim_vlen_memory(this.source_dataset.file_id, this.source_dataset.path, "", BigInt(data_ptr));
+      }
+      Module._free(data_ptr);
+    }
+    return processed;
+  }
 }
 
 function create_nested_array(value: JSONCompatibleOutputData[], shape: number[]) {
