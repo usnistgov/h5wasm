@@ -17,8 +17,6 @@ async function test_refs() {
   const DATASET_NAME = "data";
   const REFS_GROUP = "refs";
   const OBJECT_REF_DATASET_NAME = "object_refs";
-  const OBJECT_TARGET_GROUP = "test_group";
-  const OBJECT_TARGET_DSET = "data";
   const REGION_REF_DATASET_NAME = "dset_region_refs";
   const REGION_REF_DATA_0 = [[11.], [ 8.], [ 5.]];
   const REGION_REF_DATA_1 = [[12., 11., 10.]];
