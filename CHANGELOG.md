@@ -1,4 +1,10 @@
 # Changelog
+## v0.7.0 2023-12-05
+### Changed
+ - `package.json` modified so that exports are defined in a way that works better with bundlers
+   - (should now work with e.g. NextJS)
+ - **Breaking change** the `nodejs` import is now 'h5wasm/node' rather than 'h5wasm'.  The `nodejs` examples in the README have been updated, as well as the tests.
+ - tests modified to use smaller compressed array (reduce package size)
 ## v0.6.10 2023-11-09
 ### Added
  - export more symbols to support `blosc2 ` filter

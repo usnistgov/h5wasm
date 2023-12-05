@@ -90,7 +90,7 @@ node --experimental-wasm-bigint
 ```
 
 ```js
-const h5wasm = await import("h5wasm");
+const h5wasm = await import("h5wasm/node");
 await h5wasm.ready;
 
 let f = new h5wasm.File("/home/brian/Downloads/sans59510.nxs.ngv", "r");
