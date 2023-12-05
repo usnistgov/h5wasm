@@ -18,7 +18,7 @@ async function filters_test() {
     {
       id: 6,
       name: "scaleoffset",
-      cd_values: [0, 4, 3969, 1, 8, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      cd_values: [0, 4, 1250, 1, 8, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     },
   ]);
 }

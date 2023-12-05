@@ -23,7 +23,7 @@ with h5py.File("array.h5", "w") as f:
 
 
 with h5py.File("compressed.h5", "w") as f:
-    data = np.random.random((1000, 1000))
+    data = np.random.random((100, 100))
     f.create_dataset("scaleoffset", data=data, scaleoffset=4)
     f.create_dataset("gzip", data=data, compression="gzip")
     f.create_dataset(
