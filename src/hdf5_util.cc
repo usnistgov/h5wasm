@@ -325,6 +325,11 @@ val get_dtype_metadata(hid_t dtype)
         enum_type.set("members", members);
         attr.set("enum_type", enum_type);
     }
+    else if (dtype_class == H5T_REFERENCE)
+    {
+        std::string ref_type = (H5Tequal(dtype, H5T_STD_REF_OBJ)) ? "object" : "region";
+        attr.set("ref_type", ref_type);
+    }
 
     bool littleEndian = (order == H5T_ORDER_LE);
     attr.set("vlen", (bool)H5Tis_variable_str(dtype));
@@ -340,15 +345,15 @@ val get_abstractDS_metadata(hid_t dspace, hid_t dtype, hid_t dcpl)
 
     int rank = H5Sget_simple_extent_ndims(dspace);
     int total_size = H5Sget_simple_extent_npoints(dspace);
-    hsize_t dims_out[rank];
-    hsize_t maxdims_out[rank];
-    int ndims = H5Sget_simple_extent_dims(dspace, dims_out, maxdims_out);
+    std::vector<hsize_t> dims_out(rank);
+    std::vector<hsize_t> maxdims_out(rank);
+    int ndims = H5Sget_simple_extent_dims(dspace, dims_out.data(), maxdims_out.data());
     val shape = val::array();
     val maxshape = val::array();
     for (int d = 0; d < ndims; d++)
     {
-        shape.set(d, (uint)dims_out[d]);
-        maxshape.set(d, (uint)maxdims_out[d]);
+        shape.set(d, (uint)dims_out.at(d));
+        maxshape.set(d, (uint)maxdims_out.at(d));
     }
 
     attr.set("shape", shape);
@@ -358,12 +363,12 @@ val get_abstractDS_metadata(hid_t dspace, hid_t dtype, hid_t dcpl)
     if (dcpl) {
         H5D_layout_t layout = H5Pget_layout(dcpl);
         if (layout == H5D_CHUNKED) {
-            hsize_t chunk_dims_out[ndims];
-            H5Pget_chunk(dcpl, ndims, chunk_dims_out);
+            std::vector<hsize_t> chunk_dims_out(ndims);
+            H5Pget_chunk(dcpl, ndims, chunk_dims_out.data());
             val chunks = val::array();
             for (int c = 0; c < ndims; c++)
             {
-                chunks.set(c, (uint)chunk_dims_out[c]);
+                chunks.set(c, (uint)chunk_dims_out.at(c));
             }
             attr.set("chunks", chunks);
         }
@@ -523,9 +528,9 @@ int read_write_dataset_data(hid_t loc_id, const std::string& dataset_name_string
 
     if (count_out != val::null() && offset_out != val::null())
     {
-        std::vector<hsize_t> count = vecFromJSArray<hsize_t>(count_out);
-        std::vector<hsize_t> offset = vecFromJSArray<hsize_t>(offset_out);
-        std::vector<hsize_t> strides = vecFromJSArray<hsize_t>(stride_out);
+        std::vector<hsize_t> count = convertJSArrayToNumberVector<hsize_t>(count_out);
+        std::vector<hsize_t> offset = convertJSArrayToNumberVector<hsize_t>(offset_out);
+        std::vector<hsize_t> strides = convertJSArrayToNumberVector<hsize_t>(stride_out);
 
         memspace = H5Screate_simple(count.size(), &count[0], nullptr);
         status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, &offset[0], &strides[0], &count[0], NULL);
@@ -699,6 +704,15 @@ herr_t setup_dataset(val dims_in, val maxdims_in, val chunks_in, int dtype, int 
         }
         else {
             throw_error("data type not supported");
+        }
+    }
+    else if (dtype == H5T_REFERENCE)
+    {
+        if (dsize == sizeof(hobj_ref_t)) {
+            *filetype = H5Tcopy(H5T_STD_REF_OBJ);
+        }
+        else if (dsize == sizeof(hdset_reg_ref_t)) {
+            *filetype = H5Tcopy(H5T_STD_REF_DSETREG);
         }
     }
     else
@@ -1036,6 +1050,157 @@ val get_dimension_labels(hid_t loc_id, const std::string& target_dset_name_strin
     return dim_labels;
 }
 
+// References
+val create_object_reference(hid_t loc_id, const std::string& obj_name_string)
+{
+    const char *obj_name = obj_name_string.c_str();
+    std::vector<uint8_t> ref(sizeof(hobj_ref_t));
+    herr_t status = H5Rcreate(ref.data(), loc_id, obj_name, H5R_OBJECT, (hid_t)-1);
+    return val::array(ref);
+}
+
+val create_region_reference(hid_t loc_id, const std::string& dataset_name_string, val count_out, val offset_out, val stride_out)
+{
+    hid_t ds_id;
+    hid_t dspace;
+    std::vector<uint8_t> ref(sizeof(hdset_reg_ref_t));
+    herr_t status;
+    const char *dataset_name = dataset_name_string.c_str();
+
+    ds_id = H5Dopen2(loc_id, dataset_name, H5P_DEFAULT);
+    dspace = H5Dget_space(ds_id);
+    if (count_out != val::null() && offset_out != val::null())
+    {
+        std::vector<hsize_t> count = convertJSArrayToNumberVector<hsize_t>(count_out);
+        std::vector<hsize_t> offset = convertJSArrayToNumberVector<hsize_t>(offset_out);
+        std::vector<hsize_t> strides = convertJSArrayToNumberVector<hsize_t>(stride_out);
+        status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, &offset[0], &strides[0], &count[0], NULL);
+    }
+    else
+    {
+        status = H5Sselect_all(dspace);
+    }
+    status = H5Rcreate(ref.data(), loc_id, dataset_name, H5R_DATASET_REGION, dspace);
+    H5Sclose(dspace);
+    H5Dclose(ds_id);
+    return val::array(ref);
+}
+
+val get_referenced_name(hid_t loc_id, const val ref_data_in, const bool is_object)
+{
+    ssize_t namesize = 0;
+    std::vector<uint8_t> ref_data_vec = convertJSArrayToNumberVector<uint8_t>(ref_data_in);
+    const hobj_ref_t *ref_ptr = (hobj_ref_t *)ref_data_vec.data();
+    val output = val::null();
+    const H5R_type_t ref_type = (is_object) ? H5R_OBJECT : H5R_DATASET_REGION;
+    hid_t object_id = H5Rdereference2(loc_id, H5P_DEFAULT, ref_type, ref_ptr);
+    namesize = H5Iget_name(object_id, nullptr, 0);
+    if (namesize > 0)
+    {
+        char *name = new char[namesize + 1];
+        H5Iget_name(object_id, name, namesize + 1);
+
+        output = val::u8string(name);
+        delete[] name;
+    }
+    H5Oclose(object_id);
+    return output;
+}
+
+val get_region_metadata(hid_t loc_id, const val ref_data_in)
+{
+    hid_t dspace;
+    hid_t dtype;
+    hid_t dcpl;
+    herr_t status;
+    const std::vector<uint8_t> ref_data_vec = convertJSArrayToNumberVector<uint8_t>(ref_data_in);
+    const hdset_reg_ref_t *ref_ptr = (hdset_reg_ref_t *)ref_data_vec.data();
+    hid_t ds_id = H5Rdereference2(loc_id, H5P_DEFAULT, H5R_DATASET_REGION, ref_ptr);
+
+    dtype = H5Dget_type(ds_id);
+    dspace = H5Rget_region(ds_id, H5R_DATASET_REGION, ref_ptr);
+    dcpl = H5Dget_create_plist(ds_id);
+    // fill in shape, maxshape, chunks, total_size
+    val metadata = get_abstractDS_metadata(dspace, dtype, dcpl);
+    // then override the ones that are specific to a region:
+    int total_size = H5Sget_select_npoints(dspace);
+    metadata.set("total_size", total_size);
+
+    int rank = H5Sget_simple_extent_ndims(dspace);
+    // shape will be null if the selection is not a regular hyperslab
+    val shape = val::null();
+    htri_t is_regular = H5Sis_regular_hyperslab(dspace);
+    if (is_regular > 0)
+    {
+        std::vector<hsize_t> count(rank);
+        std::vector<hsize_t> block(rank);
+        htri_t success = H5Sget_regular_hyperslab(dspace, nullptr, nullptr, count.data(), block.data());
+        shape = val::array();
+        for (int d = 0; d < rank; d++)
+        {
+            int blocksize = (block.at(d) == NULL) ? 1 : block.at(d); 
+            shape.set(d, (uint)(count.at(d) * blocksize));
+        }
+    }
+    metadata.set("shape", shape);
+    H5Dclose(ds_id);
+    H5Sclose(dspace);
+    H5Tclose(dtype);
+    H5Pclose(dcpl);
+    return metadata;
+}
+
+int get_region_data(hid_t loc_id, val ref_data_in, uint64_t rdata_uint64)
+{
+    hid_t ds_id;
+    hid_t dspace;
+    hid_t dtype;
+    hid_t memtype;
+    hid_t memspace;
+    herr_t status;
+    void *rdata = (void *)rdata_uint64;
+    const std::vector<uint8_t> ref_data_vec = convertJSArrayToNumberVector<uint8_t>(ref_data_in);
+    const hdset_reg_ref_t *ref_ptr = (hdset_reg_ref_t *)ref_data_vec.data();
+    ds_id = H5Rdereference2(loc_id, H5P_DEFAULT, H5R_DATASET_REGION, ref_ptr);
+    dspace = H5Rget_region(ds_id, H5R_DATASET_REGION, ref_ptr);
+    dtype = H5Dget_type(ds_id);
+    // assumes that data to write will match type of dataset (exept endianness)
+    memtype = H5Tcopy(dtype);
+    // inputs and outputs from javascript will always be little-endian
+    H5T_order_t dorder = H5Tget_order(dtype);
+    if (dorder == H5T_ORDER_BE || dorder == H5T_ORDER_VAX)
+    {
+        status = H5Tset_order(memtype, H5T_ORDER_LE);
+    }
+    int rank = H5Sget_simple_extent_ndims(dspace);
+    htri_t is_regular = H5Sis_regular_hyperslab(dspace);
+    if (is_regular > 0)
+    {
+        std::vector<hsize_t> count(rank);
+        std::vector<hsize_t> block(rank);
+        std::vector<hsize_t> shape_out(rank);
+        htri_t success = H5Sget_regular_hyperslab(dspace, nullptr, nullptr, count.data(), block.data());
+        for (int d = 0; d < rank; d++)
+        {
+            int blocksize = (block.at(d) == NULL) ? 1 : block.at(d); 
+            shape_out.at(d) = (count.at(d) * blocksize);
+        }
+        memspace = H5Screate_simple(shape_out.size(), &shape_out[0], nullptr);
+    }
+    else
+    {
+        hsize_t total_size = H5Sget_select_npoints(dspace);
+        memspace = H5Screate_simple(1, &total_size, nullptr);
+    }
+    status = H5Dread(ds_id, memtype, memspace, dspace, H5P_DEFAULT, rdata);
+    H5Dclose(ds_id);
+    H5Sclose(dspace);
+    H5Sclose(memspace);
+    H5Tclose(dtype);
+    H5Tclose(memtype);
+    return (int)status;
+}
+
 EMSCRIPTEN_BINDINGS(hdf5)
 {
     function("get_keys", &get_keys_vector);
@@ -1074,6 +1239,11 @@ EMSCRIPTEN_BINDINGS(hdf5)
     function("get_attached_scales", &get_attached_scales);
     function("get_dimension_labels", &get_dimension_labels);
     function("set_dimension_label", &set_dimension_label);
+    function("create_object_reference", &create_object_reference);
+    function("create_region_reference", &create_region_reference);
+    function("get_referenced_name", &get_referenced_name);
+    function("get_region_metadata", &get_region_metadata);
+    function("get_region_data", &get_region_data);
 
     class_<H5L_info2_t>("H5L_info2_t")
         .constructor<>()
@@ -1124,6 +1294,8 @@ EMSCRIPTEN_BINDINGS(hdf5)
     constant("H5O_TYPE_GROUP", (int)H5O_TYPE_GROUP);
     constant("H5O_TYPE_DATASET", (int)H5O_TYPE_DATASET);
     constant("H5O_TYPE_NAMED_DATATYPE", (int)H5O_TYPE_NAMED_DATATYPE);
+    constant("SIZEOF_OBJ_REF", (int)(sizeof(hobj_ref_t)));
+    constant("SIZEOF_DSET_REGION_REF", (int)(sizeof(hdset_reg_ref_t)));
 
     constant("H5Z_FILTER_NONE", H5Z_FILTER_NONE);
     constant("H5Z_FILTER_DEFLATE", H5Z_FILTER_DEFLATE);

@@ -36,5 +36,10 @@ jobs:
         npm i
         npm run build
         
+    - name: check environment
+      run: |
+        pwd
+        ls -al ./test
+
     - name: test
       run: npm test

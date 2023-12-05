@@ -12,7 +12,7 @@ export declare const ACCESS_MODES: {
     readonly Sr: "H5F_ACC_SWMR_READ";
 };
 declare type ACCESS_MODESTRING = keyof typeof ACCESS_MODES;
-export declare type OutputData = TypedArray | string | number | bigint | boolean | OutputData[];
+export declare type OutputData = TypedArray | string | number | bigint | boolean | Reference | RegionReference | OutputData[];
 export declare type JSONCompatibleOutputData = string | number | boolean | JSONCompatibleOutputData[];
 export declare type Dtype = string | {
     compound_type: CompoundTypeMetadata;
@@ -29,13 +29,15 @@ declare type TypedArray = Int8Array | Uint8Array | Uint8ClampedArray | Int16Arra
  * `[i0, i1, s]` - select every `s` values in the range `i0` to `i1`
  **/
 declare type Slice = [] | [number | null] | [number | null, number | null] | [number | null, number | null, number | null];
-export declare type GuessableDataTypes = TypedArray | number | number[] | string | string[];
+export declare type GuessableDataTypes = TypedArray | number | number[] | string | string[] | Reference | Reference[] | RegionReference | RegionReference[];
 declare enum OBJECT_TYPE {
     DATASET = "Dataset",
     GROUP = "Group",
     BROKEN_SOFT_LINK = "BrokenSoftLink",
     EXTERNAL_LINK = "ExternalLink",
-    DATATYPE = "Datatype"
+    DATATYPE = "Datatype",
+    REFERENCE = "Reference",
+    REGION_REFERENCE = "RegionReference"
 }
 export declare class BrokenSoftLink {
     target: string;
@@ -51,6 +53,12 @@ export declare class ExternalLink {
 export declare class Datatype {
     type: OBJECT_TYPE;
     constructor();
+}
+export declare class Reference {
+    ref_data: Uint8Array;
+    constructor(ref_data: Uint8Array);
+}
+export declare class RegionReference extends Reference {
 }
 export declare class Attribute {
     file_id: bigint;
@@ -77,6 +85,7 @@ declare abstract class HasAttrs {
     get_attribute(name: string, json_compatible: false): OutputData;
     create_attribute(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null): void;
     delete_attribute(name: string): number;
+    create_reference(): Reference;
 }
 export declare class Group extends HasAttrs {
     constructor(file_id: bigint, path: string);
@@ -90,6 +99,7 @@ export declare class Group extends HasAttrs {
         obj_path: string;
     };
     get(obj_name: string): BrokenSoftLink | ExternalLink | Datatype | Group | Dataset | null;
+    dereference(ref: Reference | RegionReference): BrokenSoftLink | ExternalLink | Datatype | Group | Dataset | DatasetRegion | null;
     create_group(name: string): Group;
     create_dataset(args: {
         name: string;
@@ -126,6 +136,7 @@ export declare class Dataset extends HasAttrs {
     get json_value(): JSONCompatibleOutputData;
     slice(ranges: Slice[]): OutputData;
     write_slice(ranges: Slice[], data: any): void;
+    create_region_reference(ranges: Slice[]): RegionReference;
     to_array(): string | number | boolean | JSONCompatibleOutputData[];
     resize(new_shape: number[]): number;
     make_scale(scale_name?: string): void;
@@ -137,11 +148,21 @@ export declare class Dataset extends HasAttrs {
     get_dimension_labels(): (string | null)[];
     _value_getter(json_compatible?: boolean): OutputData;
 }
+export declare class DatasetRegion {
+    source_dataset: Dataset;
+    region_reference: RegionReference;
+    private _metadata?;
+    constructor(source_dataset: Dataset, region_reference: RegionReference);
+    get metadata(): Metadata;
+    get value(): OutputData;
+    _value_getter(json_compatible?: boolean): OutputData;
+}
 export declare const h5wasm: {
     File: typeof File;
     Group: typeof Group;
     Dataset: typeof Dataset;
     Datatype: typeof Datatype;
+    DatasetRegion: typeof DatasetRegion;
     ready: Promise<H5Module>;
     ACCESS_MODES: {
         readonly r: "H5F_ACC_RDONLY";
