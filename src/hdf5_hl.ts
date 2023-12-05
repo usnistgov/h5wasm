@@ -576,8 +576,8 @@ abstract class HasAttrs {
     return new Group(this.file_id, '/');
   }
 
-  get parent() {
-    return this.root.get(dirname(this.path));
+  get parent(): Group {
+    return this.root.get(dirname(this.path)) as Group;
   }
 
   get_attribute(name: string, json_compatible: true): JSONCompatibleOutputData;
