@@ -12,7 +12,7 @@ set (BASE_URL "https://github.com/usnistgov/libhdf5-wasm/releases/download/v0.4.
 FetchContent_Declare(
   libhdf5-wasm
   URL ${BASE_URL}/HDF5-1.14.2-Emscripten.tar.gz
-  URL_HASH SHA256=af86c8fc16d07b37a3c7f17bd16895379f63f779796fb3db46758d67d5f8384e
+  URL_HASH SHA256=7299eda21bd0fbe85bccdf76ee4636bae12db1295d9ac9b75f800ff3f825a2c6
 )
 if (NOT libhdf5-wasm_POPULATED)
   FetchContent_MakeAvailable(libhdf5-wasm)
