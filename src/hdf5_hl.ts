@@ -28,6 +28,18 @@ function normalizePath(path: string) {
   return path;
 }
 
+function dirname(path: string) {
+  // adapted from dirname function in posixpath.py
+  const sep = "/";
+  const sep_index = path.lastIndexOf(sep) + 1;
+  let head = path.slice(0, sep_index);
+  if (head && head !== sep.repeat(head.length)) {
+    // strip end slashes
+    head = head.replace(/(\/)+$/, '');
+  }
+  return head;
+}
+
 function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_compatible: true): JSONCompatibleOutputData;
 function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_compatible: false): OutputData;
 function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_compatible: boolean): OutputData | JSONCompatibleOutputData;
@@ -558,6 +570,14 @@ abstract class HasAttrs {
     }
     return attrs;
 
+  }
+
+  get root() {
+    return new Group(this.file_id, '/');
+  }
+
+  get parent() {
+    return this.root.get(dirname(this.path));
   }
 
   get_attribute(name: string, json_compatible: true): JSONCompatibleOutputData;
