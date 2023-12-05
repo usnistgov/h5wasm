@@ -3,7 +3,7 @@
 import { strict as assert } from 'assert';
 import { existsSync, mkdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
-import h5wasm from "h5wasm";
+import h5wasm from "h5wasm/node";
 
 async function overwrite_datasets() {
 
