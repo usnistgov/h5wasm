@@ -6,7 +6,7 @@ project(H5WASM
     LANGUAGES CXX C
 )
 
-set (BASE_URL "https://github.com/usnistgov/libhdf5-wasm/releases/download/v0.4.2_3.1.43" CACHE STRING "")
+set (BASE_URL "https://github.com/usnistgov/libhdf5-wasm/releases/download/v0.4.3_3.1.43" CACHE STRING "")
 # set (BASE_URL "$ENV{HOME}/dev/libhdf5-wasm" CACHE STRING "")
 
 FetchContent_Declare(
