@@ -638,6 +638,13 @@ abstract class HasAttrs {
     const ref_data = Module.create_object_reference(this.file_id, this.path);
     return new Reference(ref_data);
   }
+
+  dereference(ref: Reference | RegionReference) {
+    const is_region = (ref instanceof RegionReference);
+    const name = Module.get_referenced_name(this.file_id, ref.ref_data, !is_region);
+    const target = this.root.get(name);
+    return (is_region) ? new DatasetRegion(target as Dataset, ref) : target;
+  }
 }
 
 export class Group extends HasAttrs {
@@ -704,13 +711,6 @@ export class Group extends HasAttrs {
     }
     // unknown type or object not found
     return null
-  }
-
-  dereference(ref: Reference | RegionReference) {
-    const is_region = (ref instanceof RegionReference);
-    const name = Module.get_referenced_name(this.file_id, ref.ref_data, !is_region);
-    const target = this.get(name);
-    return (is_region) ? new DatasetRegion(target as Dataset, ref) : target;
   }
 
   create_group(name: string): Group {

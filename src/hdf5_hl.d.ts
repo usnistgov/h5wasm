@@ -81,11 +81,14 @@ declare abstract class HasAttrs {
     get attrs(): {
         [key: string]: Attribute;
     };
+    get root(): Group;
+    get parent(): Group;
     get_attribute(name: string, json_compatible: true): JSONCompatibleOutputData;
     get_attribute(name: string, json_compatible: false): OutputData;
     create_attribute(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null): void;
     delete_attribute(name: string): number;
     create_reference(): Reference;
+    dereference(ref: Reference | RegionReference): BrokenSoftLink | ExternalLink | Datatype | Group | Dataset | DatasetRegion | null;
 }
 export declare class Group extends HasAttrs {
     constructor(file_id: bigint, path: string);
@@ -99,7 +102,6 @@ export declare class Group extends HasAttrs {
         obj_path: string;
     };
     get(obj_name: string): BrokenSoftLink | ExternalLink | Datatype | Group | Dataset | null;
-    dereference(ref: Reference | RegionReference): BrokenSoftLink | ExternalLink | Datatype | Group | Dataset | DatasetRegion | null;
     create_group(name: string): Group;
     create_dataset(args: {
         name: string;
