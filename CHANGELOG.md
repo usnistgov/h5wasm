@@ -1,4 +1,13 @@
 # Changelog
+## v0.7.1 2023-12-18
+### Added
+ - Support for object and region references
+   - create object reference with `Dataset.create_reference()` or `Group.create_reference()`
+   - dereference against any object in the same file or the root `File` object with e.g. `obj = File.dereference(ref)`
+   - create region references with `Dataset.create_region_reference([[start_axis_0, end_axis_0, step_axis_0], [start_axis_1, ...], ...])`
+   - retrieve values of region reference with `File.dereference(region_ref)`
+   - store references in a dataset using `dtype='Reference'` or `dtype='RegionReference'` or if data is an array of references, it will be guessed
+   - retrieve references from dataset using `slice` or `value` as usual, and dereference as above.
 ## v0.7.0 2023-12-05
 ### Changed
  - `package.json` modified so that exports are defined in a way that works better with bundlers
