@@ -4,3 +4,4 @@ build**
 .vscode
 dist**
 h5wasm*.tgz
+experiment**
