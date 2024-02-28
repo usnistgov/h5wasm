@@ -1,5 +1,7 @@
 #include <iostream>
+#include <sstream>
 #include <string>
+#include <unistd.h>
 
 #include "hdf5.h"
 #include "hdf5_hl.h"
@@ -1200,6 +1202,24 @@ int get_region_data(hid_t loc_id, val ref_data_in, uint64_t rdata_uint64)
     H5Tclose(memtype);
     return (int)status;
 }
+
+herr_t throwing_error_handler(hid_t estack, void *client_data)
+{
+    FILE *error_file = tmpfile();
+    herr_t status = H5Eprint2(estack, error_file);
+    rewind(error_file);
+    std::stringstream output_stream;
+    char line[256];
+    while (fgets(line, sizeof(line), error_file) != NULL) {
+        output_stream << line;
+    }
+    std::string error_message = output_stream.str();
+    throw_error(error_message.c_str());
+    fclose(error_file);
+    return 0;
+}
+
+herr_t error_handler_set_result = H5Eset_auto2(H5E_DEFAULT, throwing_error_handler, NULL);
 
 EMSCRIPTEN_BINDINGS(hdf5)
 {
