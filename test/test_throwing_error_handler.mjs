@@ -16,14 +16,13 @@ async function test_throwing_error_handler() {
     const file = new h5wasm.File(FILEPATH, "r");
     return file;
   }
-  // assert.throws(open_nonexistant_file, Error);
 
   let error_message = "no error";
   try {
     const file = open_nonexistant_file();
   }
   catch (e) {
-    error_message = e;
+    error_message = e.toString();
   }
   const lines = error_message.split("\n");
   assert(lines.length > 2, "error message should have more than 2 lines");

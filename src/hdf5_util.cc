@@ -16,7 +16,7 @@
 using namespace emscripten;
 
 EM_JS(void, throw_error, (const char *string_error), {
-    throw(UTF8ToString(string_error));
+    throw new Error(UTF8ToString(string_error));
 });
 
 // void throw_error(const char *string_error) {
