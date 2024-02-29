@@ -122,6 +122,8 @@ export interface H5Module extends EmscriptenModule {
     get_referenced_name(loc_id: bigint, ref_ptr: Uint8Array, is_object: boolean): string;
     get_region_metadata(loc_id: bigint, ref_ptr: Uint8Array): Metadata;
     get_region_data(loc_id: bigint, ref_data: Uint8Array, rdata_ptr: bigint): number;
+    activate_throwing_error_handler(): number;
+    deactivate_throwing_error_handler(): number;
 }
 
 export declare type Filter = {

@@ -1,5 +1,7 @@
 #include <iostream>
+#include <sstream>
 #include <string>
+#include <unistd.h>
 
 #include "hdf5.h"
 #include "hdf5_hl.h"
@@ -14,7 +16,7 @@
 using namespace emscripten;
 
 EM_JS(void, throw_error, (const char *string_error), {
-    throw(UTF8ToString(string_error));
+    throw new Error(UTF8ToString(string_error));
 });
 
 // void throw_error(const char *string_error) {
@@ -1201,6 +1203,36 @@ int get_region_data(hid_t loc_id, val ref_data_in, uint64_t rdata_uint64)
     return (int)status;
 }
 
+herr_t throwing_error_handler(hid_t estack, void *client_data)
+{
+    FILE *error_file = tmpfile();
+    herr_t status = H5Eprint2(estack, error_file);
+    rewind(error_file);
+    std::stringstream output_stream;
+    char line[256];
+    while (fgets(line, sizeof(line), error_file) != NULL) {
+        output_stream << line;
+    }
+    std::string error_message = output_stream.str();
+    throw_error(error_message.c_str());
+    fclose(error_file);
+    return 0;
+}
+
+H5E_auto2_t default_error_handler;
+void *default_error_handler_client_data;
+herr_t error_handler_get_result = H5Eget_auto2(H5E_DEFAULT, &default_error_handler, &default_error_handler_client_data);
+
+int activate_throwing_error_handler() {
+    herr_t error_handler_set_result = H5Eset_auto2(H5E_DEFAULT, throwing_error_handler, NULL);
+    return (int)error_handler_set_result;
+}
+
+int deactivate_throwing_error_handler() {
+    herr_t error_handler_set_result = H5Eset_auto2(H5E_DEFAULT, default_error_handler, default_error_handler_client_data);
+    return (int)error_handler_set_result;
+}
+
 EMSCRIPTEN_BINDINGS(hdf5)
 {
     function("get_keys", &get_keys_vector);
@@ -1244,6 +1276,8 @@ EMSCRIPTEN_BINDINGS(hdf5)
     function("get_referenced_name", &get_referenced_name);
     function("get_region_metadata", &get_region_metadata);
     function("get_region_data", &get_region_data);
+    function("activate_throwing_error_handler", &activate_throwing_error_handler);
+    function("deactivate_throwing_error_handler", &deactivate_throwing_error_handler);
 
     class_<H5L_info2_t>("H5L_info2_t")
         .constructor<>()
