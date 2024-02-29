@@ -16,4 +16,3 @@ function open_nonexistant_file() {
 }
 
 const file = open_nonexistant_file();
-

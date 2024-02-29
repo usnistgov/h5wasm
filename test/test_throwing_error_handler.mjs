@@ -34,7 +34,9 @@ async function test_default_error_handler() {
   // verify that the default error handler does not throw,
   // and that it prints an error message to stderr
   const child_process = spawnSync("/usr/bin/env", ["node", "test/nonthrowing_error_handler.mjs"]);
-  const { stderr } = child_process;
+  const { stderr, status } = child_process;
+  // status should be zero, no error thrown:
+  assert.strictEqual(status, 0);
   const error_message = stderr.toString();
   const lines = error_message.split("\n");
   assert(lines.length > 2, "error message should have more than 2 lines");
