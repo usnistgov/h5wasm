@@ -1,4 +1,16 @@
 # Changelog
+## v0.7.2 2024-02-29
+### Added
+ - new optional HDF5 error handler that throws Javascript error (old handler printed **HDF5-DIAG** error strings using `console.error()`, but did not throw a JS `Error`)
+ - when activated, the thrown `Error.message` is the same string that was previously printed to the console
+
+To enable:
+```javascript
+const Module = await h5wasm.ready;
+Module.activate_throwing_error_handler();
+// to deactivate, restoring console.error behavior:
+// Module.deactivate_throwing_error_handler();
+```
 ## v0.7.1 2023-12-18
 ### Added
  - Support for object and region references
