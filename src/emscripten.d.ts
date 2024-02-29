@@ -144,6 +144,7 @@ declare namespace FS {
     interface ErrnoError {}
 
     interface FileSystemType {
+        filesystems: any,
         ignorePermissions: boolean,
         trackingDelegate: any,
         tracking: any,
