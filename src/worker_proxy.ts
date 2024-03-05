@@ -78,5 +78,5 @@ export async function save_to_memfs(file: File) {
 
 export async function save_bytes_to_memfs(filename: string, bytes: Uint8Array) {
   console.log(`Saving bytes to memfs...`);
-  return await remote.save_bytes_to_memfs(filename, bytes);
+  return await remote.save_bytes_to_memfs(filename, Comlink.transfer(bytes, [bytes.buffer]));
 }
