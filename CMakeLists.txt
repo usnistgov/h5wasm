@@ -56,6 +56,7 @@ set_target_properties(hdf5_util PROPERTIES
     -s ENVIRONMENT=web,worker \
     -s SINGLE_FILE \
     -s EXPORT_ES6=1 \
+    -s USE_ES6_IMPORT_META=0 \
     -s FORCE_FILESYSTEM=1 \
     -s EXPORTED_RUNTIME_METHODS=\"['ccall', 'cwrap', 'FS', 'AsciiToString', 'UTF8ToString']\" \
     -s EXPORTED_FUNCTIONS=\"${EXPORTED_FUNCTIONS_STRING}\""
