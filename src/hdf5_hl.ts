@@ -110,7 +110,7 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
   // let length: number;
   if (type === Module.H5T_class_t.H5T_STRING.value) {
     if (metadata.vlen) {
-      let output = [];
+      let output: string[] = [];
       let reader = (metadata.cset == 1) ? Module.UTF8ToString : Module.AsciiToString;
       let ptrs = new Uint32Array(data.buffer);
       for (let ptr of ptrs) {
@@ -124,7 +124,7 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
       let decoder = new TextDecoder(encoding);
       let size = metadata.size;
       let n = Math.floor(data.byteLength / size);
-      let output = [];
+      let output: string[] = [];
       for (let i = 0; i < n; i++) {
         let bytes = data.slice(i * size, (i + 1) * size);
         // truncate at first null
@@ -153,9 +153,9 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
   else if (type === Module.H5T_class_t.H5T_COMPOUND.value) {
     const { size, compound_type } = <{size: Metadata["size"], compound_type: CompoundTypeMetadata}>metadata;
     let n = Math.floor(data.byteLength / size);
-    let output = [];
+    let output: OutputData[] = [];
     for (let i = 0; i < n; i++) {
-      let row = [];
+      let row: OutputData = [];
       let row_data = data.slice(i * size, (i + 1) * size);
       for (let member of compound_type.members) {
         let member_data = row_data.slice(member.offset, member.offset + member.size);
@@ -1108,7 +1108,7 @@ function create_nested_array(value: JSONCompatibleOutputData[], shape: number[])
   const subdims = shape.slice(1).reverse();
   for (let dim of subdims) {
     // in each pass, replace input with array of slices of input
-    const new_output = [];
+    const new_output: JSONCompatibleOutputData = [];
     const { length } = output;
     let cursor = 0;
     while (cursor < length) {
