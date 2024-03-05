@@ -1,6 +1,25 @@
 import * as h5wasm from '../dist/esm/hdf5_hl';
 
-const WORKERFS_MOUNT = '/workerfs';
+export const WORKERFS_MOUNT = '/workerfs';
+
+function dirname(path: string) {
+  // adapted from dirname function in posixpath.py
+  const sep = "/";
+  const sep_index = path.lastIndexOf(sep) + 1;
+  let head = path.slice(0, sep_index);
+  if (head && head !== sep.repeat(head.length)) {
+    // strip end slashes
+    head = head.replace(/(\/)+$/, '');
+  }
+  return head;
+}
+
+function basename(path: string) {
+  // adapted from basename function in posixpath.py
+  const sep = "/";
+  const sep_index = path.lastIndexOf(sep) + 1;
+  return path.slice(sep_index);
+}
 
 async function save_to_workerfs(file: File) {
   const { FS, WORKERFS, mount } = await workerfs_promise;
@@ -13,11 +32,16 @@ async function save_to_workerfs(file: File) {
   return output_path;
 }
 
-async function save_bytes_to_memfs(filename: string, bytes: Uint8Array) {
+async function save_bytes_to_memfs(filepath: string, bytes: Uint8Array) {
   const { FS } = await h5wasm.ready;
-  const output_path = filename;
+  const path = dirname(filepath);
+  const filename = basename(filepath);
+  const output_path = filepath;
   if (FS.analyzePath(output_path).exists) {
     console.warn(`File ${output_path} already exists. Overwriting...`);
+  }
+  if (!FS.analyzePath(path).exists) {
+    FS.mkdirTree(path);
   }
   FS.writeFile(output_path, bytes);
   return output_path;
