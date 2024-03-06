@@ -1,4 +1,5 @@
 import * as h5wasm from '../dist/esm/hdf5_hl';
+import type { H5Module } from './hdf5_util_helpers';
 
 export const WORKERFS_MOUNT = '/workerfs';
 
@@ -47,6 +48,35 @@ async function save_bytes_to_memfs(filepath: string, bytes: Uint8Array) {
   return output_path;
 }
 
+async function get_plugin_search_path() {
+  const Module = await h5wasm.ready as H5Module;
+  const plugin_paths = Module.get_plugin_search_paths();
+  if (plugin_paths.length === 0) {
+    console.warn("No plugin paths found.");
+    return null;
+  }
+  else {
+    return plugin_paths[0];
+  }
+}
+
+async function get_plugin_names() {
+  const { FS } = await h5wasm.ready as H5Module;
+  const plugin_path = await get_plugin_search_path();
+  return (plugin_path === null) ? null : FS.readdir(plugin_path) as string[];
+}
+
+async function add_plugin(filename: string, bytes: Uint8Array) {
+  const { FS } = await h5wasm.ready as H5Module;
+  const plugin_path = await get_plugin_search_path();
+  if (plugin_path === null) {
+    console.warn("could not save plugin file: no plugin path found.")
+    return null;
+  }
+  const filepath = `${plugin_path}/${filename}`;
+  return await save_bytes_to_memfs(filepath, bytes);
+}
+
 async function save_to_memfs(file: File) {
   const { name: filename } = file;
   const ab = await file.arrayBuffer();
@@ -54,7 +84,7 @@ async function save_to_memfs(file: File) {
 }
 
 async function _mount_workerfs() {
-  const { FS } = await h5wasm.ready;
+  const { FS } = await h5wasm.ready as H5Module;
   const { filesystems: { WORKERFS } } = FS;
   if (!FS.analyzePath(WORKERFS_MOUNT).exists) {
     FS.mkdir(WORKERFS_MOUNT);
@@ -70,6 +100,9 @@ export const api = {
   save_to_workerfs,
   save_to_memfs,
   save_bytes_to_memfs,
+  get_plugin_search_path,
+  get_plugin_names,
+  add_plugin,
   H5WasmFile: h5wasm.File,
   Dataset: h5wasm.Dataset,
   Group: h5wasm.Group,

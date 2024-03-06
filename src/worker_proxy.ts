@@ -65,9 +65,15 @@ export async function get_file_proxy(filename: string, mode: ACCESS_MODESTRING =
 }
 
 export async function save_to_workerfs(file: File) {
-  const { name, lastModified, size } = file;
-  console.log(`Saving file ${name} of size ${lastModified} to workerfs...`);
-  return await remote.save_to_workerfs(file);
+  const { name } = file;
+  const filepath = await remote.save_to_workerfs(file);
+  console.log(`Saved file ${name} to workerfs at path ${filepath}`);
+  return filepath;
+}
+
+export async function load_with_workerfs(file: File) {
+  const filepath = await remote.save_to_workerfs(file);
+  return await get_file_proxy(filepath, "r");
 }
 
 export async function save_to_memfs(file: File) {
@@ -76,7 +82,40 @@ export async function save_to_memfs(file: File) {
   return await remote.save_to_memfs(file);
 }
 
+export async function load_with_memfs(file: File) {
+  const filepath = await remote.save_to_memfs(file);
+  return await get_file_proxy(filepath, "r");
+}
+
 export async function save_bytes_to_memfs(filename: string, bytes: Uint8Array) {
   console.log(`Saving bytes to memfs...`);
   return await remote.save_bytes_to_memfs(filename, Comlink.transfer(bytes, [bytes.buffer]));
+}
+
+export async function get_plugin_names() {
+  const plugin_names = await remote.get_plugin_names();
+  if (plugin_names === null) {
+    throw new Error("No plugin paths found.");
+  }
+  return plugin_names;
+}
+
+export async function add_plugin_bytes(filename: string, bytes: Uint8Array) {
+  const filepath = await remote.add_plugin(filename, Comlink.transfer(bytes, [bytes.buffer]));
+  if (filepath === null) {
+    throw new Error("could not save plugin file: no plugin path found.");
+  }
+  return filepath;
+}
+
+export async function add_plugin_file(file: File) {
+  const { name: filename } = file;
+  const ab = await file.arrayBuffer();
+  const bytes = new Uint8Array(ab);
+  return await add_plugin_bytes(filename, bytes);
+}
+
+export async function load_from_bytes(filename: string, bytes: Uint8Array) {
+  const filepath = await save_bytes_to_memfs(filename, bytes);
+  return await get_file_proxy(filepath, "r");
 }
