@@ -1,5 +1,5 @@
 import * as Comlink from 'comlink';
-import type { api } from './lib_worker.ts';
+import type { H5WasmWorkerAPI } from './h5wasm.worker.ts';
 // @ts-ignore (esbuild-plugin-inline-worker will rewrite this import)
 import DedicatedWorker from './h5wasm.worker.ts';
 
@@ -10,7 +10,7 @@ export type { H5WasmFile, Group, Dataset, Datatype, BrokenSoftLink };
 type ACCESS_MODESTRING = keyof typeof ACCESS_MODES;
 
 const worker = new DedicatedWorker(); // new Worker('./worker.js');
-const remote = Comlink.wrap(worker) as Comlink.Remote<typeof api>;
+const remote = Comlink.wrap(worker) as Comlink.Remote<H5WasmWorkerAPI>;
 
 export class GroupProxy {
   proxy: Comlink.Remote<Group>;
