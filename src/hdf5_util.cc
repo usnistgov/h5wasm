@@ -345,15 +345,26 @@ val get_abstractDS_metadata(hid_t dspace, hid_t dtype, hid_t dcpl)
 {
     val attr = get_dtype_metadata(dtype);
 
-    int rank = H5Sget_simple_extent_ndims(dspace);
+    int type = H5Sget_simple_extent_type(dspace);
     int total_size = H5Sget_simple_extent_npoints(dspace);
+    attr.set("total_size", total_size);
+
+    if (type == H5S_NULL) {
+        attr.set("shape", val::null());
+        attr.set("maxshape", val::null());
+        attr.set("chunks", val::null());
+        return attr;
+    }
+
+    int rank = H5Sget_simple_extent_ndims(dspace);
     std::vector<hsize_t> dims_out(rank);
     std::vector<hsize_t> maxdims_out(rank);
+
     int ndims = H5Sget_simple_extent_dims(dspace, dims_out.data(), maxdims_out.data());
+
     val shape = val::array();
     val maxshape = val::array();
-    for (int d = 0; d < ndims; d++)
-    {
+    for (int d = 0; d < ndims; d++) {
         shape.set(d, (uint)dims_out.at(d));
         maxshape.set(d, (uint)maxdims_out.at(d));
     }
@@ -364,19 +375,20 @@ val get_abstractDS_metadata(hid_t dspace, hid_t dtype, hid_t dcpl)
 
     if (dcpl) {
         H5D_layout_t layout = H5Pget_layout(dcpl);
+
         if (layout == H5D_CHUNKED) {
             std::vector<hsize_t> chunk_dims_out(ndims);
             H5Pget_chunk(dcpl, ndims, chunk_dims_out.data());
+
             val chunks = val::array();
-            for (int c = 0; c < ndims; c++)
-            {
+            for (int c = 0; c < ndims; c++) {
                 chunks.set(c, (uint)chunk_dims_out.at(c));
             }
+
             attr.set("chunks", chunks);
         }
     }
 
-    attr.set("total_size", total_size);
     return attr;
 }
 

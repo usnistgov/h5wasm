@@ -19,14 +19,14 @@ export interface H5T_class_t {
 
 export interface Metadata {
     array_type?: Metadata,
-    chunks: Array<number> | null,
+    chunks: number[] | null,
     compound_type?: CompoundTypeMetadata,
     cset: number,
     enum_type?: EnumTypeMetadata,
     littleEndian: boolean,
-    maxshape: Array<number> | null,
+    maxshape: number[] | null,
     ref_type?: 'object' | 'region',
-    shape: Array<number>,
+    shape: number[] | null,
     signed: boolean,
     size: number,
     total_size: number,
@@ -40,7 +40,7 @@ export interface CompoundMember extends Metadata {
 }
 
 export interface CompoundTypeMetadata {
-    members: Array<CompoundMember>
+    members: CompoundMember[]
     nmembers: number;
 }
 
@@ -105,7 +105,7 @@ export interface H5Module extends EmscriptenModule {
     reclaim_vlen_memory(file_id: BigInt, obj_name: string, attr_name: string, data_ptr: bigint): Status;
     get_attribute_data(file_id: BigInt, obj_name: string, attr_name: string, arg3: bigint): Status;
     FS: FS.FileSystemType,
-    get_keys_vector(group_id: bigint, H5_index_t: number): Array<string>,
+    get_keys_vector(group_id: bigint, H5_index_t: number): string[],
     get_attribute_metadata(loc_id: bigint, group_name_string: string, attribute_name_string: string): Metadata,
     get_plugin_search_paths(): string[],
     insert_plugin_search_path(search_path: string, index: number): number,
@@ -116,7 +116,7 @@ export interface H5Module extends EmscriptenModule {
     get_scale_name(loc_id: bigint, dimscale_dset_name: string): string | null,
     get_attached_scales(loc_id: bigint, target_dset_name: string, index: number): string[],
     set_dimension_label(loc_id: bigint, target_dset_name: string, index: number, label: string): number,
-    get_dimension_labels(loc_id: bigint, target_dset_name: string): Array<string | null>,
+    get_dimension_labels(loc_id: bigint, target_dset_name: string): (string | null)[],
     create_object_reference(loc_id: bigint, target_name: string): Uint8Array,
     create_region_reference(file_id: bigint, path: string, count: bigint[] | null, offset: bigint[] | null, strides: bigint[] | null): Uint8Array,
     get_referenced_name(loc_id: bigint, ref_ptr: Uint8Array, is_object: boolean): string;

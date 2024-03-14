@@ -66,13 +66,13 @@ export declare class Attribute {
     name: string;
     metadata: Metadata;
     dtype: Dtype;
-    shape: number[];
+    shape: number[] | null;
     private _value?;
     private _json_value?;
     constructor(file_id: bigint, path: string, name: string);
-    get value(): OutputData;
-    get json_value(): JSONCompatibleOutputData;
-    to_array(): string | number | boolean | JSONCompatibleOutputData[];
+    get value(): OutputData | null;
+    get json_value(): JSONCompatibleOutputData | null;
+    to_array(): JSONCompatibleOutputData | null;
 }
 declare abstract class HasAttrs {
     file_id: bigint;
@@ -132,14 +132,14 @@ export declare class Dataset extends HasAttrs {
     refresh(): void;
     get metadata(): Metadata;
     get dtype(): Dtype;
-    get shape(): number[];
+    get shape(): number[] | null;
     get filters(): Filter[];
-    get value(): OutputData;
-    get json_value(): JSONCompatibleOutputData;
-    slice(ranges: Slice[]): OutputData;
+    get value(): OutputData | null;
+    get json_value(): JSONCompatibleOutputData | null;
+    slice(ranges: Slice[]): OutputData | null;
     write_slice(ranges: Slice[], data: any): void;
     create_region_reference(ranges: Slice[]): RegionReference;
-    to_array(): string | number | boolean | JSONCompatibleOutputData[];
+    to_array(): JSONCompatibleOutputData | null;
     resize(new_shape: number[]): number;
     make_scale(scale_name?: string): void;
     attach_scale(index: number, scale_dset_path: string): void;
@@ -148,7 +148,9 @@ export declare class Dataset extends HasAttrs {
     get_scale_name(): string | null;
     set_dimension_label(index: number, label: string): void;
     get_dimension_labels(): (string | null)[];
-    _value_getter(json_compatible?: boolean): OutputData;
+    _value_getter(json_compatible?: false): OutputData | null;
+    _value_getter(json_compatible: true): JSONCompatibleOutputData | null;
+    _value_getter(json_compatible: boolean): OutputData | JSONCompatibleOutputData | null;
 }
 export declare class DatasetRegion {
     source_dataset: Dataset;
@@ -156,8 +158,10 @@ export declare class DatasetRegion {
     private _metadata?;
     constructor(source_dataset: Dataset, region_reference: RegionReference);
     get metadata(): Metadata;
-    get value(): OutputData;
-    _value_getter(json_compatible?: boolean): OutputData;
+    get value(): OutputData | null;
+    _value_getter(json_compatible?: false): OutputData | null;
+    _value_getter(json_compatible: true): JSONCompatibleOutputData | null;
+    _value_getter(json_compatible: boolean): OutputData | JSONCompatibleOutputData | null;
 }
 export declare const h5wasm: {
     File: typeof File;

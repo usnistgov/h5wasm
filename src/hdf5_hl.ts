@@ -40,11 +40,15 @@ function dirname(path: string) {
   return head;
 }
 
-function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_compatible: true): JSONCompatibleOutputData;
-function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_compatible: false): OutputData;
-function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_compatible: boolean): OutputData | JSONCompatibleOutputData;
-function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_compatible: boolean = false) {
+function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_compatible: true): JSONCompatibleOutputData | null;
+function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_compatible: false): OutputData | null;
+function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_compatible: boolean): OutputData | JSONCompatibleOutputData | null;
+function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_compatible: boolean = false): OutputData | JSONCompatibleOutputData | null {
   let metadata = Module.get_attribute_metadata(file_id, obj_name, attr_name);
+  if (!metadata.shape) {
+    return null;
+  }
+  
   let nbytes = metadata.size * metadata.total_size;
   let data_ptr = Module._malloc(nbytes);
   var processed;
@@ -106,6 +110,7 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
   // but otherwise returns Uint8Array raw bytes as loaded.
   let output_data: OutputData;
   let { shape, type } = metadata;
+
   let known_type = true;
   // let length: number;
   if (type === Module.H5T_class_t.H5T_STRING.value) {
@@ -153,9 +158,9 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
   else if (type === Module.H5T_class_t.H5T_COMPOUND.value) {
     const { size, compound_type } = <{size: Metadata["size"], compound_type: CompoundTypeMetadata}>metadata;
     let n = Math.floor(data.byteLength / size);
-    let output: OutputData[] = [];
+    let output: (OutputData | JSONCompatibleOutputData)[] = [];
     for (let i = 0; i < n; i++) {
-      let row: OutputData = [];
+      let row: (OutputData | JSONCompatibleOutputData)[] = [];
       let row_data = data.slice(i * size, (i + 1) * size);
       for (let member of compound_type.members) {
         let member_data = row_data.slice(member.offset, member.offset + member.size);
@@ -168,7 +173,7 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
 
   else if (type === Module.H5T_class_t.H5T_ARRAY.value) {
     const { array_type } = <{array_type: Metadata}>metadata;
-    shape = shape.concat(array_type.shape);
+    shape = (<number[]>shape).concat(<number[]>array_type.shape);
     array_type.shape = shape;
     // always convert ARRAY types to base JS types:
     output_data = process_data(data, array_type, true);
@@ -220,7 +225,7 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
 }
 
 function isIterable(x: any): x is Iterable<unknown> {
-  return typeof x === 'object' && Symbol.iterator in x;
+  return typeof x === 'object' && x !== null && Symbol.iterator in x;
 }
 
 function isH5PYBooleanEnum(enum_type: EnumTypeMetadata) {
@@ -515,9 +520,9 @@ export class Attribute {
   name: string;
   metadata: Metadata;
   dtype: Dtype;
-  shape: number[];
-  private _value?: OutputData;
-  private _json_value?: JSONCompatibleOutputData;
+  shape: number[] | null;
+  private _value?: OutputData | null;
+  private _json_value?: JSONCompatibleOutputData | null;
 
   constructor(file_id: bigint, path: string, name: string) {
     this.file_id = file_id;
@@ -529,27 +534,27 @@ export class Attribute {
     this.shape = metadata.shape;
   }
 
-  get value() {
+  get value(): OutputData | null {
     if (typeof this._value === "undefined") {
       this._value = get_attr(this.file_id, this.path, this.name, false);
     }
     return this._value;
   }
 
-  get json_value() {
+  get json_value(): JSONCompatibleOutputData | null {
     if (typeof this._json_value === "undefined") {
       this._json_value = get_attr(this.file_id, this.path, this.name, true);
     }
     return this._json_value;
   }
 
-  to_array() {
+  to_array(): JSONCompatibleOutputData | null {
     const { json_value, metadata } = this;
     const { shape } = metadata;
     if (!isIterable(json_value) || typeof json_value === "string") {
       return json_value;
     }
-    return create_nested_array(json_value, shape);
+    return create_nested_array(json_value, <number[]>shape);
   }
 }
 
@@ -916,24 +921,28 @@ export class Dataset extends HasAttrs {
     return Module.get_dataset_filters(this.file_id, this.path);
   }
 
-  get value() {
+  get value(): OutputData | null {
     return this._value_getter(false);
   }
 
-  get json_value(): JSONCompatibleOutputData {
-    return this._value_getter(true) as JSONCompatibleOutputData;
+  get json_value(): JSONCompatibleOutputData | null {
+    return this._value_getter(true);
   }
   
-  slice(ranges: Slice[]) {
+  slice(ranges: Slice[]): OutputData | null {
     // interpret ranges as [start, stop], with one per dim.
     const metadata = this.metadata;
     // if auto_refresh is on, getting the metadata has triggered a refresh of the dataset_id;
     const { shape } = metadata;
+    if (!shape) {
+      return null;
+    }
+
     const {strides, count, offset} = calculateHyperslabParams(shape, ranges);
     const total_size = count.reduce((previous, current) => current * previous, 1n);
     const nbytes = metadata.size * Number(total_size);
     const data_ptr = Module._malloc(nbytes);
-    let processed;
+    let processed: OutputData;
     try {
       Module.get_dataset_data(this.file_id, this.path, count, offset, strides, BigInt(data_ptr));
       let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
@@ -950,6 +959,9 @@ export class Dataset extends HasAttrs {
   write_slice(ranges: Slice[], data: any) {
     // interpret ranges as [start, stop], with one per dim.
     let metadata = this.metadata;
+    if (!metadata.shape) {
+      throw new Error("cannot write to a slice of an empty dataset");
+    }
     if (metadata.vlen) {
       throw new Error("writing to a slice of vlen dtype is not implemented");
     }
@@ -971,6 +983,10 @@ export class Dataset extends HasAttrs {
 
   create_region_reference(ranges: Slice[]) {
     const metadata = this.metadata;
+    if (!metadata.shape) {
+      throw new Error("cannot create region reference from empty dataset");
+    }
+
     // interpret ranges as [start, stop], with one per dim.
     const { shape } = metadata;
     const {strides, count, offset} = calculateHyperslabParams(shape, ranges);
@@ -978,13 +994,13 @@ export class Dataset extends HasAttrs {
     return new RegionReference(ref_data);
   }
 
-  to_array() {
+  to_array(): JSONCompatibleOutputData | null {
     const { json_value, metadata } = this;
     const { shape } = metadata;
     if (!isIterable(json_value) || typeof json_value === "string") {
       return json_value;
     }
-    let nested =  create_nested_array(json_value, shape);
+    let nested =  create_nested_array(json_value, <number[]>shape);
     return nested;
   }
 
@@ -1033,8 +1049,15 @@ export class Dataset extends HasAttrs {
     return Module.get_dimension_labels(this.file_id, this.path);
   }
 
-  _value_getter(json_compatible=false) {
+  _value_getter(json_compatible?: false): OutputData | null;
+  _value_getter(json_compatible: true): JSONCompatibleOutputData | null;
+  _value_getter(json_compatible: boolean): OutputData | JSONCompatibleOutputData | null;
+  _value_getter(json_compatible=false): OutputData | JSONCompatibleOutputData | null {
     let metadata = this.metadata;
+    if (!metadata.shape) {
+      return null
+    }
+
     // if auto_refresh is on, getting the metadata has triggered a refresh of the dataset_id;
     let nbytes = metadata.size * metadata.total_size;
     let data_ptr = Module._malloc(nbytes);
@@ -1071,12 +1094,19 @@ export class DatasetRegion {
     return this._metadata;
   }
 
-  get value() {
+  get value(): OutputData | null {
     return this._value_getter(false);
   }
 
-  _value_getter(json_compatible=false) {
+  _value_getter(json_compatible?: false): OutputData | null;
+  _value_getter(json_compatible: true): JSONCompatibleOutputData | null;
+  _value_getter(json_compatible: boolean): OutputData | JSONCompatibleOutputData | null;
+  _value_getter(json_compatible=false): OutputData | JSONCompatibleOutputData | null {
     let metadata = this.metadata;
+    if (!metadata.shape) {
+      return null;
+    }
+
     // if auto_refresh is on, getting the metadata has triggered a refresh of the dataset_id;
     let nbytes = metadata.size * metadata.total_size;
     let data_ptr = Module._malloc(nbytes);
@@ -1108,7 +1138,7 @@ function create_nested_array(value: JSONCompatibleOutputData[], shape: number[])
   const subdims = shape.slice(1).reverse();
   for (let dim of subdims) {
     // in each pass, replace input with array of slices of input
-    const new_output: JSONCompatibleOutputData = [];
+    const new_output: JSONCompatibleOutputData[][] = [];
     const { length } = output;
     let cursor = 0;
     while (cursor < length) {
