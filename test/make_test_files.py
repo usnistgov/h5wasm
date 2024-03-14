@@ -29,3 +29,7 @@ with h5py.File("compressed.h5", "w") as f:
     f.create_dataset(
         "gzip_shuffle", data=data, compression="gzip", shuffle=True
     )
+
+with h5py.File("empty.h5", "w") as f:
+    f.create_dataset("empty_dataset", data=h5py.Empty("f"))
+    f.attrs["empty_attr"] = h5py.Empty("f")
