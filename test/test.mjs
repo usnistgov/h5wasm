@@ -17,6 +17,7 @@ import dimension_labels from './dimension_labels.mjs';
 import dimension_scales from './dimension_scales.mjs';
 import references from './create_read_references.mjs';
 import test_throwing_error_handler from './test_throwing_error_handler.mjs';
+import test_empty from './empty_dataset_and_attrs.mjs';
 
 let tests = [];
 const add_tests = (tests_in) => { /*global*/ tests = tests.concat(tests_in)}
@@ -37,6 +38,7 @@ add_tests(dimension_labels);
 add_tests(dimension_scales);
 add_tests(references);
 add_tests(test_throwing_error_handler);
+add_tests(test_empty);
 
 let passed = true;
 async function run_test(test) {
