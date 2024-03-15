@@ -23,6 +23,7 @@
     "build_node": "tsc src/hdf5_hl.ts --outDir dist/node --target es2020 --allowJs --esModuleInterop",
     "build_iife": "esbuild --bundle dist/esm/hdf5_hl.js --outfile=dist/iife/h5wasm.js --format=iife --global-name=h5wasm",
     "build_types": "tsc --declaration --strict --emitDeclarationOnly src/hdf5_hl.ts --target es2020",
+    "build_worker_bundle": "node build_worker_bundle.mjs",
     "test": "node ./test/test.mjs"
   },
   "repository": {
@@ -39,7 +40,9 @@
   "author": "Brian B. Maranville",
   "license": "SEE LICENSE IN LICENSE.txt",
   "devDependencies": {
+    "comlink": "^4.4.1",
     "esbuild": "^0.15.16",
+    "esbuild-plugin-inline-worker": "^0.1.1",
     "typescript": "^4.5.4"
   }
 }
