@@ -1,4 +1,9 @@
 # Changelog
+## v0.7.3 2024-04-02
+### Changed
+ - removed references to `import.meta` in the compiled files, using `USE_ES6_IMPORT_META=0` compilation flag for emscripten.  It shouldn't matter in any case, as it is compiled in single-file mode and there are no external imports at runtime.
+
+ *Note that this enables bundling `h5wasm` into a worker without requiring `{type: "module"}`*
 ## v0.7.2 2024-02-29
 ### Added
  - new optional HDF5 error handler that throws Javascript error (old handler printed **HDF5-DIAG** error strings using `console.error()`, but did not throw a JS `Error`)
