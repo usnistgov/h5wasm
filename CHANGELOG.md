@@ -1,4 +1,8 @@
 # Changelog
+## v0.7.4 2024-04-03
+### Fixed
+ - added missing `.js` extension in type imports 
+ ( see issue comment https://github.com/usnistgov/h5wasm/issues/31#issuecomment-2032301488 and fix in #71 )
 ## v0.7.3 2024-04-02
 ### Changed
  - removed references to `import.meta` in the compiled files, using `USE_ES6_IMPORT_META=0` compilation flag for emscripten.  It shouldn't matter in any case, as it is compiled in single-file mode and there are no external imports at runtime.
