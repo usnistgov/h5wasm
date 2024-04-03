@@ -1,4 +1,4 @@
-import type {Status, Metadata, H5Module, CompoundMember, CompoundTypeMetadata, EnumTypeMetadata, Filter} from "./hdf5_util_helpers";
+import type {Status, Metadata, H5Module, CompoundMember, CompoundTypeMetadata, EnumTypeMetadata, Filter} from "./hdf5_util_helpers.js";
 
 import ModuleFactory from './hdf5_util.js';
 
