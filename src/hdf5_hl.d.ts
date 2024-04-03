@@ -1,4 +1,4 @@
-import type { Status, Metadata, H5Module, CompoundMember, CompoundTypeMetadata, EnumTypeMetadata, Filter } from "./hdf5_util_helpers";
+import type { Status, Metadata, H5Module, CompoundMember, CompoundTypeMetadata, EnumTypeMetadata, Filter } from "./hdf5_util_helpers.js";
 export declare var Module: H5Module;
 export declare var FS: (FS.FileSystemType | null);
 declare const ready: Promise<H5Module>;
