@@ -67,7 +67,6 @@ async function compound_array_test() {
       members: [
         {
           array_type: {
-            cset: -1,
             shape: [2, 2],
             littleEndian: true,
             signed: false,
@@ -76,7 +75,6 @@ async function compound_array_test() {
             type: 1,
             vlen: false,
           },
-          cset: -1,
           littleEndian: true,
           name: 'floaty',
           offset: 0,
@@ -93,11 +91,11 @@ async function compound_array_test() {
             littleEndian: false,
             signed: false,
             size: 5,
+            strpad: 1,
             total_size: 4,
             type: 3,
             vlen: false,
           },
-          cset: -1,
           littleEndian: false,
           name: 'stringy',
           offset: 32,
@@ -110,7 +108,6 @@ async function compound_array_test() {
       ],
       nmembers: 2
     },
-    cset: -1,
     littleEndian: true,
     maxshape: [2],
     shape: [2],

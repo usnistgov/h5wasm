@@ -261,10 +261,7 @@ val get_dtype_metadata(hid_t dtype)
     if (dtype_class == H5T_STRING)
     {
         attr.set("cset", (int)(H5Tget_cset(dtype)));
-    }
-    else
-    {
-        attr.set("cset", -1);
+        attr.set("strpad", (int)(H5Tget_strpad(dtype)));
     }
 
     if (dtype_class == H5T_COMPOUND)

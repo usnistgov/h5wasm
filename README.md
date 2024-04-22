@@ -124,7 +124,6 @@ data.metadata
 /* 
 {
     "signed": true,
-    "cset": -1,
     "vlen": false,
     "littleEndian": true,
     "type": 0,
