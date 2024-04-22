@@ -261,10 +261,7 @@ val get_dtype_metadata(hid_t dtype)
     if (dtype_class == H5T_STRING)
     {
         attr.set("cset", (int)(H5Tget_cset(dtype)));
-    }
-    else
-    {
-        attr.set("cset", -1);
+        attr.set("strpad", (int)(H5Tget_strpad(dtype)));
     }
 
     if (dtype_class == H5T_COMPOUND)
@@ -1317,6 +1314,12 @@ EMSCRIPTEN_BINDINGS(hdf5)
         .value("H5T_ENUM", H5T_ENUM)           //      = 8,  /**< enumeration types                       */
         .value("H5T_VLEN", H5T_VLEN)           //      = 9,  /**< variable-Length types                   */
         .value("H5T_ARRAY", H5T_ARRAY)         //     = 10, /**< array types                             */
+        ;
+    enum_<H5T_str_t>("H5T_str_t")
+        .value("H5T_STR_ERROR", H5T_STR_ERROR) // = -1, /**<error                                      */
+        .value("H5T_STR_NULLTERM", H5T_STR_NULLTERM) // = 0, /**<null-terminated                           */
+        .value("H5T_STR_NULLPAD", H5T_STR_NULLPAD) // = 1, /**<pad with nulls                            */
+        .value("H5T_STR_SPACEPAD", H5T_STR_SPACEPAD) // = 2, /**<pad with spaces                           */
         ;
 
     //constant("H5L_type_t", H5L_type_t);
