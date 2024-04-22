@@ -17,11 +17,19 @@ export interface H5T_class_t {
     H5T_ARRAY: {value: 10}         // = 10, /**< array types                             */
 }
 
+export interface H5T_str_t {
+    H5T_STR_ERROR: {value: -1},    // = -1, /**< error */
+    H5T_STR_NULLTERM: {value: 0},  // = 0, /**< null-terminated, null-padding */
+    H5T_STR_NULLPAD: {value: 1},   // = 1, /**< null-terminated, null-padding */
+    H5T_STR_SPACEPAD: {value: 2},  // = 2, /**< space-padding */
+    H5T_STR_RESERVED_3: {value: 3} // = 3  /**< reserved for future use */
+}
+
 export interface Metadata {
     array_type?: Metadata,
     chunks: number[] | null,
     compound_type?: CompoundTypeMetadata,
-    cset: number,
+    cset?: number,
     enum_type?: EnumTypeMetadata,
     littleEndian: boolean,
     maxshape: number[] | null,
@@ -29,6 +37,7 @@ export interface Metadata {
     shape: number[] | null,
     signed: boolean,
     size: number,
+    strpad?: H5T_str_t,
     total_size: number,
     type: number,
     vlen: boolean,
