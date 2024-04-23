@@ -14,7 +14,6 @@ async function bool_test() {
 
   assert.deepEqual(f.get('bool').metadata, {
     chunks: null,
-    cset: -1,
     enum_type: {
       type: 0,
       nmembers: 2,
