@@ -384,6 +384,29 @@ val get_abstractDS_metadata(hid_t dspace, hid_t dtype, hid_t dcpl)
 
             attr.set("chunks", chunks);
         }
+
+        else if (layout == H5D_VIRTUAL) {
+            val virtual_sources = val::array();
+            size_t virtual_count;
+            ssize_t file_name_size;
+            ssize_t dset_name_size;
+            H5Pget_virtual_count(dcpl, &virtual_count);
+            for (size_t i = 0; i < virtual_count; i++) {
+                val virtual_source = val::object();
+                file_name_size = H5Pget_virtual_filename(dcpl, i, NULL, 0);
+                dset_name_size = H5Pget_virtual_dsetname(dcpl, i, NULL, 0);
+                char * file_name = (char *)malloc(file_name_size + 1);
+                char * dset_name = (char *)malloc(dset_name_size + 1);
+                H5Pget_virtual_filename(dcpl, i, file_name, file_name_size + 1);
+                H5Pget_virtual_dsetname(dcpl, i, dset_name, dset_name_size + 1);
+                virtual_source.set("file_name", std::string(file_name));
+                virtual_source.set("dset_name", std::string(dset_name));
+                free(file_name);
+                free(dset_name);
+                virtual_sources.set(i, virtual_source);
+            }
+            attr.set("virtual_sources", virtual_sources);
+        }
     }
 
     return attr;
