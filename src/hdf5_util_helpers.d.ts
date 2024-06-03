@@ -32,6 +32,7 @@ export interface Metadata {
     strpad?: number,
     total_size: number,
     type: number,
+    virtual_sources?: VirtualSource[],
     vlen: boolean,
 }
 
@@ -49,6 +50,11 @@ export interface EnumTypeMetadata {
     members: {[key: string]: number};
     nmembers: number;
     type: number;
+}
+
+export interface VirtualSource {
+    file_name: string;
+    dset_name: string;
 }
 
 export interface H5Module extends EmscriptenModule {
