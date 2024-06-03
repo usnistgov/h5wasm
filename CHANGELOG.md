@@ -1,7 +1,8 @@
 # Changelog
 ## v0.7.5 2024-06-03
 ### Added
- - added `virtual_sources?: { file_name: string, dset_name: string }` to `Dataset.metadata` when dataset is virtual. 
+ - added `virtual_sources?: { file_name: string, dset_name: string }` to `Dataset.metadata` when dataset is virtual.
+ - added `strpad` enum to metadata (type of string padding) - PR #72 @axelboc
 ## v0.7.4 2024-04-03
 ### Fixed
  - added missing `.js` extension in type imports 
