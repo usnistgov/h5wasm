@@ -188,7 +188,7 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
     output_data = process_data(data, base_metadata, json_compatible);
     // Following the convention of h5py, treat all enum datasets where the
     // enum members are ["FALSE", "TRUE"] as boolean arrays
-    if (isH5PYBooleanEnum(metadata.enum_type as EnumTypeMetadata)) {
+    if (json_compatible && isH5PYBooleanEnum(metadata.enum_type as EnumTypeMetadata)) {
       if (isIterable(output_data)) {
         output_data = [...output_data].map((x) => !!x);
       }

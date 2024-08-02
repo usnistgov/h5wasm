@@ -9,6 +9,11 @@ async function bool_test() {
 
   assert.deepEqual(
     f.get('bool').value,
+    new Int8Array([ 0, 1, 1, 0 ])
+  );
+
+  assert.deepEqual(
+    f.get('bool').json_value,
     [ false, true, true, false ]
   );
 
