@@ -23,6 +23,7 @@ export interface Metadata {
     compound_type?: CompoundTypeMetadata,
     cset?: number,
     enum_type?: EnumTypeMetadata,
+    vlen_type?: Metadata,
     littleEndian: boolean,
     maxshape: number[] | null,
     ref_type?: 'object' | 'region',
