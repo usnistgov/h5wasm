@@ -303,6 +303,12 @@ val get_dtype_metadata(hid_t dtype)
         array_type.set("total_size", total_size);
         attr.set("array_type", array_type);
     }
+    else if (dtype_class == H5T_VLEN) {
+        hid_t base_dtype = H5Tget_super(dtype);
+        val vlen_type = get_dtype_metadata(base_dtype);
+        H5Tclose(base_dtype);
+        attr.set("vlen_type", vlen_type);
+    }
     else if (dtype_class == H5T_ENUM) {
         val enum_type = val::object();
         val members = val::object();

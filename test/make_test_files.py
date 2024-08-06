@@ -33,3 +33,12 @@ with h5py.File("compressed.h5", "w") as f:
 with h5py.File("empty.h5", "w") as f:
     f.create_dataset("empty_dataset", data=h5py.Empty("f"))
     f.attrs["empty_attr"] = h5py.Empty("f")
+
+with h5py.File("vlen.h5", "w") as f:
+    vlen_scalar = f.create_dataset("int8_scalar", shape=(), dtype=h5py.vlen_dtype(np.int8))
+    vlen_scalar[()] = [0, 1]
+
+    vlen_array = f.create_dataset("float32_oneD", shape=(3,), dtype=h5py.vlen_dtype(np.float32))
+    vlen_array[0] = [0]
+    vlen_array[1] = [0, 1]
+    vlen_array[2] = [0, 1, 2]

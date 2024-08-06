@@ -208,6 +208,30 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
     return output_data;
   }
 
+  else if (type === Module.H5T_class_t.H5T_VLEN.value) {
+    // Data buffer holds HDF5 `hvl_t` struct
+    // https://docs.hdfgroup.org/hdf5/v1_12/structhvl__t.html
+    const ptr_pairs = new Uint32Array(data.buffer); // both `size_t` length and pointer are 4-byte-long
+    const ptr_pairs_length = ptr_pairs.length;
+    const vlen_type = metadata.vlen_type as Metadata; 
+    const { size } = vlen_type;
+
+    let output: (OutputData | JSONCompatibleOutputData)[] = [];
+    for (let p = 0; p < ptr_pairs_length; p += 2) {
+      const length = ptr_pairs[p]; // number of elements in this vlen array
+      const data_ptr = ptr_pairs[p + 1]; // pointer to this vlen array's data
+
+      // Read vlen array data from memory
+      const data_nbytes = length * size;
+      const data = Module.HEAPU8.slice(data_ptr, data_ptr + data_nbytes);
+      
+      // Process this vlen array's data according to base datatype
+      output.push(process_data(data, { ...vlen_type, shape: [length] }, json_compatible));
+    }
+
+    output_data = output;
+  }
+
   else {
     known_type = false;
     output_data = data;
@@ -948,7 +972,7 @@ export class Dataset extends HasAttrs {
       let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
       processed = process_data(data, metadata, false);
     } finally {
-      if (metadata.vlen) {
+      if (metadata.vlen || metadata.type === Module.H5T_class_t.H5T_VLEN.value) {
         Module.reclaim_vlen_memory(this.file_id, this.path, "", BigInt(data_ptr));
       }
       Module._free(data_ptr);
