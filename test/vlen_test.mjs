@@ -44,6 +44,16 @@ async function vlen_test() {
       vlen: false,
     },
   });
+
+  assert.deepEqual(f.get('int8_scalar').value, new Int8Array([0, 1]));
+  assert.deepEqual(
+    f.get('float32_oneD').value,
+    [
+      new Float32Array([0]),
+      new Float32Array([0, 1]),
+      new Float32Array([0, 1, 2])
+    ]
+  );
 }
 
 export const tests = [
