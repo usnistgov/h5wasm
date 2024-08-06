@@ -1,4 +1,17 @@
 # Changelog
+## v0.7.6
+### Changed
+ - Retrieve `value` of boolean dataset as `Int8Array` instead of plain JS boolean array. To retrieve a plain JS boolean array, use `json_value` instead:
+ 
+   ```ts
+   // v0.7.5 and earlier
+   bool_dset.value; // -> [false, true]
+   bool_dset.json_value; // -> [false, true]
+
+   // v0.7.6 onwards
+   bool_dset.value; // -> Int8Array(2) [0, 1]
+   bool_dset.json_value; // -> [false, true]
+   ```
 ## v0.7.5 2024-06-03
 ### Added
  - added `virtual_sources?: { file_name: string, dset_name: string }` to `Dataset.metadata` when dataset is virtual.
