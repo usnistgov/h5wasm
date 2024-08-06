@@ -212,14 +212,14 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
     // Data buffer holds HDF5 `hvl_t` struct
     // https://docs.hdfgroup.org/hdf5/v1_12/structhvl__t.html
     const ptr_pairs = new Uint32Array(data.buffer); // both `size_t` length and pointer are 4-byte-long
-    const num_ptrs = ptr_pairs.length / 2;
+    const ptr_pairs_length = ptr_pairs.length;
     const vlen_type = metadata.vlen_type as Metadata; 
     const { size } = vlen_type;
 
     let output: (OutputData | JSONCompatibleOutputData)[] = [];
-    for (let p = 0; p < num_ptrs; p += 1) {
-      const length = ptr_pairs[p * 2]; // number of elements in this vlen array
-      const data_ptr = ptr_pairs[p * 2 + 1]; // pointer to this vlen array's data
+    for (let p = 0; p < ptr_pairs_length; p += 2) {
+      const length = ptr_pairs[p]; // number of elements in this vlen array
+      const data_ptr = ptr_pairs[p + 1]; // pointer to this vlen array's data
 
       // Read vlen array data from memory
       const data_nbytes = length * size;
