@@ -1,5 +1,11 @@
 # Changelog
 ## v0.7.6
+### Added
+ - Full support for reading VLEN datasets (numeric variable-length datasets), fixing #78
+
+   - previously the library made no attempt to read the stored values and returned the raw bytes (corresponding to intermediate`[length, data_pointer]` pairs)
+   - now returns an `Array` of `TypedArray` objects containing the stored values (or an `Array` of `Array` objects if `json_value` is requested)
+   - `vlen_type?: Metadata` key added to `Metadata` interface, and populated with type information about the base type in a VLEN dataset
 ### Changed
  - Retrieve `value` of boolean dataset as `Int8Array` instead of plain JS boolean array. To retrieve a plain JS boolean array, use `json_value` instead:
  
