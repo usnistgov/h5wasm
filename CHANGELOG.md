@@ -1,5 +1,5 @@
 # Changelog
-## v0.7.6
+## v0.7.6 2024-08-06
 ### Added
  - Full support for reading VLEN datasets (numeric variable-length datasets), fixing #78
 
