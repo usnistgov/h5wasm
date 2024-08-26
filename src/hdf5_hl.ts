@@ -524,8 +524,17 @@ export class ExternalLink {
 }
 
 export class Datatype {
+  file_id: bigint;
+  path: string;
   type: OBJECT_TYPE = OBJECT_TYPE.DATATYPE
-  constructor() {}
+  constructor(file_id: bigint, path: string) {
+    this.file_id = file_id;
+    this.path = path;
+  }
+
+  get metadata() {
+    return Module.get_datatype_metadata(this.file_id, this.path);
+  }
 }
 
 export class Reference {
@@ -736,7 +745,7 @@ export class Group extends HasAttrs {
       return new ExternalLink(filename, obj_path);
     }
     else if (type === Module.H5G_TYPE) {
-      return new Datatype()
+      return new Datatype(this.file_id, fullpath);
     }
     // unknown type or object not found
     return null

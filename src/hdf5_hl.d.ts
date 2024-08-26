@@ -51,8 +51,11 @@ export declare class ExternalLink {
     constructor(filename: string, obj_path: string);
 }
 export declare class Datatype {
+    file_id: bigint;
+    path: string;
     type: OBJECT_TYPE;
-    constructor();
+    constructor(file_id: bigint, path: string);
+    get metadata(): Metadata;
 }
 export declare class Reference {
     ref_data: Uint8Array;

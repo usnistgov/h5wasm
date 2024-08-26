@@ -7,7 +7,17 @@ async function datatype_test() {
   await h5wasm.ready;
   var f = new h5wasm.File('./test/array.h5', 'r');
 
-  assert.deepEqual(f.get('datatype/value'), new h5wasm.Datatype());
+  const datatype = f.get('datatype/value');
+  assert(datatype instanceof h5wasm.Datatype);
+  assert.deepEqual(datatype.metadata, {
+    signed: false,
+    type: 3,
+    cset: 0,
+    strpad: 1,
+    vlen: false,
+    littleEndian: false,
+    size: 10
+  });
 }
 
 export const tests = [

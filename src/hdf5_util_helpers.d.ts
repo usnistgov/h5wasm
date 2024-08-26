@@ -98,6 +98,7 @@ export interface H5Module extends EmscriptenModule {
     refresh_dataset(file_id: bigint, path: string): number;
     resize_dataset(file_id: bigint, path: string, new_size: bigint[]): number;
     get_dataset_metadata(file_id: bigint, path: string): Metadata;
+    get_datatype_metadata(file_id: bigint, path: string): Metadata;
     get_dataset_filters(file_id: bigint, path: string): Filter[];
     flush(file_id: bigint): number;
     ccall: typeof ccall;

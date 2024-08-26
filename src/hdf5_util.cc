@@ -344,6 +344,24 @@ val get_dtype_metadata(hid_t dtype)
     return attr;
 }
 
+val get_datatype_metadata(hid_t loc_id, const std::string& dtype_name_string)
+{
+    hid_t dtype_id;
+    herr_t status;
+    const char *dtype_name = dtype_name_string.c_str();
+
+    dtype_id = H5Topen2(loc_id, dtype_name, H5P_DEFAULT);
+    if (dtype_id < 0)
+    {
+        throw_error("error - name not defined!");
+        return val::null();
+    }
+    val metadata = get_dtype_metadata(dtype_id);
+
+    H5Tclose(dtype_id);
+    return metadata;
+}
+
 val get_abstractDS_metadata(hid_t dspace, hid_t dtype, hid_t dcpl)
 {
     val attr = get_dtype_metadata(dtype);
@@ -1282,6 +1300,7 @@ EMSCRIPTEN_BINDINGS(hdf5)
     function("get_attribute_names", &get_attribute_names);
     function("get_attribute_metadata", &get_attribute_metadata);
     function("get_dataset_metadata", &get_dataset_metadata);
+    function("get_datatype_metadata", &get_datatype_metadata);
     function("get_dataset_filters", &get_dataset_filters);
     function("refresh_dataset", &refresh_dataset);
     function("get_dataset_data", &get_dataset_data);
