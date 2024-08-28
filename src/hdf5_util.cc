@@ -27,7 +27,7 @@ EM_JS(void, throw_error, (const char *string_error), {
 //     // pass
 // }
 
-int64_t open(const std::string& filename_string, unsigned int h5_mode, bool track_order = false)
+int64_t open(const std::string& filename_string, unsigned int h5_mode = H5F_ACC_RDONLY, bool track_order = false)
 {
     const char *filename = filename_string.c_str();
     hid_t file_id;
