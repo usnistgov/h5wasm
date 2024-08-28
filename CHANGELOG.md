@@ -1,4 +1,37 @@
 # Changelog
+## v0.7.7 2024-08-28
+### Added
+-  A method to read metadata from committed datatypes in an HDF5 file
+    - `Datatype.metadata` is a getter that returns the dtype metadata, in the same format (`Metadata` TypeScript interface) returned from `Dataset.metadata` 
+-  Enable "track order" mode of HDF5 for attributes of `Dataset`, and (fields and attributes) of `Group`.  When `track_order == true` for a `Group`, both fields and attributes keep their insertion order on read.  For a `Dataset`, the attributes keep their insertion order when the flag is set. 
+
+    Note that the flag is not inherited, i.e. if an `h5wasm.Group` object is created with `track_order = true`, its sub-groups and contained `Dataset` objects will not have the flag enabled by default.  The flag is added to the `File` constructor just to track order of immediate children of the root group.
+
+    Changes three signatures in the `h5wasm` API:
+    - `h5wasm.File(filename: string, mode: ACCESS_MODESTRING = "r", track_order: boolean = false)`
+    - `h5wasm.Group.create_group(name: string, track_order: boolean = false)`
+    - ```
+      h5wasm.Group.create_dataset(args: {
+        name: string,
+        data: GuessableDataTypes,
+        shape?: number[] | null,
+        dtype?: string | null,
+        maxshape?: (number | null)[] | null,
+        chunks?: number[] | null,
+        compression?: (number | 'gzip'),
+        compression_opts?: number | number[],
+        track_order?: boolean,
+      })
+      ```
+
+    Also adds one method to the Module API:
+    - `open(filename: string, mode?: number, track_order?: boolean): bigint;`
+      (the default arguments are `mode = H5F_ACC_RDONLY` and `track_order = false`)
+
+    and modifies the signatures of three existing methods in the Module API: 
+    - `create_dataset`
+    - `create_group`
+    - `create_vlen_str_dataset`
 ## v0.7.6 2024-08-06
 ### Added
  - Full support for reading VLEN datasets (numeric variable-length datasets), fixing #78
