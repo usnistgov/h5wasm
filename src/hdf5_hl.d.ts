@@ -105,7 +105,7 @@ export declare class Group extends HasAttrs {
         obj_path: string;
     };
     get(obj_name: string): BrokenSoftLink | ExternalLink | Datatype | Group | Dataset | null;
-    create_group(name: string): Group;
+    create_group(name: string, track_order?: boolean): Group;
     create_dataset(args: {
         name: string;
         data: GuessableDataTypes;
@@ -115,6 +115,7 @@ export declare class Group extends HasAttrs {
         chunks?: number[] | null;
         compression?: (number | 'gzip');
         compression_opts?: number | number[];
+        track_order?: boolean;
     }): Dataset;
     create_soft_link(target: string, name: string): number;
     create_hard_link(target: string, name: string): number;
@@ -125,7 +126,7 @@ export declare class Group extends HasAttrs {
 export declare class File extends Group {
     filename: string;
     mode: ACCESS_MODESTRING;
-    constructor(filename: string, mode?: ACCESS_MODESTRING);
+    constructor(filename: string, mode?: ACCESS_MODESTRING, track_order?: boolean);
     flush(): void;
     close(): Status;
 }

@@ -27,6 +27,31 @@ EM_JS(void, throw_error, (const char *string_error), {
 //     // pass
 // }
 
+int64_t open(const std::string& filename_string, unsigned int h5_mode = H5F_ACC_RDONLY, bool track_order = false)
+{
+    const char *filename = filename_string.c_str();
+    hid_t file_id;
+    hid_t fcpl_id = H5Pcreate(H5P_FILE_CREATE);
+
+    if (track_order)
+    {
+        H5Pset_link_creation_order(fcpl_id, H5P_CRT_ORDER_TRACKED | H5P_CRT_ORDER_INDEXED);
+        H5Pset_attr_creation_order(fcpl_id, H5P_CRT_ORDER_TRACKED | H5P_CRT_ORDER_INDEXED);
+    }
+
+    if (h5_mode == H5F_ACC_TRUNC || h5_mode == H5F_ACC_EXCL)
+    {
+      file_id = H5Fcreate(filename, h5_mode, fcpl_id, H5P_DEFAULT);
+    }
+    else
+    {
+      // then it is an existing file...
+      file_id = H5Fopen(filename, h5_mode, H5P_DEFAULT);
+    }
+    herr_t status = H5Pclose(fcpl_id);
+    return (int64_t)file_id;
+}
+
 herr_t link_name_callback(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata)
 {
     std::vector<std::string> *namelist = reinterpret_cast<std::vector<std::string> *>(opdata);
@@ -691,14 +716,21 @@ int get_attribute_data(hid_t loc_id, const std::string& group_name_string, const
     return (int)status;
 }
 
-int create_group(hid_t loc_id, std::string grp_name_string)
+int create_group(hid_t loc_id, std::string grp_name_string, const bool track_order=false)
 {
-    hid_t grp_id = H5Gcreate2(loc_id, grp_name_string.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    herr_t status = H5Gclose(grp_id);
+    hid_t gcpl_id = H5Pcreate(H5P_GROUP_CREATE);
+    if (track_order)
+    {
+        H5Pset_link_creation_order(gcpl_id, H5P_CRT_ORDER_TRACKED | H5P_CRT_ORDER_INDEXED);
+        H5Pset_attr_creation_order(gcpl_id, H5P_CRT_ORDER_TRACKED | H5P_CRT_ORDER_INDEXED);
+    }
+    hid_t grp_id = H5Gcreate2(loc_id, grp_name_string.c_str(), H5P_DEFAULT, gcpl_id, H5P_DEFAULT);
+    herr_t status = H5Pclose(gcpl_id);
+    status = H5Gclose(grp_id);
     return (int)status;
 }
 
-herr_t setup_dataset(val dims_in, val maxdims_in, val chunks_in, int dtype, int dsize, bool is_signed, bool is_vlstr, int compression, val compression_opts, hid_t *filetype, hid_t *space, hid_t *dcpl)
+herr_t setup_dataset(val dims_in, val maxdims_in, val chunks_in, int dtype, int dsize, bool is_signed, bool is_vlstr, int compression, val compression_opts, bool track_order, hid_t *filetype, hid_t *space, hid_t *dcpl)
 {
     herr_t status;
 
@@ -719,15 +751,12 @@ herr_t setup_dataset(val dims_in, val maxdims_in, val chunks_in, int dtype, int 
     * Create dataset creation property list (dcpl),
     * defining chunking if chunks_in is not null
     */
+    *dcpl = H5Pcreate(H5P_DATASET_CREATE);
 
-    if (chunks_in == val::null()) {
-        *dcpl = H5P_DEFAULT;
-    }
-    else {
+    if (chunks_in != val::null()) {
         std::vector<hsize_t> chunks_vec = vecFromJSArray<hsize_t>(chunks_in);
         hsize_t *chunks = chunks_vec.data();
         int nchunks = chunks_vec.size();
-        *dcpl = H5Pcreate(H5P_DATASET_CREATE);
         H5Pset_chunk(*dcpl, nchunks, chunks);
         if (compression != 0) {
             std::vector<uint> compression_opts_vec = vecFromJSArray<uint>(compression_opts);
@@ -735,6 +764,10 @@ herr_t setup_dataset(val dims_in, val maxdims_in, val chunks_in, int dtype, int 
             uint *cd_values = compression_opts_vec.data();
             H5Pset_filter(*dcpl, compression, H5Z_FLAG_MANDATORY, cd_nelmts, cd_values);
         }
+    }
+
+    if (track_order) {
+        H5Pset_attr_creation_order(*dcpl, H5P_CRT_ORDER_TRACKED | H5P_CRT_ORDER_INDEXED);
     }
 
     if (dtype == H5T_STRING)
@@ -825,7 +858,7 @@ int create_attribute(hid_t loc_id, std::string obj_name_string, std::string attr
     //     throw_error("data type not supported");
     // }
 
-    status = setup_dataset(dims_in, dims_in, val::null(), dtype, dsize, is_signed, is_vlstr, 0, val::null(), &filetype, &space, &dcpl);
+    status = setup_dataset(dims_in, dims_in, val::null(), dtype, dsize, is_signed, is_vlstr, 0, val::null(), false, &filetype, &space, &dcpl);
     /*
     * Create the attribute and write the data to it.
     */
@@ -878,7 +911,7 @@ int create_vlen_str_attribute(hid_t loc_id, std::string obj_name_string, std::st
     return create_attribute(loc_id, obj_name_string, attr_name_string, wdata_uint64, dims_in, dtype, dsize, is_signed, is_vlstr);
 }
 
-int create_dataset(hid_t loc_id, std::string dset_name_string, uint64_t wdata_uint64, val dims_in, val maxdims_in, val chunks_in, int dtype, int dsize, bool is_signed, bool is_vlstr, int compression, val compression_opts)
+int create_dataset(hid_t loc_id, std::string dset_name_string, uint64_t wdata_uint64, val dims_in, val maxdims_in, val chunks_in, int dtype, int dsize, bool is_signed, bool is_vlstr, int compression, val compression_opts, bool track_order=false)
 {
     hid_t filetype, space, dset, dcpl;
     herr_t status;
@@ -886,7 +919,7 @@ int create_dataset(hid_t loc_id, std::string dset_name_string, uint64_t wdata_ui
     void *wdata = (void *)wdata_uint64;
     const char *dset_name = dset_name_string.c_str();
 
-    status = setup_dataset(dims_in, maxdims_in, chunks_in, dtype, dsize, is_signed, is_vlstr, compression, compression_opts, &filetype, &space, &dcpl);
+    status = setup_dataset(dims_in, maxdims_in, chunks_in, dtype, dsize, is_signed, is_vlstr, compression, compression_opts, track_order, &filetype, &space, &dcpl);
     dset = H5Dcreate2(loc_id, dset_name, filetype, space, H5P_DEFAULT, dcpl, H5P_DEFAULT);
     status = H5Dwrite(dset, filetype, space, space, H5P_DEFAULT, wdata);
 
@@ -897,7 +930,7 @@ int create_dataset(hid_t loc_id, std::string dset_name_string, uint64_t wdata_ui
     return (int)status;
 }
 
-int create_vlen_str_dataset(hid_t loc_id, std::string dset_name_string, val data, val dims_in, val maxdims_in, val chunks_in, int dtype, int dsize, bool is_signed, bool is_vlstr) {
+int create_vlen_str_dataset(hid_t loc_id, std::string dset_name_string, val data, val dims_in, val maxdims_in, val chunks_in, int dtype, int dsize, bool is_signed, bool is_vlstr, bool track_order=false) {
     uint64_t wdata_uint64; // ptr as uint64_t (webassembly will be 64-bit someday)
     
     std::vector<std::string> data_string_vec = vecFromJSArray<std::string>(data);
@@ -909,7 +942,7 @@ int create_vlen_str_dataset(hid_t loc_id, std::string dset_name_string, val data
     }
     // pass the pointer as an int...
     wdata_uint64 = (uint64_t)data_char_vec.data();
-    return create_dataset(loc_id, dset_name_string, wdata_uint64, dims_in, maxdims_in, chunks_in, dtype, dsize, is_signed, is_vlstr, 0, val::null());
+    return create_dataset(loc_id, dset_name_string, wdata_uint64, dims_in, maxdims_in, chunks_in, dtype, dsize, is_signed, is_vlstr, 0, val::null(), track_order);
 }
 
 int resize_dataset(hid_t loc_id, const std::string dset_name_string, val new_size_in)
@@ -1291,6 +1324,7 @@ int deactivate_throwing_error_handler() {
 
 EMSCRIPTEN_BINDINGS(hdf5)
 {
+    function("open", &open);
     function("get_keys", &get_keys_vector);
     function("get_names", &get_child_names);
     function("get_types", &get_child_types);
