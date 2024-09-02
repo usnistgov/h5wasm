@@ -59,8 +59,8 @@ export interface VirtualSource {
 }
 
 export interface H5Module extends EmscriptenModule {
-    open(filename: string, mode: number, track_order: boolean): bigint;
-    create_dataset(file_id: bigint, arg1: string, arg2: bigint, shape: bigint[], maxshape: (bigint | null)[], chunks: bigint[] | null, type: number, size: number, signed: boolean, vlen: boolean, compression_id: number, compression_opts: number[], track_order: boolean): number;
+    open(filename: string, mode?: number, track_order?: boolean): bigint;
+    create_dataset(file_id: bigint, arg1: string, arg2: bigint, shape: bigint[], maxshape: (bigint | null)[], chunks: bigint[] | null, type: number, size: number, signed: boolean, vlen: boolean, compression_id: number, compression_opts: number[], track_order?: boolean): number;
     create_soft_link(file_id: bigint, link_target: string, link_name: string): number;
     create_hard_link(file_id: bigint, link_target: string, link_name: string): number;
     create_external_link(file_id: bigint, file_name: string, link_target: string, link_name: string): number;
@@ -92,8 +92,8 @@ export interface H5Module extends EmscriptenModule {
     H5Z_FILTER_SCALEOFFSET: 6;
     H5Z_FILTER_RESERVED: 256;
     H5Z_FILTER_MAX: 65535;
-    create_group(file_id: bigint, name: string, track_order: boolean): number;
-    create_vlen_str_dataset(file_id: bigint, dset_name: string, prepared_data: any, shape: bigint[], maxshape: (bigint | null)[], chunks: bigint[] | null, type: number, size: number, signed: boolean, vlen: boolean, track_order: boolean): number;
+    create_group(file_id: bigint, name: string, track_order?: boolean): number;
+    create_vlen_str_dataset(file_id: bigint, dset_name: string, prepared_data: any, shape: bigint[], maxshape: (bigint | null)[], chunks: bigint[] | null, type: number, size: number, signed: boolean, vlen: boolean, track_order?: boolean): number;
     get_dataset_data(file_id: bigint, path: string, count: bigint[] | null, offset: bigint[] | null, strides: bigint[] | null, rdata_ptr: bigint): number;
     set_dataset_data(file_id: bigint, path: string, count: bigint[] | null, offset: bigint[] | null, strides: bigint[] | null, wdata_ptr: bigint): number;
     refresh_dataset(file_id: bigint, path: string): number;
@@ -115,7 +115,7 @@ export interface H5Module extends EmscriptenModule {
     reclaim_vlen_memory(file_id: BigInt, obj_name: string, attr_name: string, data_ptr: bigint): Status;
     get_attribute_data(file_id: BigInt, obj_name: string, attr_name: string, arg3: bigint): Status;
     FS: FS.FileSystemType,
-    get_keys_vector(group_id: bigint, H5_index_t: number): string[],
+    get_keys_vector(group_id: bigint, H5_index_t?: number): string[],
     get_attribute_metadata(loc_id: bigint, group_name_string: string, attribute_name_string: string): Metadata,
     get_plugin_search_paths(): string[],
     insert_plugin_search_path(search_path: string, index: number): number,

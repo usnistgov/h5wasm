@@ -1,4 +1,7 @@
 # Changelog
+## v0.7.8 TBC
+### Changed
+- Mark optional parameters as such in the TypeScript declarations of the following `H5Module` methods: `open`, `create_dataset`, `create_group`, `create_vlen_str_dataset` and `get_keys_vector`.
 ## v0.7.7 2024-08-28
 ### Added
 -  A method to read metadata from committed datatypes in an HDF5 file
