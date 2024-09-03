@@ -39,6 +39,7 @@ declare enum OBJECT_TYPE {
     REFERENCE = "Reference",
     REGION_REFERENCE = "RegionReference"
 }
+export declare type getReturnTypes = Dataset | Group | BrokenSoftLink | ExternalLink | Datatype | Reference | RegionReference;
 export declare class BrokenSoftLink {
     target: string;
     type: OBJECT_TYPE;
@@ -49,13 +50,6 @@ export declare class ExternalLink {
     obj_path: string;
     type: OBJECT_TYPE;
     constructor(filename: string, obj_path: string);
-}
-export declare class Datatype {
-    file_id: bigint;
-    path: string;
-    type: OBJECT_TYPE;
-    constructor(file_id: bigint, path: string);
-    get metadata(): Metadata;
 }
 export declare class Reference {
     ref_data: Uint8Array;
@@ -91,20 +85,24 @@ declare abstract class HasAttrs {
     create_attribute(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null): void;
     delete_attribute(name: string): number;
     create_reference(): Reference;
-    dereference(ref: Reference | RegionReference): BrokenSoftLink | ExternalLink | Datatype | Group | Dataset | DatasetRegion | null;
+    dereference(ref: Reference | RegionReference): DatasetRegion | getReturnTypes | null;
+}
+export declare class Datatype extends HasAttrs {
+    constructor(file_id: bigint, path: string);
+    get metadata(): Metadata;
 }
 export declare class Group extends HasAttrs {
     constructor(file_id: bigint, path: string);
     keys(): Array<string>;
-    values(): Generator<BrokenSoftLink | ExternalLink | Datatype | Group | Dataset | null, void, unknown>;
-    items(): Generator<(string | BrokenSoftLink | ExternalLink | Datatype | Group | Dataset | null)[], void, unknown>;
+    values(): Generator<getReturnTypes | null, void, unknown>;
+    items(): Generator<(string | Reference | Dataset | Group | BrokenSoftLink | ExternalLink | Datatype | null)[], void, unknown>;
     get_type(obj_path: string): number;
     get_link(obj_path: string): string;
     get_external_link(obj_path: string): {
         filename: string;
         obj_path: string;
     };
-    get(obj_name: string): BrokenSoftLink | ExternalLink | Datatype | Group | Dataset | null;
+    get(obj_name: string): getReturnTypes | null;
     create_group(name: string, track_order?: boolean): Group;
     create_dataset(args: {
         name: string;
