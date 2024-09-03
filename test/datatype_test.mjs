@@ -18,6 +18,10 @@ async function datatype_test() {
     littleEndian: false,
     size: 10
   });
+
+  assert.deepEqual(Object.keys(datatype.attrs), ['named_dtype_attr']);
+  assert.deepEqual(datatype.attrs['named_dtype_attr'].value,
+    'An attribute of a named datatype');
 }
 
 export const tests = [

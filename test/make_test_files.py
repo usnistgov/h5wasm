@@ -17,6 +17,7 @@ with h5py.File("array.h5", "w") as f:
     f.create_dataset("bool", data=[[False, True], [True, False]], shape=(2,2))
     f.create_dataset("bigint", data=np.arange(8).reshape(2,2,2), dtype="<i8", shape=(2,2,2))
     f["datatype/value"] = np.dtype("S10")
+    f["datatype/value"].attrs["named_dtype_attr"] = "An attribute of a named datatype"
 
     f.create_dataset("bigendian", data=[3,2,1], dtype='>f4')
     f['bigendian'].attrs.create("bigendian_attr", [3,2,1], dtype='>i8')
