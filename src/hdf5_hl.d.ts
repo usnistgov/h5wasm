@@ -39,7 +39,7 @@ declare enum OBJECT_TYPE {
     REFERENCE = "Reference",
     REGION_REFERENCE = "RegionReference"
 }
-export declare type getReturnTypes = Dataset | Group | BrokenSoftLink | ExternalLink | Datatype | Reference | RegionReference;
+export declare type Entity = Dataset | Group | BrokenSoftLink | ExternalLink | Datatype | Reference | RegionReference;
 export declare class BrokenSoftLink {
     target: string;
     type: OBJECT_TYPE;
@@ -75,9 +75,7 @@ declare abstract class HasAttrs {
     file_id: bigint;
     path: string;
     type: OBJECT_TYPE;
-    get attrs(): {
-        [key: string]: Attribute;
-    };
+    get attrs(): Record<string, Attribute>;
     get root(): Group;
     get parent(): Group;
     get_attribute(name: string, json_compatible: true): JSONCompatibleOutputData;
@@ -85,7 +83,7 @@ declare abstract class HasAttrs {
     create_attribute(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null): void;
     delete_attribute(name: string): number;
     create_reference(): Reference;
-    dereference(ref: Reference | RegionReference): DatasetRegion | getReturnTypes | null;
+    dereference(ref: Reference | RegionReference): DatasetRegion | Entity | null;
 }
 export declare class Datatype extends HasAttrs {
     constructor(file_id: bigint, path: string);
@@ -93,16 +91,16 @@ export declare class Datatype extends HasAttrs {
 }
 export declare class Group extends HasAttrs {
     constructor(file_id: bigint, path: string);
-    keys(): Array<string>;
-    values(): Generator<getReturnTypes | null, void, unknown>;
-    items(): Generator<(string | Reference | Dataset | Group | BrokenSoftLink | ExternalLink | Datatype | null)[], void, unknown>;
+    keys(): string[];
+    values(): Generator<Entity | null, void, never>;
+    items(): Generator<[string, Entity | null], void, never>;
     get_type(obj_path: string): number;
     get_link(obj_path: string): string;
     get_external_link(obj_path: string): {
         filename: string;
         obj_path: string;
     };
-    get(obj_name: string): getReturnTypes | null;
+    get(obj_name: string): Entity | null;
     create_group(name: string, track_order?: boolean): Group;
     create_dataset(args: {
         name: string;
