@@ -83,6 +83,7 @@ declare abstract class HasAttrs {
     create_attribute(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null): void;
     delete_attribute(name: string): number;
     create_reference(): Reference;
+    dereference(ref: RegionReference): DatasetRegion;
     dereference(ref: Reference | RegionReference): DatasetRegion | Entity | null;
 }
 export declare class Datatype extends HasAttrs {

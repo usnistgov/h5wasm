@@ -664,6 +664,8 @@ abstract class HasAttrs {
     return new Reference(ref_data);
   }
 
+  dereference(ref: RegionReference): DatasetRegion;
+  dereference(ref: Reference | RegionReference): DatasetRegion | Entity | null;
   dereference(ref: Reference | RegionReference): DatasetRegion | Entity | null {
     const is_region = (ref instanceof RegionReference);
     const name = Module.get_referenced_name(this.file_id, ref.ref_data, !is_region);
