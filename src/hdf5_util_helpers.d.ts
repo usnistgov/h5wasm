@@ -60,6 +60,7 @@ export interface VirtualSource {
 
 export interface H5Module extends EmscriptenModule {
     open(filename: string, mode?: number, track_order?: boolean): bigint;
+    close_file(file_id: bigint): number;
     create_dataset(file_id: bigint, arg1: string, arg2: bigint, shape: bigint[], maxshape: (bigint | null)[], chunks: bigint[] | null, type: number, size: number, signed: boolean, vlen: boolean, compression_id: number, compression_opts: number[], track_order?: boolean): number;
     create_soft_link(file_id: bigint, link_target: string, link_name: string): number;
     create_hard_link(file_id: bigint, link_target: string, link_name: string): number;

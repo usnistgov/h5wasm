@@ -52,6 +52,12 @@ int64_t open(const std::string& filename_string, unsigned int h5_mode = H5F_ACC_
     return (int64_t)file_id;
 }
 
+int close_file(hid_t file_id)
+{
+    herr_t status = H5Fclose(file_id);
+    return (int)status;
+}
+
 herr_t link_name_callback(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata)
 {
     std::vector<std::string> *namelist = reinterpret_cast<std::vector<std::string> *>(opdata);
@@ -1329,6 +1335,7 @@ int deactivate_throwing_error_handler() {
 EMSCRIPTEN_BINDINGS(hdf5)
 {
     function("open", &open);
+    function("close_file", &close_file);
     function("get_keys", &get_keys_vector);
     function("get_names", &get_child_names);
     function("get_types", &get_child_types);
