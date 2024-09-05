@@ -246,6 +246,10 @@ val get_attribute_names(hid_t loc_id, const std::string& obj_name_string)
     {
         ocpl_id = H5Gget_create_plist(obj_id);
     }
+    else if (obj_type == H5O_TYPE_NAMED_DATATYPE)
+    {
+        ocpl_id = H5Tget_create_plist(obj_id);
+    }
     else
     {
         ocpl_id = H5Dget_create_plist(obj_id);

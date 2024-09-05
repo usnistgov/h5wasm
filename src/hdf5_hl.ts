@@ -504,6 +504,8 @@ enum OBJECT_TYPE {
   REGION_REFERENCE = 'RegionReference',
 }
 
+export type Entity = Dataset | Group | BrokenSoftLink | ExternalLink | Datatype | Reference | RegionReference;
+
 export class BrokenSoftLink {
   // only used for broken links...
   target: string;
@@ -520,20 +522,6 @@ export class ExternalLink {
   constructor(filename: string, obj_path: string) {
     this.filename = filename;
     this.obj_path = obj_path;
-  }
-}
-
-export class Datatype {
-  file_id: bigint;
-  path: string;
-  type: OBJECT_TYPE = OBJECT_TYPE.DATATYPE
-  constructor(file_id: bigint, path: string) {
-    this.file_id = file_id;
-    this.path = path;
-  }
-
-  get metadata() {
-    return Module.get_datatype_metadata(this.file_id, this.path);
   }
 }
 
@@ -598,7 +586,7 @@ abstract class HasAttrs {
 
   get attrs() {
     let attr_names = Module.get_attribute_names(this.file_id, this.path) as string[];
-    let attrs: {[key: string]: Attribute}  = {};
+    let attrs: Record<string, Attribute>  = {};
     const { file_id, path } = this;
     for (let name of attr_names) {
       Object.defineProperty(attrs, name, {
@@ -607,7 +595,6 @@ abstract class HasAttrs {
       });
     }
     return attrs;
-
   }
 
   get root() {
@@ -677,11 +664,26 @@ abstract class HasAttrs {
     return new Reference(ref_data);
   }
 
-  dereference(ref: Reference | RegionReference) {
+  dereference(ref: RegionReference): DatasetRegion;
+  dereference(ref: Reference | RegionReference): DatasetRegion | Entity | null;
+  dereference(ref: Reference | RegionReference): DatasetRegion | Entity | null {
     const is_region = (ref instanceof RegionReference);
     const name = Module.get_referenced_name(this.file_id, ref.ref_data, !is_region);
     const target = this.root.get(name);
     return (is_region) ? new DatasetRegion(target as Dataset, ref) : target;
+  }
+}
+
+export class Datatype extends HasAttrs {
+  constructor(file_id: bigint, path: string) {
+    super();
+    this.file_id = file_id;
+    this.path = path;
+    this.type = OBJECT_TYPE.DATATYPE;
+  }
+
+  get metadata() {
+    return Module.get_datatype_metadata(this.file_id, this.path);
   }
 }
 
@@ -693,22 +695,22 @@ export class Group extends HasAttrs {
     this.type = OBJECT_TYPE.GROUP;
   }
 
-  keys(): Array<string> {
-    return Module.get_names(this.file_id, this.path, false) as string[];
+  keys(): string[] {
+    return Module.get_names(this.file_id, this.path, false);
   }
 
-  * values() {
+  * values(): Generator<Entity | null, void, never> {
     for (let name of this.keys()) {
       yield this.get(name);
     }
-    return
+    return;
   }
 
-  * items() {
+  * items(): Generator<[string, Entity | null], void, never> {
     for (let name of this.keys()) {
       yield [name, this.get(name)];
     }
-    return
+    return;
   }
 
   get_type(obj_path: string) {
@@ -723,7 +725,7 @@ export class Group extends HasAttrs {
     return Module.get_external_link(this.file_id, obj_path);
   }
 
-  get(obj_name: string) {
+  get(obj_name: string): Entity | null {
     let fullpath = (/^\//.test(obj_name)) ? obj_name : this.path + "/" + obj_name;
     fullpath = normalizePath(fullpath);
 

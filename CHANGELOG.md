@@ -1,5 +1,8 @@
 # Changelog
 ## v0.7.8 TBC
+### Fixed
+- Fix accessing attributes of committed datatype with `my_datafile.attrs`.
+- Fix calling `get_attribute_names` method of Module API on committed datatype.
 ### Changed
 - Mark optional parameters as such in the TypeScript declarations of the following `H5Module` methods: `open`, `create_dataset`, `create_group`, `create_vlen_str_dataset` and `get_keys_vector`.
 ## v0.7.7 2024-08-28
