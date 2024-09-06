@@ -1,5 +1,5 @@
 # Changelog
-## v0.7.8 TBC
+## v0.7.8 2024-09-06
 ### Added
 - Add `close_file` method to Module API: `close_file(file_id: bigint): number;`
 ### Fixed
@@ -10,8 +10,8 @@
 ## v0.7.7 2024-08-28
 ### Added
 -  A method to read metadata from committed datatypes in an HDF5 file
-    - `Datatype.metadata` is a getter that returns the dtype metadata, in the same format (`Metadata` TypeScript interface) returned from `Dataset.metadata` 
--  Enable "track order" mode of HDF5 for attributes of `Dataset`, and (fields and attributes) of `Group`.  When `track_order == true` for a `Group`, both fields and attributes keep their insertion order on read.  For a `Dataset`, the attributes keep their insertion order when the flag is set. 
+    - `Datatype.metadata` is a getter that returns the dtype metadata, in the same format (`Metadata` TypeScript interface) returned from `Dataset.metadata`
+-  Enable "track order" mode of HDF5 for attributes of `Dataset`, and (fields and attributes) of `Group`.  When `track_order == true` for a `Group`, both fields and attributes keep their insertion order on read.  For a `Dataset`, the attributes keep their insertion order when the flag is set.
 
     Note that the flag is not inherited, i.e. if an `h5wasm.Group` object is created with `track_order = true`, its sub-groups and contained `Dataset` objects will not have the flag enabled by default.  The flag is added to the `File` constructor just to track order of immediate children of the root group.
 
@@ -36,7 +36,7 @@
     - `open(filename: string, mode?: number, track_order?: boolean): bigint;`
       (the default arguments are `mode = H5F_ACC_RDONLY` and `track_order = false`)
 
-    and modifies the signatures of three existing methods in the Module API: 
+    and modifies the signatures of three existing methods in the Module API:
     - `create_dataset`
     - `create_group`
     - `create_vlen_str_dataset`
@@ -49,7 +49,7 @@
    - `vlen_type?: Metadata` key added to `Metadata` interface, and populated with type information about the base type in a VLEN dataset
 ### Changed
  - Retrieve `value` of boolean dataset as `Int8Array` instead of plain JS boolean array. To retrieve a plain JS boolean array, use `json_value` instead:
- 
+
    ```ts
    // v0.7.5 and earlier
    bool_dset.value; // -> [false, true]
@@ -65,7 +65,7 @@
  - added `strpad` enum to metadata (type of string padding) - PR #72 @axelboc
 ## v0.7.4 2024-04-03
 ### Fixed
- - added missing `.js` extension in type imports 
+ - added missing `.js` extension in type imports
  ( see issue comment https://github.com/usnistgov/h5wasm/issues/31#issuecomment-2032301488 and fix in #71 )
 ## v0.7.3 2024-04-02
 ### Changed
@@ -110,7 +110,7 @@ Module.activate_throwing_error_handler();
 ```typescript
 // convert dataset to dimension scale:
 Dataset.make_scale(scale_name: string)
-// attach a dimension scale to the "index" dimension of this dataset:   
+// attach a dimension scale to the "index" dimension of this dataset:
 Dataset.attach_scale(index: number, scale_dset_path: string)
 // detach a dimension scale from "index" dimension
 Dataset.detach_scale(index: number, scale_dset_path: string)
@@ -218,7 +218,7 @@ Example:
    - **Can not specify `compression` with VLEN datasets**
    - if `compression` is supplied as a number without `compression_opts`, the 'gzip' (DEFLATE, filter_id=1) filter is applied, and the compression level used is taken from the value of `compression`.  An integer value of 0-9 is required for the compression level of the 'gzip' filter.
    - if `compression` and `compression_opts` are supplied, the `compression` value is passed as the filter_id (or 1 if 'gzip' is supplied), and the value of `compression_opts` is promoted to a list if it is a number, or passed as-is if it is a list.  *Use both compression (numeric filter_id) and compression_opts when specifying any filter other than 'gzip', e.g. with a filter plugin*
-   - if `compression === 'gzip'` and `compression_opts === undefined`, the default gzip compression level of 4 is applied. 
+   - if `compression === 'gzip'` and `compression_opts === undefined`, the default gzip compression level of 4 is applied.
 
 #### Example usage:
   ```js
@@ -283,7 +283,7 @@ Example:
 ### Added
  - Group.create_soft_link(target: string, name: string): number; // creates a soft link in a group with name: name (target must be absolute path)
  - Group.create_hard_link(target:string, name: string): number; //
- - Group.create_external_link(file_name: string, target: string, name: string): number; 
+ - Group.create_external_link(file_name: string, target: string, name: string): number;
 
 All of these return non-zero values on error.  To create links with absolute path, just use e.g. File.create_soft_link(target_path, link_path);
 ## v0.4.8 2022-12-05
@@ -302,7 +302,7 @@ All of these return non-zero values on error.  To create links with absolute pat
 ### Fixed
  - H5Create should only be called with access modes H5F_ACC_TRUNC (w) and H5F_ACC_EXCL (x)
 ### Added
- - support for SWMR read with refresh on a dataset: e.g. 
+ - support for SWMR read with refresh on a dataset: e.g.
 ```js
 const file = new hdf5.File("swmr.h5", "Sr");
 let ds=file.get("data");
@@ -393,7 +393,7 @@ ds.value
 ## v0.2.1 2022-02-04
 ### Fixed
  - Writing of Float64 datasets was broken, and is now working
- - Guessed shape of simple string values is fixed so that this will work: 
+ - Guessed shape of simple string values is fixed so that this will work:
 ```js
   f.create_attribute("my_attr", "a string value");
 ```
@@ -405,7 +405,7 @@ ds.value
  - Support for reading and processing HDF5 Array datatype
  - esm and nodejs modules both offer ```ready``` Promise, which can be awaited before working with the module (addresses #5)
  - minimal set of tests (```npm test```)
- 
+
 ### Changed
  - **POSSIBLY BREAKING**: local paths to modules are changed
      - esm: ./dist/esm/hdf5_hl.js
@@ -439,7 +439,7 @@ ds.value
 ### Changed
  - added documentation for finding libhdf5.a
 
-### Fixed 
+### Fixed
  - documentation for creating new File object in nodejs
  - checking for name existing before getting type in wasm lib
 
