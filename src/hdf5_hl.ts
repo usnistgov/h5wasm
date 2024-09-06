@@ -899,7 +899,7 @@ export class File extends Group {
   }
 
   close(): Status {
-    return Module.ccall("H5Fclose", "number", ["bigint"], [this.file_id]);
+    return Module.close_file(this.file_id);
   }
 }
 

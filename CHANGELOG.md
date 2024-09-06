@@ -1,5 +1,7 @@
 # Changelog
 ## v0.7.8 TBC
+### Added
+- Add `close_file` method to Module API: `close_file(file_id: bigint): number;`
 ### Fixed
 - Fix accessing attributes of committed datatype with `my_datafile.attrs`.
 - Fix calling `get_attribute_names` method of Module API on committed datatype.
