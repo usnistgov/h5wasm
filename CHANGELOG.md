@@ -1,4 +1,7 @@
 # Changelog
+## v0.7.9 2025-01-09
+### Fixed
+- Added `total_size` to metadata for VLEN datasets before further processing, fixes #89
 ## v0.7.8 2024-09-06
 ### Added
 - Add `close_file` method to Module API: `close_file(file_id: bigint): number;`
