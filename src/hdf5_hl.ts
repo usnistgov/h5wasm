@@ -48,7 +48,7 @@ function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_com
   if (!metadata.shape) {
     return null;
   }
-  
+
   let nbytes = metadata.size * metadata.total_size;
   let data_ptr = Module._malloc(nbytes);
   var processed;
@@ -213,7 +213,7 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
     // https://docs.hdfgroup.org/hdf5/v1_12/structhvl__t.html
     const ptr_pairs = new Uint32Array(data.buffer); // both `size_t` length and pointer are 4-byte-long
     const ptr_pairs_length = ptr_pairs.length;
-    const vlen_type = metadata.vlen_type as Metadata; 
+    const vlen_type = metadata.vlen_type as Metadata;
     const { size } = vlen_type;
 
     let output: (OutputData | JSONCompatibleOutputData)[] = [];
@@ -224,9 +224,9 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
       // Read vlen array data from memory
       const data_nbytes = length * size;
       const data = Module.HEAPU8.slice(data_ptr, data_ptr + data_nbytes);
-      
+
       // Process this vlen array's data according to base datatype
-      output.push(process_data(data, { ...vlen_type, shape: [length] }, json_compatible));
+      output.push(process_data(data, { ...vlen_type, shape: [length], total_size: length }, json_compatible));
     }
 
     output_data = output;
@@ -427,7 +427,7 @@ type TypedArray =
   | Float32Array
   | Float64Array;
 
-type TypedArrayConstructor = 
+type TypedArrayConstructor =
   | Int8ArrayConstructor
   | Uint8ArrayConstructor
   | Uint8ClampedArrayConstructor
@@ -453,9 +453,9 @@ const TypedArray_to_dtype = new Map([
   ['Float64Array', '<d']
 ])
 
-/** 
+/**
  * Describes an array slice.
- * `[]` - all data 
+ * `[]` - all data
  * `[i0]` - select all data starting from the index `i0`
  * `[i0, i1]` - select all data in the range `i0` to `i1`
  * `[i0, i1, s]` - select every `s` values in the range `i0` to `i1`
@@ -611,7 +611,7 @@ abstract class HasAttrs {
     return get_attr(this.file_id, this.path, name, json_compatible);
   }
 
-  
+
   create_attribute(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null) {
     const final_dtype = dtype ?? guess_dtype(data);
     let metadata = dtype_to_metadata(final_dtype);
@@ -946,7 +946,7 @@ export class Dataset extends HasAttrs {
   get shape() {
     return this.metadata.shape;
   }
-  
+
   get filters(): Filter[] {
     return Module.get_dataset_filters(this.file_id, this.path);
   }
@@ -958,7 +958,7 @@ export class Dataset extends HasAttrs {
   get json_value(): JSONCompatibleOutputData | null {
     return this._value_getter(true);
   }
-  
+
   slice(ranges: Slice[]): OutputData | null {
     // interpret ranges as [start, stop], with one per dim.
     const metadata = this.metadata;
