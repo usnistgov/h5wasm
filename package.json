@@ -39,7 +39,7 @@
   "author": "Brian B. Maranville",
   "license": "SEE LICENSE IN LICENSE.txt",
   "devDependencies": {
-    "esbuild": "^0.15.16",
+    "esbuild": "^0.25.0",
     "typescript": "^4.5.4"
   }
 }
