@@ -442,6 +442,7 @@ type TypedArrayConstructor =
 
 const TypedArray_to_dtype = new Map([
   ['Uint8Array', '<B'],
+  ['Uint8ClampedArray', '<B'],
   ['Uint16Array', '<H'],
   ['Uint32Array', '<I'],
   ['BigUint64Array', '<Q'],
