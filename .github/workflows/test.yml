@@ -19,7 +19,7 @@ jobs:
       uses: mymindstorm/setup-emsdk@v14
       with:
         # Make sure to set a version number!
-        version: 3.1.43
+        version: 3.1.68
         # This is the name of the cache folder.
         # The cache folder will be placed in the build directory,
         #  so make sure it doesn't conflict with anything!
@@ -29,7 +29,7 @@ jobs:
       
     - uses: actions/setup-node@v4
       with:
-        node-version: 16
+        node-version: 20
     
     - name: build js
       run: |
