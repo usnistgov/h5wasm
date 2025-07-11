@@ -32,6 +32,7 @@ list (APPEND EXPORTED_FUNCTIONS
     H5allocate_memory H5free_memory 
     pthread_mutex_init posix_memalign strcmp getenv 
     stdin stdout stderr
+    strlen pthread_mutex_lock pthread_mutex_unlock pthread_atfork pthread_once
     H5Epush2 siprintf getTempRet0 __wasm_setjmp
     H5E_ERR_CLS_g H5E_PLINE_g H5E_CANTINIT_g H5E_CANTGET_g H5E_CANTFILTER_g 
     H5E_BADTYPE_g H5E_BADVALUE_g H5E_ARGS_g H5E_CALLBACK_g H5E_CANTREGISTER_g 
