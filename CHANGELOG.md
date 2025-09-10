@@ -1,4 +1,24 @@
 # Changelog
+## v0.8.4 2025-09-10
+### Added
+* add `realloc` symbol needed by `bzip2` filter at runtime
+## v0.8.3 2025-07-11
+### Added
+* add symbols needed by bitshuffle filter at runtime
+## v0.8.2 2025-07-11
+### Added
+* added export symbols needed by blosc filter at runtime
+## v0.8.1 2025-04-14
+### Fixed
+* added remaining export symbols needed by JPEG filter at runtime
+## v0.8.0 2025-04-14
+### Added
+* Add `Uint8ClampedArray` to `TypedArray_to_dtype` mapping by @zengspr in https://github.com/usnistgov/h5wasm/pull/94
+* add export symbols needed by JPEG compression filter by @bmaranville in https://github.com/usnistgov/h5wasm/pull/97
+### Changed
+* Bump esbuild from 0.15.18 to 0.25.0 by @dependabot in https://github.com/usnistgov/h5wasm/pull/93
+* update to new build of libhdf5-wasm, built with emscripten 3.1.68 by @bmaranville in https://github.com/usnistgov/h5wasm/pull/96
+  * using libhdf5 1.14.6 
 ## v0.7.9 2025-01-09
 ### Fixed
 - Added `total_size` to metadata for VLEN datasets before further processing, fixes #89
