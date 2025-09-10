@@ -30,11 +30,11 @@ list (APPEND EXPORTED_FUNCTIONS
     malloc calloc free memset memcpy memmove realloc
     htonl htons ntohl ntohs 
     H5allocate_memory H5free_memory 
-    pthread_mutex_init posix_memalign strcmp getenv 
+    pthread_mutex_init posix_memalign strcmp strcpy sscanf getenv 
     stdin stdout stderr
     strlen pthread_mutex_lock pthread_mutex_unlock pthread_atfork pthread_once
     H5Pget_filter_by_id2 H5Pmodify_filter H5Tget_size 
-    H5Epush2 siprintf getTempRet0 __wasm_setjmp
+    H5Epush2 siprintf getTempRet0 __wasm_setjmp 
     H5E_ERR_CLS_g H5E_PLINE_g H5E_CANTINIT_g H5E_CANTGET_g H5E_CANTFILTER_g 
     H5E_BADTYPE_g H5E_BADVALUE_g H5E_ARGS_g H5E_CALLBACK_g H5E_CANTREGISTER_g 
     H5E_RESOURCE_g H5E_NOSPACE_g H5E_OVERFLOW_g H5E_READERROR_g 
@@ -49,7 +49,7 @@ list(JOIN EXPORTED_FUNCTIONS ", " EXPORTED_FUNCTIONS_STRING)
 
 # Optional flags to set when building your project
 set_target_properties(hdf5_util PROPERTIES
-    LINK_FLAGS "-O3 --bind  \
+    LINK_FLAGS "-O2 --bind  \
     -lidbfs.js \
     -lworkerfs.js \
     -s MAIN_MODULE=2 \
@@ -71,7 +71,7 @@ set_target_properties(hdf5_util PROPERTIES
 add_executable(hdf5_util_node src/hdf5_util.cc)
 target_link_libraries(hdf5_util_node hdf5_hl-static)
 set_target_properties(hdf5_util_node PROPERTIES
-    LINK_FLAGS "-O3 --bind  \
+    LINK_FLAGS "-O2 --bind  \
     -s MAIN_MODULE=2 \
     -s NODEJS_CATCH_EXIT=0 \
     -s NODEJS_CATCH_REJECTION=0 \
