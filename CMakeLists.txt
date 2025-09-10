@@ -27,7 +27,7 @@ target_link_libraries(hdf5_util hdf5_hl-static)
 set (EXPORTED_FUNCTIONS)
 list (APPEND EXPORTED_FUNCTIONS
     H5Fopen H5Fclose H5Fcreate H5open 
-    malloc calloc free memset memcpy memmove
+    malloc calloc free memset memcpy memmove realloc
     htonl htons ntohl ntohs 
     H5allocate_memory H5free_memory 
     pthread_mutex_init posix_memalign strcmp getenv 
