@@ -1,4 +1,7 @@
 # Changelog
+## v0.8.5 2025-09-10
+### Changed
+* adjusted optimization level during build to -O2 from -O3 to preserve exported names
 ## v0.8.4 2025-09-10
 ### Added
 * add `realloc` symbol needed by `bzip2` filter at runtime
