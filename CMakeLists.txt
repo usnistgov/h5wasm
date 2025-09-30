@@ -55,6 +55,7 @@ set_target_properties(hdf5_util PROPERTIES
     -s MAIN_MODULE=2 \
     -s ALLOW_TABLE_GROWTH=1 \
     -s ALLOW_MEMORY_GROWTH=1 \
+    -s DYNAMIC_EXECUTION=0 \
     -s WASM_BIGINT \
     -s ENVIRONMENT=web,worker \
     -s SINGLE_FILE \
@@ -84,6 +85,7 @@ set_target_properties(hdf5_util_node PROPERTIES
     -s SINGLE_FILE \
     -s EXPORT_ES6=1 \
     -s ASSERTIONS=1 \
+    -s DYNAMIC_EXECUTION=0 \
     -s EXPORTED_RUNTIME_METHODS=\"['ccall', 'cwrap', 'FS', 'AsciiToString', 'UTF8ToString']\" \
     -s EXPORTED_FUNCTIONS=\"${EXPORTED_FUNCTIONS_STRING}\""
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/node
