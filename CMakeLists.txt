@@ -26,21 +26,25 @@ target_link_libraries(hdf5_util hdf5_hl-static)
 
 set (EXPORTED_FUNCTIONS)
 list (APPEND EXPORTED_FUNCTIONS
-    H5Fopen H5Fclose H5Fcreate H5open 
+    H5Fopen H5Fclose H5Fcreate H5open
     malloc calloc free memset memcpy memmove realloc
-    htonl htons ntohl ntohs 
-    H5allocate_memory H5free_memory 
-    pthread_mutex_init posix_memalign strcmp strcpy sscanf getenv 
-    stdin stdout stderr
-    strlen pthread_mutex_lock pthread_mutex_unlock pthread_atfork pthread_once
-    H5Pget_filter_by_id2 H5Pmodify_filter H5Tget_size 
-    H5Epush2 siprintf getTempRet0 __wasm_setjmp 
-    H5E_ERR_CLS_g H5E_PLINE_g H5E_CANTINIT_g H5E_CANTGET_g H5E_CANTFILTER_g 
-    H5E_BADTYPE_g H5E_BADVALUE_g H5E_ARGS_g H5E_CALLBACK_g H5E_CANTREGISTER_g 
-    H5E_RESOURCE_g H5E_NOSPACE_g H5E_OVERFLOW_g H5E_READERROR_g 
-    H5T_NATIVE_UINT_g H5T_STD_U32BE_g H5T_STD_U32LE_g H5T_NATIVE_UINT32_g 
-    H5T_STD_U64BE_g H5T_NATIVE_UINT64_g H5T_STD_U64LE_g H5P_CLS_DATASET_CREATE_ID_g 
-    ldexpf __THREW__ __threwValue
+    htonl htons ntohl ntohs
+    H5allocate_memory H5free_memory
+    pthread_mutex_init posix_memalign strcmp strcpy sscanf getenv
+    stdin stdout stderr clock_gettime
+    strlen strdup snprintf iprintf
+    pthread_create pthread_mutex_lock pthread_mutex_unlock pthread_atfork pthread_once
+    pthread_cond_init pthread_barrier_init pthread_attr_init pthread_attr_setdetachstate
+    H5Pget_chunk H5Tget_class H5Sget_simple_extent_dims
+    H5Pget_filter_by_id2 H5Pmodify_filter H5Pexist
+    H5Tget_size H5Tget_native_type H5Tget_order
+    H5Epush2 siprintf getTempRet0 __wasm_setjmp
+    H5E_ERR_CLS_g H5E_PLINE_g H5E_CANTINIT_g H5E_CANTGET_g H5E_CANTFILTER_g
+    H5E_BADTYPE_g H5E_BADVALUE_g H5E_ARGS_g H5E_CALLBACK_g H5E_CANTREGISTER_g
+    H5E_RESOURCE_g H5E_NOSPACE_g H5E_OVERFLOW_g H5E_READERROR_g
+    H5T_NATIVE_UINT_g H5T_STD_U32BE_g H5T_STD_U32LE_g H5T_NATIVE_UINT32_g
+    H5T_STD_U64BE_g H5T_NATIVE_UINT64_g H5T_STD_U64LE_g H5P_CLS_DATASET_CREATE_ID_g
+    frexpf ldexpf __THREW__ __threwValue
 )
 list (TRANSFORM EXPORTED_FUNCTIONS PREPEND "'_")
 list (TRANSFORM EXPORTED_FUNCTIONS APPEND "'")
