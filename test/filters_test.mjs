@@ -21,6 +21,8 @@ async function filters_test() {
       cd_values: [0, 4, 1250, 1, 8, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     },
   ]);
+
+  assert.deepEqual(f.get("szip").filters, [{ id: 4, name: "szip", cd_values: [169, 8, 64, 50] }]);
 }
 
 export const tests = [

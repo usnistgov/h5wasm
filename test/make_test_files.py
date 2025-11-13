@@ -30,6 +30,7 @@ with h5py.File("compressed.h5", "w") as f:
     f.create_dataset(
         "gzip_shuffle", data=data, compression="gzip", shuffle=True
     )
+    f.create_dataset("szip", data=data, compression="szip", compression_opts=['nn',8]) #, compression_opts=("nn", 8))
 
 with h5py.File("empty.h5", "w") as f:
     f.create_dataset("empty_dataset", data=h5py.Empty("f"))
