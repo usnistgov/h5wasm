@@ -8,6 +8,7 @@
 #include "H5PLextern.h"
 #include <emscripten/bind.h>
 #include <emscripten.h>
+#include <emscripten/heap.h>
 
 #define ATTRIBUTE_DATA 0
 #define DATASET_DATA 1
@@ -329,10 +330,10 @@ val get_dtype_metadata(hid_t dtype)
         int ndims = H5Tget_array_ndims(dtype);
         std::vector<hsize_t> array_dims(ndims);
         H5Tget_array_dims2(dtype, &array_dims[0]);
-        int total_size = 1;
+        hsize_t total_size = 1;
         for (int i=0; i<ndims; i++) {
-            array_dims_out.set(i, (int)array_dims[i]);
-            total_size *= (int)array_dims[i];
+            array_dims_out.set(i, array_dims[i]);
+            total_size *= array_dims[i];
         }
         array_type.set("shape", array_dims_out);
         array_type.set("total_size", total_size);
@@ -402,7 +403,7 @@ val get_abstractDS_metadata(hid_t dspace, hid_t dtype, hid_t dcpl)
     val attr = get_dtype_metadata(dtype);
 
     int type = H5Sget_simple_extent_type(dspace);
-    int total_size = H5Sget_simple_extent_npoints(dspace);
+    hsize_t total_size = H5Sget_simple_extent_npoints(dspace);
     attr.set("total_size", total_size);
 
     if (type == H5S_NULL) {
@@ -421,8 +422,8 @@ val get_abstractDS_metadata(hid_t dspace, hid_t dtype, hid_t dcpl)
     val shape = val::array();
     val maxshape = val::array();
     for (int d = 0; d < ndims; d++) {
-        shape.set(d, (uint)dims_out.at(d));
-        maxshape.set(d, (uint)maxdims_out.at(d));
+        shape.set(d, dims_out.at(d));
+        maxshape.set(d, maxdims_out.at(d));
     }
 
     attr.set("shape", shape);
@@ -1224,7 +1225,7 @@ val get_region_metadata(hid_t loc_id, const val ref_data_in)
     // fill in shape, maxshape, chunks, total_size
     val metadata = get_abstractDS_metadata(dspace, dtype, dcpl);
     // then override the ones that are specific to a region:
-    int total_size = H5Sget_select_npoints(dspace);
+    hsize_t total_size = H5Sget_select_npoints(dspace);
     metadata.set("total_size", total_size);
 
     int rank = H5Sget_simple_extent_ndims(dspace);
@@ -1236,11 +1237,11 @@ val get_region_metadata(hid_t loc_id, const val ref_data_in)
         std::vector<hsize_t> count(rank);
         std::vector<hsize_t> block(rank);
         htri_t success = H5Sget_regular_hyperslab(dspace, nullptr, nullptr, count.data(), block.data());
-        shape = val::array();
+        shape = val::array(); // elements of type hsize_t
         for (int d = 0; d < rank; d++)
         {
-            int blocksize = (block.at(d) == NULL) ? 1 : block.at(d); 
-            shape.set(d, (uint)(count.at(d) * blocksize));
+            hsize_t blocksize = (block.at(d) == NULL) ? 1 : block.at(d); 
+            shape.set(d, (count.at(d) * blocksize)); 
         }
     }
     metadata.set("shape", shape);
@@ -1442,6 +1443,7 @@ EMSCRIPTEN_BINDINGS(hdf5)
     constant("H5Z_FILTER_SCALEOFFSET", H5Z_FILTER_SCALEOFFSET);
     constant("H5Z_FILTER_RESERVED", H5Z_FILTER_RESERVED);
     constant("H5Z_FILTER_MAX", H5Z_FILTER_MAX);
+    constant("MAXIMUM_MEMORY", emscripten_get_heap_max());
 
     register_vector<std::string>("vector<string>");
 }
