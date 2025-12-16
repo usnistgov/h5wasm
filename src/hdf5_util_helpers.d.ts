@@ -25,13 +25,13 @@ export interface Metadata {
     enum_type?: EnumTypeMetadata,
     vlen_type?: Metadata,
     littleEndian: boolean,
-    maxshape: number[] | null,
+    maxshape: bigint[] | null,
     ref_type?: 'object' | 'region',
-    shape: number[] | null,
+    shape: bigint[] | null,
     signed: boolean,
     size: number,
     strpad?: number,
-    total_size: number,
+    total_size: bigint,
     type: number,
     virtual_sources?: VirtualSource[],
     vlen: boolean,
@@ -93,6 +93,7 @@ export interface H5Module extends EmscriptenModule {
     H5Z_FILTER_SCALEOFFSET: 6;
     H5Z_FILTER_RESERVED: 256;
     H5Z_FILTER_MAX: 65535;
+    MAXIMUM_MEMORY: number;
     create_group(file_id: bigint, name: string, track_order?: boolean): number;
     create_vlen_str_dataset(file_id: bigint, dset_name: string, prepared_data: any, shape: bigint[], maxshape: (bigint | null)[], chunks: bigint[] | null, type: number, size: number, signed: boolean, vlen: boolean, track_order?: boolean): number;
     get_dataset_data(file_id: bigint, path: string, count: bigint[] | null, offset: bigint[] | null, strides: bigint[] | null, rdata_ptr: bigint): number;
