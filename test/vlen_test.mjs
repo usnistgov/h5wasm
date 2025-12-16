@@ -13,7 +13,7 @@ async function vlen_test() {
     maxshape: [],
     chunks: null,
     size: 8,
-    total_size: 1,
+    total_size: 1n,
     signed: true,
     littleEndian: true,
     vlen: false,
@@ -28,11 +28,11 @@ async function vlen_test() {
 
   assert.deepEqual(f.get('float32_oneD').metadata, {
     type: 9,
-    shape: [3],
-    maxshape: [3],
+    shape: [3n],
+    maxshape: [3n],
     chunks: null,
     size: 8,
-    total_size: 3,
+    total_size: 3n,
     signed: false,
     littleEndian: true,
     vlen: false,

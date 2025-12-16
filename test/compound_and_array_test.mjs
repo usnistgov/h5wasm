@@ -67,11 +67,11 @@ async function compound_array_test() {
       members: [
         {
           array_type: {
-            shape: [2, 2],
+            shape: [2n, 2n],
             littleEndian: true,
             signed: false,
             size: 8,
-            total_size: 4,
+            total_size: 4n,
             type: 1,
             vlen: false,
           },
@@ -87,12 +87,12 @@ async function compound_array_test() {
         {
           array_type: {
             cset: 0,
-            shape: [2, 2],
+            shape: [2n, 2n],
             littleEndian: false,
             signed: false,
             size: 5,
             strpad: 1,
-            total_size: 4,
+            total_size: 4n,
             type: 3,
             vlen: false,
           },
@@ -109,11 +109,11 @@ async function compound_array_test() {
       nmembers: 2
     },
     littleEndian: true,
-    maxshape: [2],
-    shape: [2],
+    maxshape: [2n],
+    shape: [2n],
     signed: false,
     size: 52,
-    total_size: 2,
+    total_size: 2n,
     type: 6,
     vlen: false,
   });

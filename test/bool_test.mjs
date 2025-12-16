@@ -28,11 +28,11 @@ async function bool_test() {
       }
     },
     littleEndian: true,
-    maxshape: [2, 2],
-    shape: [2, 2],
+    maxshape: [2n, 2n],
+    shape: [2n, 2n],
     signed: true,
     size: 1,
-    total_size: 4,
+    total_size: 4n,
     type: 8,
     vlen: false,
   });
