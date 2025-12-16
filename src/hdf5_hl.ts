@@ -590,7 +590,7 @@ export class Attribute {
     if (!isIterable(json_value) || typeof json_value === "string" || shape === null) {
       return json_value;
     }
-    return create_nested_array(json_value, shape.map(Number));
+    return create_nested_array(json_value, shape);
   }
 }
 
