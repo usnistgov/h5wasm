@@ -1054,7 +1054,7 @@ export class Dataset extends HasAttrs {
     if (!isIterable(json_value) || typeof json_value === "string" || shape === null) {
       return json_value;
     }
-    let nested =  create_nested_array(json_value, shape.map(Number));
+    let nested =  create_nested_array(json_value, shape);
     return nested;
   }
 
