@@ -332,11 +332,11 @@ val get_dtype_metadata(hid_t dtype)
         H5Tget_array_dims2(dtype, &array_dims[0]);
         hsize_t total_size = 1;
         for (int i=0; i<ndims; i++) {
-            array_dims_out.set(i, (float)array_dims[i]);
+            array_dims_out.set(i, (double)array_dims[i]);
             total_size *= array_dims[i];
         }
         array_type.set("shape", array_dims_out);
-        array_type.set("total_size", (float)total_size);
+        array_type.set("total_size", (double)total_size);
         attr.set("array_type", array_type);
     }
     else if (dtype_class == H5T_VLEN) {
@@ -404,7 +404,7 @@ val get_abstractDS_metadata(hid_t dspace, hid_t dtype, hid_t dcpl)
 
     int type = H5Sget_simple_extent_type(dspace);
     hsize_t total_size = H5Sget_simple_extent_npoints(dspace);
-    attr.set("total_size", (float)total_size); // set as Number, not BigInt
+    attr.set("total_size", (double)total_size); // set as Number, not BigInt
 
     if (type == H5S_NULL) {
         attr.set("shape", val::null());
@@ -422,8 +422,8 @@ val get_abstractDS_metadata(hid_t dspace, hid_t dtype, hid_t dcpl)
     val shape = val::array();
     val maxshape = val::array();
     for (int d = 0; d < ndims; d++) {
-        shape.set(d, (float)dims_out.at(d));
-        maxshape.set(d, (float)maxdims_out.at(d));
+        shape.set(d, (double)dims_out.at(d));
+        maxshape.set(d, (double)maxdims_out.at(d));
     }
 
     attr.set("shape", shape);
@@ -1226,7 +1226,7 @@ val get_region_metadata(hid_t loc_id, const val ref_data_in)
     val metadata = get_abstractDS_metadata(dspace, dtype, dcpl);
     // then override the ones that are specific to a region:
     hsize_t total_size = H5Sget_select_npoints(dspace);
-    metadata.set("total_size", (float)total_size);
+    metadata.set("total_size", (double)total_size);
 
     int rank = H5Sget_simple_extent_ndims(dspace);
     // shape will be null if the selection is not a regular hyperslab
@@ -1241,7 +1241,7 @@ val get_region_metadata(hid_t loc_id, const val ref_data_in)
         for (int d = 0; d < rank; d++)
         {
             hsize_t blocksize = (block.at(d) == NULL) ? 1 : block.at(d); 
-            shape.set(d, (float)(count.at(d) * blocksize)); 
+            shape.set(d, (double)(count.at(d) * blocksize)); 
         }
     }
     metadata.set("shape", shape);
