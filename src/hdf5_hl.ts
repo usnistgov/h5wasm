@@ -62,12 +62,12 @@ function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_com
     return null;
   }
 
-  const nbytes = BigInt(metadata.size) * metadata.total_size;
+  const nbytes = metadata.size * metadata.total_size;
   let data_ptr = check_malloc(nbytes);
   var processed;
   try {
     Module.get_attribute_data(file_id, obj_name, attr_name, BigInt(data_ptr));
-    let data = Module.HEAPU8.slice(data_ptr, data_ptr + Number(nbytes));
+    let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
     processed = process_data(data, metadata, json_compatible);
   } finally {
     if (metadata.vlen) {
@@ -186,15 +186,12 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
 
   else if (type === Module.H5T_class_t.H5T_ARRAY.value) {
     const { array_type } = <{array_type: Metadata}>metadata;
-    shape = (<bigint[]>shape).concat(<bigint[]>array_type.shape);
+    shape = (<number[]>shape).concat(<number[]>array_type.shape);
     array_type.shape = shape;
     // always convert ARRAY types to base JS types:
     output_data = process_data(data, array_type, true);
     if (isIterable(output_data) && typeof output_data !== "string") {
-      // because process_data is called after data is already retrievied, we know that
-      // total_size < Module.MAXIMUM_MEMORY, so it's safe to convert shape to number[]
-      const output_shape = array_type.shape.map(Number);
-      output_data = create_nested_array(output_data as JSONCompatibleOutputData[], output_shape);
+      output_data = create_nested_array(output_data as JSONCompatibleOutputData[], array_type.shape);
     }
   }
 
@@ -217,9 +214,7 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
   else if (type === Module.H5T_class_t.H5T_REFERENCE.value) {
     const { ref_type, size } = metadata; // as { ref_type: 'object' | 'region', size: number };
     const cls = (ref_type === 'object') ? Reference : RegionReference;
-    // because process_data is called after data is already retrievied, we know that
-    // total_size < Module.MAXIMUM_MEMORY, so it's safe to convert length to number
-    output_data = Array.from({ length: Number(metadata.total_size) }).map((_, i) => {
+    output_data = Array.from({ length: metadata.total_size }).map((_, i) => {
       const ref_data = data.slice(i*size, (i+1)*size);
       return new cls(ref_data);
     });
@@ -244,7 +239,7 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
       const data = Module.HEAPU8.slice(data_ptr, data_ptr + data_nbytes);
 
       // Process this vlen array's data according to base datatype
-      output.push(process_data(data, { ...vlen_type, shape: [BigInt(length)], total_size: BigInt(length) }, json_compatible));
+      output.push(process_data(data, { ...vlen_type, shape: [length], total_size: length }, json_compatible));
     }
 
     output_data = output;
@@ -479,7 +474,7 @@ const TypedArray_to_dtype = new Map([
  * `[i0, i1]` - select all data in the range `i0` to `i1`
  * `[i0, i1, s]` - select every `s` values in the range `i0` to `i1`
  **/
-type SliceElement = bigint | number | null;
+type SliceElement = number | null;
 type Slice = [] | [SliceElement] | [SliceElement, SliceElement] | [SliceElement, SliceElement, SliceElement];
 
 export type GuessableDataTypes = TypedArray | number | number[] | string | string[] | Reference | Reference[] | RegionReference | RegionReference[];
@@ -561,7 +556,7 @@ export class Attribute {
   name: string;
   metadata: Metadata;
   dtype: Dtype;
-  shape: bigint[] | null;
+  shape: number[] | null;
   private _value?: OutputData | null;
   private _json_value?: JSONCompatibleOutputData | null;
 
@@ -923,22 +918,23 @@ export class File extends Group {
   }
 }
 
-const calculateHyperslabParams = (shape: bigint[], ranges: Slice[]) => {
+const calculateHyperslabParams = (shape: number[], ranges: Slice[]) => {
   const strides = shape.map((s, i) => BigInt(ranges?.[i]?.[2] ?? 1));
   const count = shape.map((s, i) => {
     const range_upper = ranges?.[i]?.[1] ?? s;
-    const range_lower = ranges?.[i]?.[0] ?? 0n;
-    const high = (range_upper < s) ? BigInt(range_upper) : s;
-    const low = (range_lower > 0n) ? BigInt(range_lower) : 0n;
-    const N = high - low;
+    const range_lower = ranges?.[i]?.[0] ?? 0;
+    const high = (range_upper < s) ? range_upper : s;
+    const low = (range_lower > 0) ? range_lower : 0;
+    const N = BigInt(high - low);
     const st = strides[i];
-    return N / st + ((N % st) + st - 1n)/st
+    return BigInt(N / st + ((N % st) + st - 1n)/st);
   });
   const offset = shape.map((s, i) => {
-    const range_lower = ranges?.[i]?.[0] ?? 0n;
-    const low = (range_lower > 0n) ? BigInt(range_lower) : 0n;
-    return (s < low) ? s : low;
+    const range_lower = ranges?.[i]?.[0] ?? 0;
+    const low = (range_lower > 0) ? range_lower : 0;
+    return BigInt((s < low) ? s : low);
   });
+  // reurn BigInt arrays, to match inputs of Module functions
   return {strides, count, offset}
 }
 
@@ -998,12 +994,12 @@ export class Dataset extends HasAttrs {
 
     const {strides, count, offset} = calculateHyperslabParams(shape, ranges);
     const total_size = count.reduce((previous, current) => current * previous, 1n);
-    const nbytes = BigInt(metadata.size) * total_size;
+    const nbytes = metadata.size * Number(total_size);
     const data_ptr = check_malloc(nbytes);
     let processed: OutputData;
     try {
       Module.get_dataset_data(this.file_id, this.path, count, offset, strides, BigInt(data_ptr));
-      let data = Module.HEAPU8.slice(data_ptr, data_ptr + Number(nbytes));
+      let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
       processed = process_data(data, metadata, false);
     } finally {
       if (metadata.vlen || metadata.type === Module.H5T_class_t.H5T_VLEN.value) {
@@ -1117,12 +1113,12 @@ export class Dataset extends HasAttrs {
     }
 
     // if auto_refresh is on, getting the metadata has triggered a refresh of the dataset_id;
-    let nbytes = BigInt(metadata.size) * metadata.total_size;
+    let nbytes = metadata.size * metadata.total_size;
     let data_ptr = check_malloc(nbytes);
     let processed: OutputData;
     try {
       Module.get_dataset_data(this.file_id, this.path, null, null, null, BigInt(data_ptr));
-      let data = Module.HEAPU8.slice(data_ptr, data_ptr + Number(nbytes));
+      let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
       processed = process_data(data, metadata, json_compatible);
     } finally {
       if (metadata.vlen) {
@@ -1166,12 +1162,12 @@ export class DatasetRegion {
     }
 
     // if auto_refresh is on, getting the metadata has triggered a refresh of the dataset_id;
-    let nbytes = BigInt(metadata.size) * metadata.total_size;
+    let nbytes = metadata.size * metadata.total_size;
     let data_ptr = check_malloc(nbytes);
     let processed: OutputData;
     try {
       Module.get_region_data(this.source_dataset.file_id, this.region_reference.ref_data, BigInt(data_ptr));
-      let data = Module.HEAPU8.slice(data_ptr, data_ptr + Number(nbytes));
+      let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
       processed = process_data(data, metadata, json_compatible);
     } finally {
       if (metadata.vlen) {
