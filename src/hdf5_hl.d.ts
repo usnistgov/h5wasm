@@ -28,7 +28,8 @@ declare type TypedArray = Int8Array | Uint8Array | Uint8ClampedArray | Int16Arra
  * `[i0, i1]` - select all data in the range `i0` to `i1`
  * `[i0, i1, s]` - select every `s` values in the range `i0` to `i1`
  **/
-declare type Slice = [] | [number | null] | [number | null, number | null] | [number | null, number | null, number | null];
+declare type SliceElement = bigint | number | null;
+declare type Slice = [] | [SliceElement] | [SliceElement, SliceElement] | [SliceElement, SliceElement, SliceElement];
 export declare type GuessableDataTypes = TypedArray | number | number[] | string | string[] | Reference | Reference[] | RegionReference | RegionReference[];
 declare enum OBJECT_TYPE {
     DATASET = "Dataset",
@@ -63,7 +64,7 @@ export declare class Attribute {
     name: string;
     metadata: Metadata;
     dtype: Dtype;
-    shape: number[] | null;
+    shape: bigint[] | null;
     private _value?;
     private _json_value?;
     constructor(file_id: bigint, path: string, name: string);
@@ -133,7 +134,7 @@ export declare class Dataset extends HasAttrs {
     refresh(): void;
     get metadata(): Metadata;
     get dtype(): Dtype;
-    get shape(): number[] | null;
+    get shape(): bigint[] | null;
     get filters(): Filter[];
     get value(): OutputData | null;
     get json_value(): JSONCompatibleOutputData | null;
