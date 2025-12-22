@@ -5,6 +5,8 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  release:
+    types: [ published ]
   workflow_dispatch:
 
 jobs:
@@ -14,7 +16,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v6
-    
+
     - name: Setup emsdk
       uses: mymindstorm/setup-emsdk@v14
       with:
@@ -26,16 +28,16 @@ jobs:
         actions-cache-folder: 'emsdk-cache'
     - name: build wasm
       run: make
-      
+
     - uses: actions/setup-node@v6
       with:
-        node-version: 20
-    
+        node-version: 24
+
     - name: build js
       run: |
         npm i
         npm run build
-        
+
     - name: check environment
       run: |
         pwd
@@ -43,3 +45,36 @@ jobs:
 
     - name: test
       run: npm test
+
+    - name: Pack package
+      run: npm pack
+
+    - name: Upload package artifact
+      uses: actions/upload-artifact@v6
+      with:
+        name: npm-package
+        path: '*.tgz'
+        retention-days: 30
+
+  publish:
+    needs: build_and_test
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+    - name: Download package artifact
+      uses: actions/download-artifact@v6
+      with:
+        name: npm-package
+
+    - uses: actions/setup-node@v6
+      with:
+        node-version: '24'
+        registry-url: 'https://registry.npmjs.org'
+
+    - name: Publish to npm
+      run: npm publish *.tgz --provenance --access public
+
