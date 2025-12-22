@@ -40,6 +40,19 @@ function dirname(path: string) {
   return head;
 }
 
+function check_malloc(nbytes: bigint | number) {
+  const max_memory = Module.MAXIMUM_MEMORY;
+  if (nbytes > max_memory) {
+    throw new Error(`Requested allocation of ${nbytes} bytes exceeds maximum memory of ${max_memory} bytes`);
+  }
+  const safe_nbytes = Number(nbytes);
+  const ptr = Module._malloc(safe_nbytes);
+  if (ptr === 0) {
+    throw new Error(`Memory allocation of ${safe_nbytes} bytes failed`);
+  }
+  return ptr;
+}
+
 function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_compatible: true): JSONCompatibleOutputData | null;
 function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_compatible: false): OutputData | null;
 function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_compatible: boolean): OutputData | JSONCompatibleOutputData | null;
@@ -49,8 +62,8 @@ function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_com
     return null;
   }
 
-  let nbytes = metadata.size * metadata.total_size;
-  let data_ptr = Module._malloc(nbytes);
+  const nbytes = metadata.size * metadata.total_size;
+  let data_ptr = check_malloc(nbytes);
   var processed;
   try {
     Module.get_attribute_data(file_id, obj_name, attr_name, BigInt(data_ptr));
@@ -146,7 +159,7 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
   else if (type === Module.H5T_class_t.H5T_INTEGER.value || type === Module.H5T_class_t.H5T_FLOAT.value) {
     const { size, signed} = metadata;
     const accessor = getAccessor(type, size, signed);
-    output_data = new accessor(data.buffer);
+    output_data = new accessor(data.buffer as ArrayBuffer);
     if (json_compatible) {
       output_data = [...output_data];
       if (accessor === BigInt64Array || accessor === BigUint64Array) {
@@ -461,7 +474,8 @@ const TypedArray_to_dtype = new Map([
  * `[i0, i1]` - select all data in the range `i0` to `i1`
  * `[i0, i1, s]` - select every `s` values in the range `i0` to `i1`
  **/
-type Slice = [] | [number|null] | [number|null,number|null] | [number|null, number|null, number|null];
+type SliceElement = number | null;
+type Slice = [] | [SliceElement] | [SliceElement, SliceElement] | [SliceElement, SliceElement, SliceElement];
 
 export type GuessableDataTypes = TypedArray | number | number[] | string | string[] | Reference | Reference[] | RegionReference | RegionReference[];
 
@@ -573,10 +587,10 @@ export class Attribute {
   to_array(): JSONCompatibleOutputData | null {
     const { json_value, metadata } = this;
     const { shape } = metadata;
-    if (!isIterable(json_value) || typeof json_value === "string") {
+    if (!isIterable(json_value) || typeof json_value === "string" || shape === null) {
       return json_value;
     }
-    return create_nested_array(json_value, <number[]>shape);
+    return create_nested_array(json_value, shape);
   }
 }
 
@@ -635,7 +649,7 @@ abstract class HasAttrs {
       );
     }
     else {
-      let data_ptr = Module._malloc((prepared_data as Uint8Array).byteLength);
+      let data_ptr = check_malloc((prepared_data as Uint8Array).byteLength);
       try {
         Module.HEAPU8.set(prepared_data as Uint8Array, data_ptr);
         Module.create_attribute(
@@ -830,7 +844,7 @@ export class Group extends HasAttrs {
       );
     }
     else {
-      let data_ptr = Module._malloc((prepared_data as Uint8Array).byteLength);
+      let data_ptr = check_malloc((prepared_data as Uint8Array).byteLength);
       try {
         Module.HEAPU8.set(prepared_data as Uint8Array, data_ptr);
         Module.create_dataset(
@@ -904,14 +918,23 @@ export class File extends Group {
   }
 }
 
-const calculateHyperslabParams = (shape: number[],ranges: Slice[]) => {
+const calculateHyperslabParams = (shape: number[], ranges: Slice[]) => {
   const strides = shape.map((s, i) => BigInt(ranges?.[i]?.[2] ?? 1));
   const count = shape.map((s, i) => {
-    const N = BigInt((Math.min(s, ranges?.[i]?.[1] ?? s) - Math.max(0, ranges?.[i]?.[0] ?? 0)));
+    const range_upper = ranges?.[i]?.[1] ?? s;
+    const range_lower = ranges?.[i]?.[0] ?? 0;
+    const high = (range_upper < s) ? range_upper : s;
+    const low = (range_lower > 0) ? range_lower : 0;
+    const N = BigInt(high - low);
     const st = strides[i];
-    return N / st + ((N % st) + st - 1n)/st
+    return BigInt(N / st + ((N % st) + st - 1n)/st);
   });
-  const offset = shape.map((s, i) => BigInt(Math.min(s, Math.max(0, ranges?.[i]?.[0] ?? 0))));
+  const offset = shape.map((s, i) => {
+    const range_lower = ranges?.[i]?.[0] ?? 0;
+    const low = (range_lower > 0) ? range_lower : 0;
+    return BigInt((s < low) ? s : low);
+  });
+  // reurn BigInt arrays, to match inputs of Module functions
   return {strides, count, offset}
 }
 
@@ -972,7 +995,7 @@ export class Dataset extends HasAttrs {
     const {strides, count, offset} = calculateHyperslabParams(shape, ranges);
     const total_size = count.reduce((previous, current) => current * previous, 1n);
     const nbytes = metadata.size * Number(total_size);
-    const data_ptr = Module._malloc(nbytes);
+    const data_ptr = check_malloc(nbytes);
     let processed: OutputData;
     try {
       Module.get_dataset_data(this.file_id, this.path, count, offset, strides, BigInt(data_ptr));
@@ -1000,8 +1023,8 @@ export class Dataset extends HasAttrs {
     // if auto_refresh is on, getting the metadata has triggered a refresh of the dataset_id;
     const {strides, count, offset} = calculateHyperslabParams(shape, ranges);
 
-    const { data: prepared_data, shape: guessed_shape } = prepare_data(data, metadata, count);
-    let data_ptr = Module._malloc((prepared_data as Uint8Array).byteLength);
+    const { data: prepared_data } = prepare_data(data, metadata, count);
+    let data_ptr = check_malloc((prepared_data as Uint8Array).byteLength);
     Module.HEAPU8.set(prepared_data as Uint8Array, data_ptr);
 
     try {
@@ -1028,10 +1051,10 @@ export class Dataset extends HasAttrs {
   to_array(): JSONCompatibleOutputData | null {
     const { json_value, metadata } = this;
     const { shape } = metadata;
-    if (!isIterable(json_value) || typeof json_value === "string") {
+    if (!isIterable(json_value) || typeof json_value === "string" || shape === null) {
       return json_value;
     }
-    let nested =  create_nested_array(json_value, <number[]>shape);
+    let nested =  create_nested_array(json_value, shape);
     return nested;
   }
 
@@ -1091,7 +1114,7 @@ export class Dataset extends HasAttrs {
 
     // if auto_refresh is on, getting the metadata has triggered a refresh of the dataset_id;
     let nbytes = metadata.size * metadata.total_size;
-    let data_ptr = Module._malloc(nbytes);
+    let data_ptr = check_malloc(nbytes);
     let processed: OutputData;
     try {
       Module.get_dataset_data(this.file_id, this.path, null, null, null, BigInt(data_ptr));
@@ -1140,7 +1163,7 @@ export class DatasetRegion {
 
     // if auto_refresh is on, getting the metadata has triggered a refresh of the dataset_id;
     let nbytes = metadata.size * metadata.total_size;
-    let data_ptr = Module._malloc(nbytes);
+    let data_ptr = check_malloc(nbytes);
     let processed: OutputData;
     try {
       Module.get_region_data(this.source_dataset.file_id, this.region_reference.ref_data, BigInt(data_ptr));

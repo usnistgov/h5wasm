@@ -28,7 +28,8 @@ declare type TypedArray = Int8Array | Uint8Array | Uint8ClampedArray | Int16Arra
  * `[i0, i1]` - select all data in the range `i0` to `i1`
  * `[i0, i1, s]` - select every `s` values in the range `i0` to `i1`
  **/
-declare type Slice = [] | [number | null] | [number | null, number | null] | [number | null, number | null, number | null];
+declare type SliceElement = number | null;
+declare type Slice = [] | [SliceElement] | [SliceElement, SliceElement] | [SliceElement, SliceElement, SliceElement];
 export declare type GuessableDataTypes = TypedArray | number | number[] | string | string[] | Reference | Reference[] | RegionReference | RegionReference[];
 declare enum OBJECT_TYPE {
     DATASET = "Dataset",
