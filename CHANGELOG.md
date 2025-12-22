@@ -1,4 +1,18 @@
 # Changelog
+## v0.8.9 2025-12-22
+### Added
+* a new function check_malloc(nbytes: number | bigint): number; that returns a pointer after checking:
+  * that it is not requesting more than the maximum memory available in the heap (often 2GB, depends on compiler settings)
+  * that the allocation was successful (malloc returns 0 if it fails)
+### Changed
+* Cast shape, maxshape and total_size to (double) by @bmaranville in https://github.com/usnistgov/h5wasm/pull/113
+## v0.8.8 2025-11-13
+## Added
+* Support filter writing by @bmaranville in https://github.com/usnistgov/h5wasm/pull/108
+* Add symbols for BITGROOM and BITROUND filters
+## v0.8.6 2025-09-30
+### Changed
+* Resolve the need for 'unsafe-eval' in CSP by @pathai-scasarotto in https://github.com/usnistgov/h5wasm/pull/106
 ## v0.8.5 2025-09-10
 ### Changed
 * adjusted optimization level during build to -O2 from -O3 to preserve exported names
@@ -21,7 +35,7 @@
 ### Changed
 * Bump esbuild from 0.15.18 to 0.25.0 by @dependabot in https://github.com/usnistgov/h5wasm/pull/93
 * update to new build of libhdf5-wasm, built with emscripten 3.1.68 by @bmaranville in https://github.com/usnistgov/h5wasm/pull/96
-  * using libhdf5 1.14.6 
+  * using libhdf5 1.14.6
 ## v0.7.9 2025-01-09
 ### Fixed
 - Added `total_size` to metadata for VLEN datasets before further processing, fixes #89
