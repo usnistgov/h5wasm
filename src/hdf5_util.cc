@@ -568,7 +568,13 @@ val get_dataset_filters(hid_t loc_id, const std::string& dataset_name_string)
         H5Z_filter_t filter_id = H5Pget_filter2(plist_id, i, &flags, &nelements, cd_values, 256, name, NULL);
         val cd_values_out = val::array();
         if (nelements > 16) {
-            unsigned int * full_cd_values = (unsigned int *)malloc(nelements);
+            unsigned int * full_cd_values = (unsigned int *)malloc(nelements * sizeof(unsigned int));
+            if (full_cd_values == NULL) {
+                H5Dclose(ds_id);
+                H5Pclose(plist_id);
+                throw_error("error - malloc failed for filter cd_values!");
+                return val::null();
+            }
             H5Pget_filter2(plist_id, i, &flags, &nelements, full_cd_values, 256, name, NULL);
             for (size_t i = 0; i < nelements; i++) {
                 cd_values_out.set(i, full_cd_values[i]);
