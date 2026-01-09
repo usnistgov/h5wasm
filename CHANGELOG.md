@@ -1,4 +1,11 @@
 # Changelog
+## v0.8.11 2026-01-08
+## Fixed
+* remove deprecated setting that disables import.meta in ES6 builds by @bmaranville in https://github.com/usnistgov/h5wasm/pull/116
+* Fix incorrect allocation of cd_values array in get_dataset_filters() by @bmaranville in https://github.com/usnistgov/h5wasm/pull/117
+## v0.8.10 2025-12-22
+### Removed
+* remove accidentally included emsdk cache files in v0.8.9 package
 ## v0.8.9 2025-12-22
 ### Added
 * a new function check_malloc(nbytes: number | bigint): number; that returns a pointer after checking:
