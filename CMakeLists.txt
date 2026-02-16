@@ -6,13 +6,13 @@ project(H5WASM
     LANGUAGES CXX C
 )
 
-set (BASE_URL "https://github.com/usnistgov/libhdf5-wasm/releases/download/v0.5.0_3.1.68" CACHE STRING "")
+set (BASE_URL "https://github.com/usnistgov/libhdf5-wasm/releases/download/v0.6.0_4.0.23" CACHE STRING "")
 # set (BASE_URL "$ENV{HOME}/dev/libhdf5-wasm" CACHE STRING "")
 
 FetchContent_Declare(
   libhdf5-wasm
-  URL ${BASE_URL}/HDF5-1.14.6-Emscripten.tar.gz
-  URL_HASH SHA256=90c26256f3d1fd0b421b7e0defebe1894f179b2a50252aeb059aaa1fa6bdb7e9
+  URL ${BASE_URL}/HDF5-2.0.0-Emscripten.tar.gz
+  URL_HASH SHA256=d4dc6719ef164679728d9a50d6a4d97c826f563e22a40c4dec63e485b29781be
 )
 if (NOT libhdf5-wasm_POPULATED)
   FetchContent_MakeAvailable(libhdf5-wasm)
@@ -22,7 +22,7 @@ set(HDF5_DIR ${libhdf5-wasm_SOURCE_DIR}/cmake)
 find_package(HDF5 REQUIRED CONFIG)
 
 add_executable(hdf5_util src/hdf5_util.cc)
-target_link_libraries(hdf5_util hdf5_hl-static)
+target_link_libraries(hdf5_util hdf5::hdf5_hl-static)
 
 set (EXPORTED_FUNCTIONS)
 list (APPEND EXPORTED_FUNCTIONS
@@ -36,6 +36,7 @@ list (APPEND EXPORTED_FUNCTIONS
     pthread_create pthread_mutex_lock pthread_mutex_unlock pthread_atfork pthread_once
     pthread_cond_init pthread_barrier_init pthread_attr_init pthread_attr_setdetachstate
     H5Pget_chunk H5Tget_class H5Sget_simple_extent_dims
+    H5_libinit_g H5_libterm_g
     H5Pget_filter_by_id2 H5Pmodify_filter H5Pexist
     H5Tget_size H5Tget_native_type H5Tget_order
     H5Epush2 siprintf getTempRet0 __wasm_setjmp
@@ -67,7 +68,7 @@ set_target_properties(hdf5_util PROPERTIES
     -s SINGLE_FILE \
     -s EXPORT_ES6=1 \
     -s FORCE_FILESYSTEM=1 \
-    -s EXPORTED_RUNTIME_METHODS=\"['ccall', 'cwrap', 'FS', 'AsciiToString', 'UTF8ToString']\" \
+    -s EXPORTED_RUNTIME_METHODS=\"['ccall', 'cwrap', 'FS', 'AsciiToString', 'UTF8ToString', 'HEAPU8']\" \
     -s EXPORTED_FUNCTIONS=\"${EXPORTED_FUNCTIONS_STRING}\""
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/esm
     RUNTIME_OUTPUT_NAME hdf5_util
@@ -75,7 +76,7 @@ set_target_properties(hdf5_util PROPERTIES
 )
 
 add_executable(hdf5_util_node src/hdf5_util.cc)
-target_link_libraries(hdf5_util_node hdf5_hl-static)
+target_link_libraries(hdf5_util_node hdf5::hdf5_hl-static)
 set_target_properties(hdf5_util_node PROPERTIES
     LINK_FLAGS "-O2 --bind  \
     -s MAIN_MODULE=2 \
@@ -92,7 +93,7 @@ set_target_properties(hdf5_util_node PROPERTIES
     -s SINGLE_FILE \
     -s EXPORT_ES6=1 \
     -s ASSERTIONS=1 \
-    -s EXPORTED_RUNTIME_METHODS=\"['ccall', 'cwrap', 'FS', 'AsciiToString', 'UTF8ToString']\" \
+    -s EXPORTED_RUNTIME_METHODS=\"['ccall', 'cwrap', 'FS', 'AsciiToString', 'UTF8ToString', 'HEAPU8']\" \
     -s EXPORTED_FUNCTIONS=\"${EXPORTED_FUNCTIONS_STRING}\""
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/node
     RUNTIME_OUTPUT_NAME hdf5_util
