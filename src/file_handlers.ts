@@ -52,7 +52,8 @@ export const downloader = create_downloader();
 export async function to_blob(hdf5_file: H5WasmFile) {
     const { FS } = await ready;
     hdf5_file.flush();
-    return new Blob([FS.readFile(hdf5_file.filename)], {type: 'application/x-hdf5'});
+    const data = FS.readFile(hdf5_file.filename);
+    return new Blob([data.slice()], {type: 'application/x-hdf5'});
 }
 
 export async function download(hdf5_file: H5WasmFile) {
