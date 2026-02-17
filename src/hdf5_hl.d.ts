@@ -12,6 +12,18 @@ export declare const ACCESS_MODES: {
     readonly Sr: "H5F_ACC_SWMR_READ";
 };
 type ACCESS_MODESTRING = keyof typeof ACCESS_MODES;
+export declare const LIBVER_BOUNDS_MAP: {
+    readonly earliest: "H5F_LIBVER_EARLIEST";
+    readonly v108: "H5F_LIBVER_V18";
+    readonly v110: "H5F_LIBVER_V110";
+    readonly v112: "H5F_LIBVER_V112";
+    readonly v114: "H5F_LIBVER_V114";
+    readonly v200: "H5F_LIBVER_V200";
+    readonly latest: "H5F_LIBVER_LATEST";
+};
+export type LIBVER_BOUND = keyof typeof LIBVER_BOUNDS_MAP;
+export type LIBVER_BOUNDS = LIBVER_BOUND | [LIBVER_BOUND, LIBVER_BOUND] | "";
+export declare function convertToLibverString(value: number): LIBVER_BOUND;
 export type OutputData = TypedArray | string | number | bigint | boolean | Reference | RegionReference | OutputData[];
 export type JSONCompatibleOutputData = string | number | boolean | JSONCompatibleOutputData[];
 export type Dtype = string | {
@@ -124,7 +136,8 @@ export declare class Group extends HasAttrs {
 export declare class File extends Group {
     filename: string;
     mode: ACCESS_MODESTRING;
-    constructor(filename: string, mode?: ACCESS_MODESTRING, track_order?: boolean);
+    constructor(filename: string, mode?: ACCESS_MODESTRING, track_order?: boolean, libver?: LIBVER_BOUNDS);
+    get libver(): [LIBVER_BOUND, LIBVER_BOUND];
     flush(): void;
     close(): Status;
 }
