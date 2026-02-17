@@ -20,6 +20,8 @@ import test_throwing_error_handler from './test_throwing_error_handler.mjs';
 import test_empty from './empty_dataset_and_attrs.mjs';
 import vlen_test from './vlen_test.mjs';
 import track_order from './track_order.mjs';
+import libver_test from './libver_test.mjs';
+import swmr_test from './swmr_test.mjs';
 
 let tests = [];
 const add_tests = (tests_in) => { /*global*/ tests = tests.concat(tests_in)}
@@ -43,6 +45,8 @@ add_tests(test_throwing_error_handler);
 add_tests(test_empty);
 add_tests(vlen_test);
 add_tests(track_order);
+add_tests(libver_test);
+add_tests(swmr_test);
 
 let passed = true;
 async function run_test(test) {
