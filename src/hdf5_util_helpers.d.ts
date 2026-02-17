@@ -59,8 +59,9 @@ export interface VirtualSource {
 }
 
 export interface H5Module extends EmscriptenModule {
-    open(filename: string, mode?: number, track_order?: boolean): bigint;
+    open(filename: string, mode?: number, track_order?: boolean, libver_low?: number, libver_high?: number): bigint;
     close_file(file_id: bigint): number;
+    get_libver_bounds(file_id: bigint): {low: number, high: number};
     create_dataset(file_id: bigint, arg1: string, arg2: bigint, shape: bigint[], maxshape: (bigint | null)[], chunks: bigint[] | null, type: number, size: number, signed: boolean, vlen: boolean, compression_id: number, compression_opts: number[], track_order?: boolean): number;
     create_soft_link(file_id: bigint, link_target: string, link_name: string): number;
     create_hard_link(file_id: bigint, link_target: string, link_name: string): number;
@@ -84,6 +85,13 @@ export interface H5Module extends EmscriptenModule {
     H5F_ACC_CREAT: 16;
     H5F_ACC_SWMR_WRITE: 32;
     H5F_ACC_SWMR_READ: 64;
+    H5F_LIBVER_EARLIEST: number;
+    H5F_LIBVER_V18: number;
+    H5F_LIBVER_V110: number;
+    H5F_LIBVER_V112: number;
+    H5F_LIBVER_V114: number;
+    H5F_LIBVER_V200: number;
+    H5F_LIBVER_LATEST: number;
     H5Z_FILTER_NONE: 0;
     H5Z_FILTER_DEFLATE: 1;
     H5Z_FILTER_SHUFFLE: 2;
@@ -139,7 +147,7 @@ export interface H5Module extends EmscriptenModule {
 }
 
 export declare type Filter = {
-    id: number; 
+    id: number;
     name: string;
     cd_values: number[];
 }
