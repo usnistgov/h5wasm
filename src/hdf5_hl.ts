@@ -19,6 +19,19 @@ export const ACCESS_MODES = {
 
 type ACCESS_MODESTRING = keyof typeof ACCESS_MODES;
 
+export const LIBVER_BOUNDS_MAP = {
+  "earliest": "H5F_LIBVER_EARLIEST",
+  "v108": "H5F_LIBVER_V18",
+  "v110": "H5F_LIBVER_V110",
+  "v112": "H5F_LIBVER_V112",
+  "v114": "H5F_LIBVER_V114",
+  "v200": "H5F_LIBVER_V200",
+  "latest": "H5F_LIBVER_LATEST"
+} as const;
+
+export type LIBVER_BOUND = keyof typeof LIBVER_BOUNDS_MAP;
+export type LIBVER_BOUNDS = LIBVER_BOUND | [LIBVER_BOUND, LIBVER_BOUND] | "";
+
 function normalizePath(path: string) {
   if (path == "/") { return path }
   // replace multiple path separators with single
@@ -38,6 +51,30 @@ function dirname(path: string) {
     head = head.replace(/(\/)+$/, '');
   }
   return head;
+}
+
+export function convertToLibverString(value: number): LIBVER_BOUND {
+  // Create reverse mapping from constant name to key
+  for (const [key, constantName] of Object.entries(LIBVER_BOUNDS_MAP)) {
+    const moduleValue = Module[constantName as keyof H5Module];
+    if (moduleValue === value) {
+      return key as LIBVER_BOUND;
+    }
+  }
+  throw new Error(`No matching libver string found for value: ${value}`);
+}
+
+function parseLibverString(s: LIBVER_BOUND): number {
+  const normalized = s.trim().toLowerCase() as LIBVER_BOUND;
+  const constant_name = LIBVER_BOUNDS_MAP[normalized];
+  if (!constant_name) {
+    throw new Error(`Invalid libver value: "${s}". Use: ${Object.keys(LIBVER_BOUNDS_MAP).join(', ')}`);
+  }
+  const value = Module[constant_name as keyof H5Module];
+  if (value === undefined) {
+    throw new Error(`Module constant ${constant_name} is not defined`);
+  }
+  return value;
 }
 
 function check_malloc(nbytes: bigint | number) {
@@ -900,13 +937,35 @@ export class Group extends HasAttrs {
 export class File extends Group {
   filename: string;
   mode: ACCESS_MODESTRING;
-  constructor(filename: string, mode: ACCESS_MODESTRING = "r", track_order: boolean = false) {
+  constructor(filename: string, mode: ACCESS_MODESTRING = "r", track_order: boolean = false, libver: LIBVER_BOUNDS = "") {
     const access_mode = ACCESS_MODES[mode];
     const h5_mode = Module[access_mode];
-    const file_id = Module.open(filename, h5_mode, track_order);
+
+    // Parse libver into numeric bounds
+    let libver_low = -1;
+    let libver_high = -1;
+
+    if (libver) {
+      if (Array.isArray(libver)) {
+        // Tuple: [low, high]
+        libver_low = parseLibverString(libver[0]);
+        libver_high = parseLibverString(libver[1]);
+      } else {
+        // Single string: both bounds set to same value
+        const ver = parseLibverString(libver);
+        libver_low = ver;
+        libver_high = ver;
+      }
+    }
+    const file_id = Module.open(filename, h5_mode, track_order, libver_low, libver_high);
     super(file_id, "/");
     this.filename = filename;
     this.mode = mode;
+  }
+
+  get libver(): [LIBVER_BOUND, LIBVER_BOUND] {
+    const bounds = Module.get_libver_bounds(this.file_id);
+    return [convertToLibverString(bounds.low), convertToLibverString(bounds.high)];
   }
 
   flush() {
