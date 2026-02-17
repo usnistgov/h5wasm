@@ -11,16 +11,16 @@ export declare const ACCESS_MODES: {
     readonly Sw: "H5F_ACC_SWMR_WRITE";
     readonly Sr: "H5F_ACC_SWMR_READ";
 };
-declare type ACCESS_MODESTRING = keyof typeof ACCESS_MODES;
-export declare type OutputData = TypedArray | string | number | bigint | boolean | Reference | RegionReference | OutputData[];
-export declare type JSONCompatibleOutputData = string | number | boolean | JSONCompatibleOutputData[];
-export declare type Dtype = string | {
+type ACCESS_MODESTRING = keyof typeof ACCESS_MODES;
+export type OutputData = TypedArray | string | number | bigint | boolean | Reference | RegionReference | OutputData[];
+export type JSONCompatibleOutputData = string | number | boolean | JSONCompatibleOutputData[];
+export type Dtype = string | {
     compound_type: CompoundTypeMetadata;
 } | {
     array_type: Metadata;
 };
 export type { Metadata, Filter, CompoundMember, CompoundTypeMetadata, EnumTypeMetadata };
-declare type TypedArray = Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | BigInt64Array | BigUint64Array | Float32Array | Float64Array;
+type TypedArray = Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | BigInt64Array | BigUint64Array | Float32Array | Float64Array;
 /**
  * Describes an array slice.
  * `[]` - all data
@@ -28,9 +28,9 @@ declare type TypedArray = Int8Array | Uint8Array | Uint8ClampedArray | Int16Arra
  * `[i0, i1]` - select all data in the range `i0` to `i1`
  * `[i0, i1, s]` - select every `s` values in the range `i0` to `i1`
  **/
-declare type SliceElement = number | null;
-declare type Slice = [] | [SliceElement] | [SliceElement, SliceElement] | [SliceElement, SliceElement, SliceElement];
-export declare type GuessableDataTypes = TypedArray | number | number[] | string | string[] | Reference | Reference[] | RegionReference | RegionReference[];
+type SliceElement = number | null;
+type Slice = [] | [SliceElement] | [SliceElement, SliceElement] | [SliceElement, SliceElement, SliceElement];
+export type GuessableDataTypes = TypedArray | number | number[] | string | string[] | Reference | Reference[] | RegionReference | RegionReference[];
 declare enum OBJECT_TYPE {
     DATASET = "Dataset",
     GROUP = "Group",
@@ -40,7 +40,7 @@ declare enum OBJECT_TYPE {
     REFERENCE = "Reference",
     REGION_REFERENCE = "RegionReference"
 }
-export declare type Entity = Dataset | Group | BrokenSoftLink | ExternalLink | Datatype | Reference | RegionReference;
+export type Entity = Dataset | Group | BrokenSoftLink | ExternalLink | Datatype | Reference | RegionReference;
 export declare class BrokenSoftLink {
     target: string;
     type: OBJECT_TYPE;
