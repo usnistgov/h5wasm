@@ -28,11 +28,23 @@ EM_JS(void, throw_error, (const char *string_error), {
 //     // pass
 // }
 
-int64_t open(const std::string& filename_string, unsigned int h5_mode = H5F_ACC_RDONLY, bool track_order = false)
+int64_t open(const std::string& filename_string, unsigned int h5_mode = H5F_ACC_RDONLY, bool track_order = false, int libver_low = -1, int libver_high = -1)
 {
     const char *filename = filename_string.c_str();
     hid_t file_id;
     hid_t fcpl_id = H5Pcreate(H5P_FILE_CREATE);
+    hid_t fapl_id = H5Pcreate(H5P_FILE_ACCESS);
+
+    // SWMR_WRITE requires RDWR, SWMR_READ works with RDONLY (which is 0)
+    if (h5_mode & H5F_ACC_SWMR_WRITE)
+    {
+        h5_mode |= H5F_ACC_RDWR;
+    }
+
+    if (libver_low >= 0 && libver_high >= 0)
+    {
+        H5Pset_libver_bounds(fapl_id, (H5F_libver_t)libver_low, (H5F_libver_t)libver_high);
+    }
 
     if (track_order)
     {
@@ -42,14 +54,15 @@ int64_t open(const std::string& filename_string, unsigned int h5_mode = H5F_ACC_
 
     if (h5_mode == H5F_ACC_TRUNC || h5_mode == H5F_ACC_EXCL)
     {
-      file_id = H5Fcreate(filename, h5_mode, fcpl_id, H5P_DEFAULT);
+      file_id = H5Fcreate(filename, h5_mode, fcpl_id, fapl_id);
     }
     else
     {
       // then it is an existing file...
-      file_id = H5Fopen(filename, h5_mode, H5P_DEFAULT);
+      file_id = H5Fopen(filename, h5_mode, fapl_id);
     }
     herr_t status = H5Pclose(fcpl_id);
+    status = H5Pclose(fapl_id);
     return (int64_t)file_id;
 }
 
@@ -57,6 +70,29 @@ int close_file(hid_t file_id)
 {
     herr_t status = H5Fclose(file_id);
     return (int)status;
+}
+
+val get_libver_bounds(hid_t file_id)
+{
+    hid_t fapl_id = H5Fget_access_plist(file_id);
+    if (fapl_id < 0) {
+        throw_error("Failed to get file access property list");
+        return val::null();
+    }
+
+    H5F_libver_t low, high;
+    herr_t status = H5Pget_libver_bounds(fapl_id, &low, &high);
+    H5Pclose(fapl_id);
+
+    if (status < 0) {
+        throw_error("Failed to get libver bounds");
+        return val::null();
+    }
+
+    val result = val::object();
+    result.set("low", (int)low);
+    result.set("high", (int)high);
+    return result;
 }
 
 herr_t link_name_callback(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata)
@@ -648,7 +684,7 @@ int read_write_dataset_data(hid_t loc_id, const std::string& dataset_name_string
     else {
         status = H5Dread(ds_id, memtype, memspace, dspace, H5P_DEFAULT, rwdata);
     }
-    
+
     H5Dclose(ds_id);
     H5Sclose(dspace);
     H5Sclose(memspace);
@@ -949,7 +985,7 @@ int create_dataset(hid_t loc_id, std::string dset_name_string, uint64_t wdata_ui
 
 int create_vlen_str_dataset(hid_t loc_id, std::string dset_name_string, val data, val dims_in, val maxdims_in, val chunks_in, int dtype, int dsize, bool is_signed, bool is_vlstr, bool track_order=false) {
     uint64_t wdata_uint64; // ptr as uint64_t (webassembly will be 64-bit someday)
-    
+
     std::vector<std::string> data_string_vec = vecFromJSArray<std::string>(data);
     std::vector<const char *> data_char_vec;
     data_char_vec.reserve(data_string_vec.size());
@@ -1246,8 +1282,8 @@ val get_region_metadata(hid_t loc_id, const val ref_data_in)
         shape = val::array(); // elements of type hsize_t
         for (int d = 0; d < rank; d++)
         {
-            hsize_t blocksize = (block.at(d) == NULL) ? 1 : block.at(d); 
-            shape.set(d, (double)(count.at(d) * blocksize)); 
+            hsize_t blocksize = (block.at(d) == NULL) ? 1 : block.at(d);
+            shape.set(d, (double)(count.at(d) * blocksize));
         }
     }
     metadata.set("shape", shape);
@@ -1290,7 +1326,7 @@ int get_region_data(hid_t loc_id, val ref_data_in, uint64_t rdata_uint64)
         htri_t success = H5Sget_regular_hyperslab(dspace, nullptr, nullptr, count.data(), block.data());
         for (int d = 0; d < rank; d++)
         {
-            int blocksize = (block.at(d) == NULL) ? 1 : block.at(d); 
+            int blocksize = (block.at(d) == NULL) ? 1 : block.at(d);
             shape_out.at(d) = (count.at(d) * blocksize);
         }
         memspace = H5Screate_simple(shape_out.size(), &shape_out[0], nullptr);
@@ -1343,6 +1379,7 @@ EMSCRIPTEN_BINDINGS(hdf5)
 {
     function("open", &open);
     function("close_file", &close_file);
+    function("get_libver_bounds", &get_libver_bounds);
     function("get_keys", &get_keys_vector);
     function("get_names", &get_child_names);
     function("get_types", &get_child_types);
@@ -1424,8 +1461,16 @@ EMSCRIPTEN_BINDINGS(hdf5)
     constant("H5F_ACC_EXCL", H5F_ACC_EXCL);
     constant("H5F_ACC_CREAT", H5F_ACC_CREAT);
     constant("H5F_ACC_SWMR_WRITE", H5F_ACC_SWMR_WRITE);
-    
     constant("H5F_ACC_SWMR_READ", H5F_ACC_SWMR_READ);
+
+    // Library version bounds
+    constant("H5F_LIBVER_EARLIEST", (int)H5F_LIBVER_EARLIEST);
+    constant("H5F_LIBVER_V18", (int)H5F_LIBVER_V18);
+    constant("H5F_LIBVER_V110", (int)H5F_LIBVER_V110);
+    constant("H5F_LIBVER_V112", (int)H5F_LIBVER_V112);
+    constant("H5F_LIBVER_V114", (int)H5F_LIBVER_V114);
+    constant("H5F_LIBVER_V200", (int)H5F_LIBVER_V200);
+    constant("H5F_LIBVER_LATEST", (int)H5F_LIBVER_LATEST);
 
     constant("H5G_GROUP", (int)H5G_GROUP);     //    0    Object is a group.
     constant("H5G_DATASET", (int)H5G_DATASET); //    1    Object is a dataset.
