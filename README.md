@@ -4,7 +4,7 @@ a zero-dependency WebAssembly-powered library for [reading](#reading) and [writi
 (built on the [HDF5 C API](http://portal.hdfgroup.org/pages/viewpage.action?pageId=50073943))
 
 The built binaries (esm and node) will be attached to the [latest release](https://github.com/usnistgov/h5wasm/releases/latest/) as h5wasm-{version}.tgz
-  
+
 The wasm-compiled libraries `libhdf5.a`, `libhdf5_cpp.a` ... and the related `include/` folder are retrieved from [libhdf5-wasm](https://github.com/usnistgov/libhdf5-wasm) during the build.
 
 Instead of importing a namespace "*", it is now possible to import the important h5wasm components in an object, from the default export:
@@ -14,6 +14,8 @@ export const h5wasm = {
     File,
     Group,
     Dataset,
+    Datatype,
+    DatasetRegion,
     ready,
     ACCESS_MODES
 }
@@ -23,7 +25,7 @@ The Emscripten filesystem is important for operations, and it can be accessed af
 
 ## Browser (no-build)
 ```js
-import h5wasm from "https://cdn.jsdelivr.net/npm/h5wasm@0latest/dist/esm/hdf5_hl.js";
+import h5wasm from "https://cdn.jsdelivr.net/npm/h5wasm@latest/dist/esm/hdf5_hl.js";
 
 // the WASM loads asychronously, and you can get the module like this:
 const Module = await h5wasm.ready;
@@ -31,7 +33,7 @@ const Module = await h5wasm.ready;
 // then you can get the FileSystem object from the Module:
 const { FS } = Module;
 
-// Or, you can directly get the FS if you don't care about the rest 
+// Or, you can directly get the FS if you don't care about the rest
 // of the module:
 // const { FS } = await h5wasm.ready;
 
@@ -51,7 +53,7 @@ Since ESM is not supported in all web worker contexts (e.g. Firefox), an additio
 // worker.js
 onmessage = async function(e) {
     const { FS } = await h5wasm.ready;
-    
+
     // send in a file opened from an <input type="file" />
     const f_in = e.data[0];
 
@@ -85,7 +87,7 @@ The host filesystem is made available through Emscripten "NODERAWFS=1".
 Enabling BigInt support may be required for nodejs < 16
 ```bash
 npm i h5wasm
-node --experimental-wasm-bigint
+node
 
 ```
 
@@ -100,7 +102,7 @@ File {
   file_id: 72057594037927936n,
   filename: '/home/brian/Downloads/sans59510.nxs.ngv',
   mode: 'r'
-} 
+}
 */
 ```
 
@@ -121,7 +123,7 @@ let data = f.get("entry/instrument/detector_MR/data")
 // Dataset {path: "/entry/instrument/detector_MR/data", file_id: 72057594037927936n}
 
 data.metadata
-/* 
+/*
 {
     "signed": true,
     "vlen": false,
@@ -187,17 +189,45 @@ data.to_array()
 */
 ```
 
-### SWMR Read
-(single writer multiple readers)
+### SWMR (single writer multiple readers)
+
+SWMR requires a file created with at least `libver: "v110"` and a chunked, extensible dataset.
+
 ```js
-const swmr_file = new h5wasm.File("swmr.h5", "Sr");
-let dset = swmr_file.get("data");
-dset.shape;
-// 12
-// ...later
-dset.refresh();
-dset.shape;
-// 16
+// First, create a SWMR-compatible file
+const f = new h5wasm.File("swmr.h5", "w", { libver: "v110" });
+f.create_dataset({
+  name: "data",
+  data: new Float32Array([1, 2, 3]),
+  maxshape: [null],   // unlimited along first axis
+  chunks: [10]
+});
+f.flush();
+f.close();
+
+// Open for SWMR write and SWMR read simultaneously
+const f_write = new h5wasm.File("swmr.h5", "Sw");
+const f_read  = new h5wasm.File("swmr.h5", "Sr");
+
+const dset_write = f_write.get("data");
+const dset_read  = f_read.get("data");
+
+// Extend the dataset and write new values
+dset_write.resize([6]);
+dset_write.write_slice([[3, 6]], new Float32Array([4, 5, 6]));
+f_write.flush();
+
+// The read handle still sees the old shape until refreshed
+dset_read.shape;
+// [3]
+dset_read.refresh();
+dset_read.shape;
+// [6]
+dset_read.value;
+// Float32Array(6) [1, 2, 3, 4, 5, 6]
+
+f_write.close();
+f_read.close();
 ```
 
 ### Writing
@@ -223,7 +253,7 @@ new_file.get("entry/data").value
 //Float32Array(4) [3.0999999046325684, 4.099999904632568, 0, -1]
 
 // create a dataset with shape=[2,2]
-// The dataset stored in the HDF5 file with the correct shape, 
+// The dataset stored in the HDF5 file with the correct shape,
 // but no attempt is made to make a 2x2 array out of it in javascript
 new_file.get("entry").create_dataset({name: "square_data", data: [3.1, 4.1, 0.0, -1.0], shape: [2,2], dtype: '<d'});
 new_file.get("entry/square_data").shape
@@ -318,11 +348,11 @@ Optional, to support uploads and downloads
 
 ```js
 import {uploader, download, UPLOADED_FILES} from "https://cdn.jsdelivr.net/npm/h5wasm@latest/dist/esm/file_handlers.js";
-// 
+//
 // Attach to a file input element:
 // will save to Module.FS (memfs) with the name of the uploaded file
 document.getElementById("upload_selector").onchange = uploader;
-// file can be found with 
+// file can be found with
 let f = new h5wasm.File(UPLOADED_FILES[UPLOADED_FILES.length -1], "r");
 
 let new_file = new h5wasm.File("myfile.h5", "w");
@@ -348,4 +378,32 @@ FS.syncfs(true, (e) => {console.log(e)});
 
 // to push all current files in /home/web_user to IndexedDB, e.g. when closing your application:
 FS.syncfs(false, (e) => {console.log(e)})
+```
+
+## Library version bounds (libver)
+
+HDF5 supports controlling the minimum and maximum library version used when writing objects to a file, via `libver`. This can be set using the `FileOptions` object when opening a file.
+
+Valid `libver` string values are: `"earliest"`, `"v108"`, `"v110"`, `"v112"`, `"v114"`, `"v200"`, and `"latest"`.
+
+### Single bound (low and high set to the same value)
+```js
+// Require at least HDF5 v1.10 format features:
+const f = new h5wasm.File("myfile.h5", "w", { libver: "v110" });
+f.create_dataset({ name: "data", data: new Float32Array([1, 2, 3]) });
+f.close();
+
+// Read back the actual bounds stored in the file:
+const f_read = new h5wasm.File("myfile.h5", "r");
+f_read.libver;
+// ["v110", "v110"]
+f_read.close();
+```
+
+### Asymmetric bounds (different low and high)
+```js
+// Allow any format from v1.10 up to the latest supported version:
+const f = new h5wasm.File("myfile.h5", "w", { libver: ["v110", "latest"] });
+f.create_dataset({ name: "data", data: new Float32Array([1, 2, 3]) });
+f.close();
 ```
