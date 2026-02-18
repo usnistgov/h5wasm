@@ -23,6 +23,26 @@ export const h5wasm = {
 
 The Emscripten filesystem is important for operations, and it can be accessed after the WASM is loaded as below.
 
+## Contents
+
+- [QuickStart](#quickstart)
+  - [Browser (no-build)](#browser-no-build)
+  - [Worker usage](#worker-usage)
+  - [Browser target (build system)](#browser-target-build-system)
+  - [Node.js](#nodejs)
+- [User Guide](#user-guide)
+  - [Opening a file](#opening-a-file)
+  - [Reading](#reading)
+  - [Writing](#writing)
+  - [Editing](#editing)
+  - [SWMR (single writer multiple readers)](#swmr-single-writer-multiple-readers)
+  - [Links](#links)
+  - [Library version bounds (libver)](#library-version-bounds-libver)
+- [Web Helpers](#web-helpers)
+- [Persistent file store (web)](#persistent-file-store-web)
+
+# QuickStart
+
 ## Browser (no-build)
 ```js
 import h5wasm from "https://cdn.jsdelivr.net/npm/h5wasm@latest/dist/esm/hdf5_hl.js";
@@ -47,7 +67,7 @@ let f = new h5wasm.File("sans59510.nxs.ngv", "r");
 // File {path: "/", file_id: 72057594037927936n, filename: "data.h5", mode: "r"}
 ```
 
-### Worker usage
+## Worker usage
 Since ESM is not supported in all web worker contexts (e.g. Firefox), an additional  ```./dist/iife/h5wasm.js``` is provided in the package for `h5wasm>=0.4.8`; it can be loaded in a worker and used as in the example below (which uses the WORKERFS file system for random access on local files):
 ```js
 // worker.js
@@ -106,8 +126,33 @@ File {
 */
 ```
 
-## Usage
+# User Guide
 _(all examples are written in ESM - for Typescript some type casting is probably required, as `get` returns either Group or Dataset)_
+
+## Opening a file
+
+```js
+new h5wasm.File(filename, mode?, options?)
+```
+
+| Argument | Type | Default | Description |
+|---|---|---|---|
+| `filename` | `string` | — | Path to the HDF5 file |
+| `mode` | `string` | `"r"` | Access mode (see table below) |
+| `options.track_order` | `boolean` | `false` | Preserve insertion order of groups and attributes |
+| `options.libver` | `string \| [string, string]` | — | Library version bound(s) for new objects (see [libver](#library-version-bounds-libver)) |
+
+Available modes:
+
+| Mode | Description |
+|---|---|
+| `"r"` | Read-only |
+| `"a"` | Read/write (file must exist) |
+| `"w"` | Create / truncate |
+| `"x"` | Create, fail if exists |
+| `"Sw"` | SWMR write |
+| `"Sr"` | SWMR read |
+
 ### Reading
 ```js
 let f = new h5wasm.File("sans59510.nxs.ngv", "r");
@@ -189,47 +234,6 @@ data.to_array()
 */
 ```
 
-### SWMR (single writer multiple readers)
-
-SWMR requires a file created with at least `libver: "v110"` and a chunked, extensible dataset.
-
-```js
-// First, create a SWMR-compatible file
-const f = new h5wasm.File("swmr.h5", "w", { libver: "v110" });
-f.create_dataset({
-  name: "data",
-  data: new Float32Array([1, 2, 3]),
-  maxshape: [null],   // unlimited along first axis
-  chunks: [10]
-});
-f.flush();
-f.close();
-
-// Open for SWMR write and SWMR read simultaneously
-const f_write = new h5wasm.File("swmr.h5", "Sw");
-const f_read  = new h5wasm.File("swmr.h5", "Sr");
-
-const dset_write = f_write.get("data");
-const dset_read  = f_read.get("data");
-
-// Extend the dataset and write new values
-dset_write.resize([6]);
-dset_write.write_slice([[3, 6]], new Float32Array([4, 5, 6]));
-f_write.flush();
-
-// The read handle still sees the old shape until refreshed
-dset_read.shape;
-// [3]
-dset_read.refresh();
-dset_read.shape;
-// [6]
-dset_read.value;
-// Float32Array(6) [1, 2, 3, 4, 5, 6]
-
-f_write.close();
-f_read.close();
-```
-
 ### Writing
 ```js
 let new_file = new h5wasm.File("myfile.h5", "w");
@@ -300,6 +304,56 @@ new_file.close()
 
 ```
 
+### Editing
+One can also open an existing file and write to it:
+```js
+let f = new h5wasm.File("myfile.h5", "a");
+
+f.create_attribute("new_attr", "something wicked this way comes");
+f.close()
+```
+
+### SWMR (single writer multiple readers)
+
+SWMR requires a file created with at least `libver: "v110"` and a chunked, extensible dataset.
+
+```js
+// First, create a SWMR-compatible file
+const f = new h5wasm.File("swmr.h5", "w", { libver: "v110" });
+f.create_dataset({
+  name: "data",
+  data: new Float32Array([1, 2, 3]),
+  maxshape: [null],   // unlimited along first axis
+  chunks: [10]
+});
+f.flush();
+f.close();
+
+// Open for SWMR write and SWMR read simultaneously
+const f_write = new h5wasm.File("swmr.h5", "Sw");
+const f_read  = new h5wasm.File("swmr.h5", "Sr");
+
+const dset_write = f_write.get("data");
+const dset_read  = f_read.get("data");
+
+// Extend the dataset and write new values
+dset_write.resize([6]);
+dset_write.write_slice([[3, 6]], new Float32Array([4, 5, 6]));
+f_write.flush();
+
+// The read handle still sees the old shape until refreshed
+dset_read.shape;
+// [3]
+dset_read.refresh();
+dset_read.shape;
+// [6]
+dset_read.value;
+// Float32Array(6) [1, 2, 3, 4, 5, 6]
+
+f_write.close();
+f_read.close();
+```
+
 ### Links
 ```js
 let new_file = new h5wasm.File("myfile.h5", "w");
@@ -309,12 +363,12 @@ new_file.get("entry").create_dataset({name: "auto", data: [3.1, 4.1, 0.0, -1.0]}
 // create a soft link in root:
 new_file.create_soft_link("/entry/auto", "my_soft_link");
 new_file.get("my_soft_link").value;
-// Float64Array(4) [3.1, 4.1, 0, -1]
+// Float64Array(4) [3.1, 4.1, 0, -1]
 
 // create a hard link:
 new_file.create_hard_link("/entry/auto", "my_hard_link");
 new_file.get("my_hard_link").value;
-// Float64Array(4) [3.1, 4.1, 0, -1]
+// Float64Array(4) [3.1, 4.1, 0, -1]
 
 // create an external link:
 new_file.create_external_link("other_file.h5", "other_dataset", "my_external_link");
@@ -326,7 +380,7 @@ new_file.create_group("links");
 const links_group = new_file.get("links");
 links_group.create_soft_link("/entry/auto", "soft_link");
 new_file.get("/links/soft_link").value;
-// Float64Array(4) [3.1, 4.1, 0, -1]
+// Float64Array(4) [3.1, 4.1, 0, -1]
 new_file.get_link("/links/soft_link");
 // "/entry/auto"
 new_file.get_link("/entry/auto");
@@ -335,14 +389,34 @@ new_file.get_link("/entry/auto");
 new_file.close()
 ```
 
-### Edit
-One can also open an existing file and write to it:
-```js
-let f = new h5wasm.File("myfile.h5", "a");
+## Library version bounds (libver)
 
-f.create_attribute("new_attr", "something wicked this way comes");
-f.close()
+HDF5 supports controlling the minimum and maximum library version used when writing objects to a file, via `libver`. This can be set using the `FileOptions` object when opening a file.
+
+Valid `libver` string values are: `"earliest"`, `"v108"`, `"v110"`, `"v112"`, `"v114"`, `"v200"`, and `"latest"`.
+
+### Single bound (low and high set to the same value)
+```js
+// Require at least HDF5 v1.10 format features:
+const f = new h5wasm.File("myfile.h5", "w", { libver: "v110" });
+f.create_dataset({ name: "data", data: new Float32Array([1, 2, 3]) });
+f.close();
+
+// Read back the actual bounds stored in the file:
+const f_read = new h5wasm.File("myfile.h5", "r");
+f_read.libver;
+// ["v110", "v110"]
+f_read.close();
 ```
+
+### Asymmetric bounds (different low and high)
+```js
+// Allow any format from v1.10 up to the latest supported version:
+const f = new h5wasm.File("myfile.h5", "w", { libver: ["v110", "latest"] });
+f.create_dataset({ name: "data", data: new Float32Array([1, 2, 3]) });
+f.close();
+```
+
 ## Web Helpers
 Optional, to support uploads and downloads
 
@@ -378,32 +452,4 @@ FS.syncfs(true, (e) => {console.log(e)});
 
 // to push all current files in /home/web_user to IndexedDB, e.g. when closing your application:
 FS.syncfs(false, (e) => {console.log(e)})
-```
-
-## Library version bounds (libver)
-
-HDF5 supports controlling the minimum and maximum library version used when writing objects to a file, via `libver`. This can be set using the `FileOptions` object when opening a file.
-
-Valid `libver` string values are: `"earliest"`, `"v108"`, `"v110"`, `"v112"`, `"v114"`, `"v200"`, and `"latest"`.
-
-### Single bound (low and high set to the same value)
-```js
-// Require at least HDF5 v1.10 format features:
-const f = new h5wasm.File("myfile.h5", "w", { libver: "v110" });
-f.create_dataset({ name: "data", data: new Float32Array([1, 2, 3]) });
-f.close();
-
-// Read back the actual bounds stored in the file:
-const f_read = new h5wasm.File("myfile.h5", "r");
-f_read.libver;
-// ["v110", "v110"]
-f_read.close();
-```
-
-### Asymmetric bounds (different low and high)
-```js
-// Allow any format from v1.10 up to the latest supported version:
-const f = new h5wasm.File("myfile.h5", "w", { libver: ["v110", "latest"] });
-f.create_dataset({ name: "data", data: new Float32Array([1, 2, 3]) });
-f.close();
 ```
