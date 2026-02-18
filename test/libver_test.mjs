@@ -16,7 +16,7 @@ async function test_libver_v110() {
   }
 
   // Create file with libver="v110"
-  const f = new h5wasm.File(FILEPATH, "w", false, "v110");
+  const f = new h5wasm.File(FILEPATH, "w", { libver: "v110" });
   f.create_dataset({name: "data", data: DATA});
   f.flush();
   f.close();
@@ -39,7 +39,7 @@ async function test_libver_latest() {
   }
 
   // Create file with libver="latest"
-  const f = new h5wasm.File(FILEPATH, "w", false, "latest");
+  const f = new h5wasm.File(FILEPATH, "w", { libver: "latest" });
   f.create_dataset({name: "data", data: DATA});
   f.flush();
   f.close();
@@ -62,7 +62,7 @@ async function test_libver_v108() {
   }
 
   // Create file with libver="v108"
-  const f = new h5wasm.File(FILEPATH, "w", false, "v108");
+  const f = new h5wasm.File(FILEPATH, "w", { libver: "v108" });
   f.create_dataset({name: "data", data: DATA});
   f.flush();
   f.close();
@@ -85,7 +85,7 @@ async function test_libver_asymmetric() {
   }
 
   // Create file with asymmetric libver bounds
-  const f = new h5wasm.File(FILEPATH, "w", false, ["v110", "latest"]);
+  const f = new h5wasm.File(FILEPATH, "w", { libver: ["v110", "latest"] });
   f.create_dataset({name: "data", data: DATA});
   f.flush();
   f.close();
@@ -108,7 +108,7 @@ async function test_libver_swmr() {
   }
 
   // Create file with superblock v3 (required for SWMR)
-  const f = new h5wasm.File(FILEPATH, "w", false, "v110");
+  const f = new h5wasm.File(FILEPATH, "w", { libver: "v110" });
   // Create an extensible chunked dataset (required for SWMR)
   f.create_dataset({
     name: "swmr_data",
@@ -136,7 +136,7 @@ async function test_libver_with_track_order() {
   }
 
   // Create file with track_order and explicit libver
-  const f = new h5wasm.File(FILEPATH, "w", true, "latest");
+  const f = new h5wasm.File(FILEPATH, "w", { track_order: true, libver: "latest" });
 
   // Create attributes in reverse alphabetical order
   f.create_attribute("c", "first");
@@ -162,7 +162,7 @@ async function test_libver_auto_with_track_order() {
   }
 
   // Create file with track_order but no explicit libver (should auto-set v18)
-  const f = new h5wasm.File(FILEPATH, "w", true);
+  const f = new h5wasm.File(FILEPATH, "w", { track_order: true });
 
   // Create attributes in reverse alphabetical order
   f.create_attribute("c", "first");
@@ -189,7 +189,7 @@ async function test_libver_case_insensitive() {
   }
 
   // Test case-insensitive libver strings (uppercase/mixed case)
-  const f = new h5wasm.File(FILEPATH, "w", false, "LATEST");
+  const f = new h5wasm.File(FILEPATH, "w", { libver: "LATEST" });
   f.create_dataset({name: "data", data: DATA});
   f.flush();
   f.close();
@@ -226,12 +226,12 @@ async function test_libver_getter() {
   const latest = convertToLibverString(Module.H5F_LIBVER_LATEST);
 
   // Test single libver value
-  const f1 = new h5wasm.File(FILEPATH, "w", false, "v108");
+  const f1 = new h5wasm.File(FILEPATH, "w", { libver: "v108" });
   assert.deepEqual(f1.libver, ["v108", "v108"]);
   f1.close();
 
   // Test asymmetric libver bounds
-  const f2 = new h5wasm.File(FILEPATH, "w", false, ["v110", "latest"]);
+  const f2 = new h5wasm.File(FILEPATH, "w", { libver: ["v110", "latest"] });
   assert.deepEqual(f2.libver, ["v110", latest]);
   // On close, because we didn't use any features that require v110,
   // it falls back to "v108" for the low bound
@@ -250,7 +250,7 @@ async function test_libver_getter() {
   f4.close();
 
   // Open a file with track_order enabled:
-  const f5 = new h5wasm.File(FILEPATH, "w", true);
+  const f5 = new h5wasm.File(FILEPATH, "w", { track_order: true });
   // If no libver is specified, and track_order is used,
   // a minimum version "v108" is set by hdf5 library
   assert.deepEqual(f5.libver, ["v108", latest]);
