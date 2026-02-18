@@ -30,7 +30,7 @@ export const LIBVER_BOUNDS_MAP = {
 } as const;
 
 export type LIBVER_BOUND = keyof typeof LIBVER_BOUNDS_MAP;
-export type LIBVER_BOUNDS = LIBVER_BOUND | [LIBVER_BOUND, LIBVER_BOUND] | "";
+export type LIBVER_BOUNDS = LIBVER_BOUND | [LIBVER_BOUND, LIBVER_BOUND];
 
 function normalizePath(path: string) {
   if (path == "/") { return path }
@@ -934,10 +934,31 @@ export class Group extends HasAttrs {
   }
 }
 
+export interface FileOptions {
+  track_order?: boolean;
+  libver?: LIBVER_BOUNDS;
+}
+
 export class File extends Group {
   filename: string;
   mode: ACCESS_MODESTRING;
-  constructor(filename: string, mode: ACCESS_MODESTRING = "r", track_order: boolean = false, libver: LIBVER_BOUNDS = "") {
+
+  constructor(filename: string, mode?: ACCESS_MODESTRING, options?: FileOptions);
+  /** @deprecated Use the `FileOptions` object overload instead: `new File(filename, mode, { track_order })` */
+  constructor(filename: string, mode?: ACCESS_MODESTRING, track_order?: boolean);
+  constructor(
+    filename: string,
+    mode: ACCESS_MODESTRING = "r",
+    optionsOrTrackOrder: FileOptions | boolean = false
+  ) {
+    let track_order: boolean;
+    let libver: LIBVER_BOUNDS | undefined;
+    if (optionsOrTrackOrder !== null && typeof optionsOrTrackOrder === "object") {
+      track_order = optionsOrTrackOrder.track_order ?? false;
+      libver = optionsOrTrackOrder.libver;
+    } else {
+      track_order = (optionsOrTrackOrder as boolean) ?? false;
+    }
     const access_mode = ACCESS_MODES[mode];
     const h5_mode = Module[access_mode];
 
