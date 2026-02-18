@@ -17,7 +17,7 @@ async function test_swmr_write_read() {
   }
 
   // Create file with SWMR-compatible format (v110 minimum)
-  const f_create = new h5wasm.File(FILEPATH, "w", false, "v110");
+  const f_create = new h5wasm.File(FILEPATH, "w", { libver: "v110" });
   
   // Create an extensible chunked dataset (required for SWMR)
   f_create.create_dataset({
