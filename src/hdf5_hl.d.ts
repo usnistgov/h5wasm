@@ -22,7 +22,7 @@ export declare const LIBVER_BOUNDS_MAP: {
     readonly latest: "H5F_LIBVER_LATEST";
 };
 export type LIBVER_BOUND = keyof typeof LIBVER_BOUNDS_MAP;
-export type LIBVER_BOUNDS = LIBVER_BOUND | [LIBVER_BOUND, LIBVER_BOUND] | "";
+export type LIBVER_BOUNDS = LIBVER_BOUND | [LIBVER_BOUND, LIBVER_BOUND];
 export declare function convertToLibverString(value: number): LIBVER_BOUND;
 export type OutputData = TypedArray | string | number | bigint | boolean | Reference | RegionReference | OutputData[];
 export type JSONCompatibleOutputData = string | number | boolean | JSONCompatibleOutputData[];
@@ -133,10 +133,16 @@ export declare class Group extends HasAttrs {
     toString(): string;
     paths(): string[];
 }
+export interface FileOptions {
+    track_order?: boolean;
+    libver?: LIBVER_BOUNDS;
+}
 export declare class File extends Group {
     filename: string;
     mode: ACCESS_MODESTRING;
-    constructor(filename: string, mode?: ACCESS_MODESTRING, track_order?: boolean, libver?: LIBVER_BOUNDS);
+    constructor(filename: string, mode?: ACCESS_MODESTRING, options?: FileOptions);
+    /** @deprecated Use the `FileOptions` object overload instead: `new File(filename, mode, { track_order })` */
+    constructor(filename: string, mode?: ACCESS_MODESTRING, track_order?: boolean);
     get libver(): [LIBVER_BOUND, LIBVER_BOUND];
     flush(): void;
     close(): Status;
