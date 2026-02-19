@@ -993,6 +993,10 @@ export class File extends Group {
     Module.flush(this.file_id);
   }
 
+  start_swmr_write(): Status {
+    return Module.H5Fstart_swmr_write(this.file_id);
+  }
+
   close(): Status {
     return Module.close_file(this.file_id);
   }
