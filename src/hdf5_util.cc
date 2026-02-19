@@ -1401,6 +1401,7 @@ EMSCRIPTEN_BINDINGS(hdf5)
     function("create_hard_link", &create_hard_link);
     function("create_external_link", &create_external_link);
     function("flush", &flush);
+    function("H5Fstart_swmr_write", &H5Fstart_swmr_write);
     function("get_plugin_search_paths", &get_plugin_search_paths);
     function("insert_plugin_search_path", &insert_plugin_search_path);
     function("remove_plugin_search_path", &H5PLremove);
