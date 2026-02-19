@@ -17,28 +17,25 @@ async function test_swmr_write_read() {
   }
 
   // Create file with SWMR-compatible format (v110 minimum)
-  const f_create = new h5wasm.File(FILEPATH, "w", { libver: "v110" });
+  const f_write = new h5wasm.File(FILEPATH, "w", { libver: "v110" });
   
   // Create an extensible chunked dataset (required for SWMR)
-  f_create.create_dataset({
+  const dset_write = f_write.create_dataset({
     name: "data",
     data: INITIAL_DATA,
     maxshape: [null],
     chunks: [10]
   });
-  f_create.flush();
-  f_create.close();
 
-  // Open for SWMR write
-  const f_write = new h5wasm.File(FILEPATH, "Sw");
-  
+  // Switch to SWMR write mode:
+  // It is important that you create the dataset before starting SWMR mode
+  f_write.start_swmr_write();
+
   // Open for SWMR read
   const f_read = new h5wasm.File(FILEPATH, "Sr");
-  
-  // Verify initial data in both handles
-  const dset_write = f_write.get("data");
   const dset_read = f_read.get("data");
-  
+
+  // Verify initial data in both handles
   assert.deepEqual([...dset_write.value], [...INITIAL_DATA]);
   assert.deepEqual([...dset_read.value], [...INITIAL_DATA]);
   
@@ -65,10 +62,27 @@ async function test_swmr_write_read() {
   f_read.close();
 }
 
+async function test_swmr_open_nonexistent() {
+  const Module = await h5wasm.ready;
+  Module.activate_throwing_error_handler();
+  const FILEPATH = join(".", "test", "tmp", "swmr_nonexistent_file.h5");
+
+  // Opening a non-existent file in "Sa" (SWMR append) mode must throw
+  assert.throws(() => {
+    new h5wasm.File(FILEPATH, "Sa");
+  });
+
+  Module.deactivate_throwing_error_handler();
+}
+
 export const tests = [
   {
     description: "SWMR: Write and read with refresh",
     test: test_swmr_write_read
+  },
+  {
+    description: "SWMR: Opening non-existent file in Sa mode throws",
+    test: test_swmr_open_nonexistent
   }
 ];
 
