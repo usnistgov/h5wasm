@@ -150,7 +150,7 @@ Available modes:
 | `"a"` | Read/write (file must exist) |
 | `"w"` | Create / truncate |
 | `"x"` | Create, fail if exists |
-| `"Sw"` | SWMR write |
+| `"Sa"` | SWMR append |
 | `"Sr"` | SWMR read |
 
 ### Reading
@@ -318,22 +318,28 @@ f.close()
 SWMR requires a file created with at least `libver: "v110"` and a chunked, extensible dataset.
 
 ```js
-// First, create a SWMR-compatible file
-const f = new h5wasm.File("swmr.h5", "w", { libver: "v110" });
-f.create_dataset({
+const PATH = join(".", "test", "tmp");
+const FILEPATH = join(PATH, "swmr_test.h5");
+const INITIAL_DATA = new Float32Array([1.0, 2.0, 3.0]);
+const APPEND_DATA = new Float32Array([4.0, 5.0, 6.0]);
+
+// Create file with SWMR-compatible format (v110 minimum)
+const f_write = new h5wasm.File(FILEPATH, "w", { libver: "v110" });
+
+// Create an extensible chunked dataset (required for SWMR)
+const dset_write = f_write.create_dataset({
   name: "data",
-  data: new Float32Array([1, 2, 3]),
-  maxshape: [null],   // unlimited along first axis
+  data: INITIAL_DATA,
+  maxshape: [null],
   chunks: [10]
 });
-f.flush();
-f.close();
 
-// Open for SWMR write and SWMR read simultaneously
-const f_write = new h5wasm.File("swmr.h5", "Sw");
-const f_read  = new h5wasm.File("swmr.h5", "Sr");
+// Switch to SWMR write mode:
+// It is important that you create the dataset before starting SWMR mode
+f_write.start_swmr_write();
 
-const dset_write = f_write.get("data");
+  // Open for SWMR read
+const f_read = new h5wasm.File(FILEPATH, "Sr");
 const dset_read  = f_read.get("data");
 
 // Extend the dataset and write new values
@@ -352,6 +358,10 @@ dset_read.value;
 
 f_write.close();
 f_read.close();
+
+// NOTE: To append to a closed file, you can re-open the file with "Sa" mode,
+// or you can open it in "a" mode and then call start_swmr_write().
+// You can't create a new file in "Sa" mode directly.
 ```
 
 ### Links
