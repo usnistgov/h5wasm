@@ -5,3 +5,4 @@ build**
 dist**
 h5wasm*.tgz
 experiment**
+test/tmp/

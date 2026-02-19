@@ -5,3 +5,4 @@ build**
 h5wasm*.tgz
 experiment**
 emsdk-cache
+test/tmp/
