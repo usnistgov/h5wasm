@@ -119,8 +119,8 @@ async function test_libver_swmr() {
   f.flush();
   f.close();
 
-  // Verify we can open in SWMR write mode
-  const f_swmr = new h5wasm.File(FILEPATH, "Sw");
+  // Verify we can open in SWMR append mode
+  const f_swmr = new h5wasm.File(FILEPATH, "Sa");
   const dset = f_swmr.get("swmr_data");
   assert.deepEqual([...dset.value], [...DATA]);
   f_swmr.close();
@@ -242,8 +242,8 @@ async function test_libver_getter() {
   assert.deepEqual(f3.libver, ["v108", latest]);
   f3.close();
 
-  // Open a file in SWMR read/write mode:
-  const f4 = new h5wasm.File(FILEPATH, "Sw");
+  // Re-open a file in SWMR append mode:
+  const f4 = new h5wasm.File(FILEPATH, "Sa");
   // If no libver is specified, hdf5 library will set lower bound
   // to "v110" for SWMR compatibility
   assert.deepEqual(f4.libver, ["v110", latest]);
