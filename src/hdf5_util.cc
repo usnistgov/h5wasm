@@ -35,12 +35,6 @@ int64_t open(const std::string& filename_string, unsigned int h5_mode = H5F_ACC_
     hid_t fcpl_id = H5Pcreate(H5P_FILE_CREATE);
     hid_t fapl_id = H5Pcreate(H5P_FILE_ACCESS);
 
-    // SWMR_WRITE requires RDWR, SWMR_READ works with RDONLY (which is 0)
-    if (h5_mode & H5F_ACC_SWMR_WRITE)
-    {
-        h5_mode |= H5F_ACC_RDWR;
-    }
-
     if (libver_low >= 0 && libver_high >= 0)
     {
         H5Pset_libver_bounds(fapl_id, (H5F_libver_t)libver_low, (H5F_libver_t)libver_high);
@@ -1460,8 +1454,8 @@ EMSCRIPTEN_BINDINGS(hdf5)
     constant("H5F_ACC_TRUNC", H5F_ACC_TRUNC);
     constant("H5F_ACC_EXCL", H5F_ACC_EXCL);
     constant("H5F_ACC_CREAT", H5F_ACC_CREAT);
-    constant("H5F_ACC_SWMR_WRITE", H5F_ACC_SWMR_WRITE);
-    constant("H5F_ACC_SWMR_READ", H5F_ACC_SWMR_READ);
+    constant("ACC_SWMR_APPEND", H5F_ACC_SWMR_WRITE | H5F_ACC_RDWR); // SWMR write mode implies read/write mode
+    constant("H5F_ACC_SWMR_READ", H5F_ACC_SWMR_READ | H5F_ACC_RDONLY); // SWMR read mode implies read-only mode
 
     // Library version bounds
     constant("H5F_LIBVER_EARLIEST", (int)H5F_LIBVER_EARLIEST);

@@ -83,7 +83,7 @@ export interface H5Module extends EmscriptenModule {
     H5F_ACC_TRUNC: 2;
     H5F_ACC_EXCL: 4;
     H5F_ACC_CREAT: 16;
-    H5F_ACC_SWMR_WRITE: 32;
+    ACC_SWMR_APPEND: 33;
     H5F_ACC_SWMR_READ: 64;
     H5F_LIBVER_EARLIEST: number;
     H5F_LIBVER_V18: number;

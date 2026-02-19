@@ -13,7 +13,7 @@ export const ACCESS_MODES = {
   "a": "H5F_ACC_RDWR",
   "w": "H5F_ACC_TRUNC",
   "x": "H5F_ACC_EXCL",
-  "Sw": "H5F_ACC_SWMR_WRITE",
+  "Sa": "ACC_SWMR_APPEND",
   "Sr": "H5F_ACC_SWMR_READ"
 } as const;
 
