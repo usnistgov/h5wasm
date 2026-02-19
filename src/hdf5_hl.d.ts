@@ -8,7 +8,7 @@ export declare const ACCESS_MODES: {
     readonly a: "H5F_ACC_RDWR";
     readonly w: "H5F_ACC_TRUNC";
     readonly x: "H5F_ACC_EXCL";
-    readonly Sw: "H5F_ACC_SWMR_WRITE";
+    readonly Sa: "ACC_SWMR_APPEND";
     readonly Sr: "H5F_ACC_SWMR_READ";
 };
 type ACCESS_MODESTRING = keyof typeof ACCESS_MODES;
@@ -145,6 +145,7 @@ export declare class File extends Group {
     constructor(filename: string, mode?: ACCESS_MODESTRING, track_order?: boolean);
     get libver(): [LIBVER_BOUND, LIBVER_BOUND];
     flush(): void;
+    start_swmr_write(): Status;
     close(): Status;
 }
 export declare class Dataset extends HasAttrs {
@@ -196,7 +197,7 @@ export declare const h5wasm: {
         readonly a: "H5F_ACC_RDWR";
         readonly w: "H5F_ACC_TRUNC";
         readonly x: "H5F_ACC_EXCL";
-        readonly Sw: "H5F_ACC_SWMR_WRITE";
+        readonly Sa: "ACC_SWMR_APPEND";
         readonly Sr: "H5F_ACC_SWMR_READ";
     };
 };
