@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { strict as assert } from 'assert';
-import { existsSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { h5wasm, convertToLibverString } from "h5wasm/node";
 
@@ -26,6 +26,8 @@ async function test_libver_v110() {
   const dset = f_read.get("data");
   assert.deepEqual([...dset.value], [...DATA]);
   f_read.close();
+
+  unlinkSync(FILEPATH);
 }
 
 async function test_libver_latest() {
@@ -49,6 +51,8 @@ async function test_libver_latest() {
   const dset = f_read.get("data");
   assert.deepEqual([...dset.value], [...DATA]);
   f_read.close();
+
+  unlinkSync(FILEPATH);
 }
 
 async function test_libver_v108() {
@@ -72,6 +76,8 @@ async function test_libver_v108() {
   const dset = f_read.get("data");
   assert.deepEqual([...dset.value], [...DATA]);
   f_read.close();
+
+  unlinkSync(FILEPATH);
 }
 
 async function test_libver_asymmetric() {
@@ -95,6 +101,8 @@ async function test_libver_asymmetric() {
   const dset = f_read.get("data");
   assert.deepEqual([...dset.value], [...DATA]);
   f_read.close();
+
+  unlinkSync(FILEPATH);
 }
 
 async function test_libver_swmr() {
@@ -124,6 +132,8 @@ async function test_libver_swmr() {
   const dset = f_swmr.get("swmr_data");
   assert.deepEqual([...dset.value], [...DATA]);
   f_swmr.close();
+
+  unlinkSync(FILEPATH);
 }
 
 async function test_libver_with_track_order() {
@@ -150,6 +160,8 @@ async function test_libver_with_track_order() {
   const f_read = new h5wasm.File(FILEPATH, "r");
   assert.deepEqual(Object.keys(f_read.attrs), ["c", "b", "a"]);
   f_read.close();
+
+  unlinkSync(FILEPATH);
 }
 
 async function test_libver_auto_with_track_order() {
@@ -176,6 +188,8 @@ async function test_libver_auto_with_track_order() {
   const f_read = new h5wasm.File(FILEPATH, "r");
   assert.deepEqual(Object.keys(f_read.attrs), ["c", "b", "a"]);
   f_read.close();
+
+  unlinkSync(FILEPATH);
 }
 
 async function test_libver_case_insensitive() {
@@ -198,6 +212,8 @@ async function test_libver_case_insensitive() {
   const dset = f_read.get("data");
   assert.deepEqual([...dset.value], [...DATA]);
   f_read.close();
+
+  unlinkSync(FILEPATH);
 }
 
 async function test_libver_constants() {
@@ -255,6 +271,8 @@ async function test_libver_getter() {
   // a minimum version "v108" is set by hdf5 library
   assert.deepEqual(f5.libver, ["v108", latest]);
   f5.close();
+
+  unlinkSync(FILEPATH);
 }
 
 export const tests = [

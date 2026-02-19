@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { strict as assert } from 'assert';
-import { existsSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import h5wasm from "h5wasm/node";
 
@@ -60,6 +60,8 @@ async function test_swmr_write_read() {
   // Clean up
   f_write.close();
   f_read.close();
+
+  unlinkSync(FILEPATH);
 }
 
 async function test_swmr_open_nonexistent() {
