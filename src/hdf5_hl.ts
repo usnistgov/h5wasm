@@ -1,4 +1,4 @@
-import type {Status, Metadata, H5Module, CompoundMember, CompoundTypeMetadata, EnumTypeMetadata, Filter} from "./hdf5_util_helpers.js";
+import type {Status, Metadata, WriteMetadata, H5Module, CompoundMember, CompoundTypeMetadata, EnumTypeMetadata, Filter} from "./hdf5_util_helpers.js";
 
 import ModuleFactory from './hdf5_util.js';
 
@@ -747,17 +747,19 @@ abstract class HasAttrs {
     }
     const {data: prepared_data, shape: guessed_shape} = prepare_data(data, metadata, shape, shape);
     const final_shape = shape?.map(BigInt) ?? guessed_shape;
+    const attr_metadata: WriteMetadata = {
+      ...metadata,
+      shape: final_shape,
+      maxshape: final_shape // setup_dataset handles maxshape; attributes can just mirror shape
+    };
+
     if (metadata.vlen) {
       Module.create_vlen_str_attribute(
         this.file_id,
         this.path,
         name,
         prepared_data as string[],
-        final_shape,
-        metadata.type,
-        metadata.size,
-        metadata.signed,
-        metadata.vlen
+        attr_metadata
       );
     }
     else {
@@ -769,11 +771,7 @@ abstract class HasAttrs {
           this.path,
           name,
           BigInt(data_ptr),
-          final_shape,
-          metadata.type,
-          metadata.size,
-          metadata.signed,
-          metadata.vlen
+          attr_metadata
         );
       } finally {
         Module._free(data_ptr);
@@ -940,22 +938,24 @@ export class Group extends HasAttrs {
       compression_opts_out = [];
     }
 
+    const ds_metadata = {
+      ...metadata,
+      shape: final_shape,
+      maxshape: final_maxshape,
+      chunks: final_chunks,
+      compression: compression_id,
+      compression_opts: compression_opts_out,
+      track_order: track_order ?? false
+    };
+
     if (metadata.vlen) {
       Module.create_vlen_str_dataset(
         this.file_id,
         this.path + "/" + name,
         prepared_data as string[],
-        final_shape,
-        final_maxshape,
-        final_chunks,
-        metadata.type,
-        metadata.size,
-        metadata.signed,
-        metadata.vlen,
-        track_order ?? false,
+        ds_metadata
       );
-    }
-    else {
+    } else {
       let data_ptr = check_malloc((prepared_data as Uint8Array).byteLength);
       try {
         Module.HEAPU8.set(prepared_data as Uint8Array, data_ptr);
@@ -963,16 +963,7 @@ export class Group extends HasAttrs {
           this.file_id,
           this.path + "/" + name,
           BigInt(data_ptr),
-          final_shape,
-          final_maxshape,
-          final_chunks,
-          metadata.type,
-          metadata.size,
-          metadata.signed,
-          metadata.vlen,
-          compression_id,
-          compression_opts_out,
-          track_order ?? false
+          ds_metadata
         );
       } finally {
         Module._free(data_ptr);
