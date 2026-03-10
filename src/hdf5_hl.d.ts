@@ -46,7 +46,8 @@ type TypedArray = Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint
  **/
 type SliceElement = number | null;
 type Slice = [] | [SliceElement] | [SliceElement, SliceElement] | [SliceElement, SliceElement, SliceElement];
-export type GuessableDataTypes = TypedArray | number | number[] | string | string[] | Reference | Reference[] | RegionReference | RegionReference[];
+export type GuessableDataTypes = TypedArray | number | number[] | string | string[] | Reference | Reference[] | RegionReference | RegionReference[] | Map<string, any>;
+export declare function guess_metadata(data: GuessableDataTypes): Metadata;
 declare enum OBJECT_TYPE {
     DATASET = "Dataset",
     GROUP = "Group",
