@@ -34,6 +34,7 @@ The Emscripten filesystem is important for operations, and it can be accessed af
   - [Opening a file](#opening-a-file)
   - [Reading](#reading)
   - [Writing](#writing)
+  - [Writing Compound Datatypes](#writing-compound-datatypes)
   - [Editing](#editing)
   - [SWMR (single writer multiple readers)](#swmr-single-writer-multiple-readers)
   - [Links](#links)
@@ -302,6 +303,97 @@ new_file.get("entry").attrs["fixed"]
 // calls H5Fclose on the file_id.
 new_file.close()
 
+```
+
+### Writing Compound Datatypes
+You can write HDF5 Compound Datatypes (`H5T_COMPOUND`) for both datasets and attributes by passing a JavaScript `Map` representing a Structure of Arrays (SoA).
+
+The keys of the `Map` become the compound member names, and the values (which should be arrays or `TypedArray`s) represent the columns of data. Under the hood, `h5wasm` automatically interleaves these columns into the flat Array of Structures (AoS) byte buffer that HDF5 expects.
+
+#### Automatic Type Inference
+If you omit the `dtype`, the library will automatically guess the appropriate HDF5 types based on the provided `TypedArray`s:
+
+```javascript
+let new_file = new h5wasm.File("myfile.h5", "w");
+
+// 1. Create a Structure of Arrays (SoA) using a Map
+const particle_data = new Map([
+  ['id', new Int32Array([10, 20, 30])],
+  ['velocity', new Float64Array([1.1, 2.2, 3.3])]
+]);
+
+// 2. Write the compound dataset
+new_file.create_dataset({ name: "particles", data: particle_data });
+
+// 3. Read it back (returns an Array of Structures row-format)
+new_file.get("particles").value;
+/*
+[
+  [10, 1.1],
+  [20, 2.2],
+  [30, 3.3]
+]
+*/
+```
+
+#### Explicit Schema Definition
+You can enforce a specific memory layout by providing an explicit `dtype` array. This is passed as an array of `[name, type_string]` tuples:
+```javascript
+const explicit_dtype = [
+  ["id", "<b"],       // Int8
+  ["velocity", "<f"]  // Float32
+];
+
+new_file.create_dataset({
+  name: "particles_explicit",
+  data: particle_data,
+  dtype: explicit_dtype,
+});
+```
+
+#### Compound Attributes
+Attributes share the exact same API. Just pass a `Map` to `create_attribute`:
+```javascript
+const attr_data = new Map([
+  ['x', new Int16Array([100, 200])],
+  ['y', new Float32Array([1.125, 2.25])]
+]);
+
+new_file.get("particles").create_attribute("my_compound_attr", attr_data);
+```
+
+#### Nested Compound Datatypes
+You can create deeply nested compound datatypes by simply nesting `Map` objects within one another:
+```javascript
+const nested_data = new Map([
+  ['id', new Uint8Array([1, 2])],
+  ['position', new Map([
+    ['x', new Float64Array([10.1, 20.1])],
+    ['y', new Float64Array([10.2, 20.2])],
+    ['z', new Float64Array([10.3, 20.3])]
+  ])]
+]);
+
+new_file.create_dataset({ name: "nested_particles", data: nested_data });
+
+new_file.get("nested_particles").value;
+/*
+[
+  [1, [10.1, 10.2, 10.3]],
+  [2, [20.1, 20.2, 20.3]]
+]
+*/
+```
+#### Slicing Compound Datasets
+You can overwrite subsets of an existing compound dataset using `write_slice`. Simply pass a `Map` containing the updated columnar arrays sized exactly to the dimensions of the slice you are replacing:
+```javascript
+// Overwrite indices 1 and 2 (a slice of length 2)
+const slice_data = new Map([
+  ['id', new Int32Array([99, 100])],
+  ['velocity', new Float64Array([9.9, 10.0])]
+]);
+
+new_file.get("particles").write_slice([[1, 3]], slice_data);
 ```
 
 ### Editing
