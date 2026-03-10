@@ -22,6 +22,7 @@ import vlen_test from './vlen_test.mjs';
 import track_order from './track_order.mjs';
 import libver_test from './libver_test.mjs';
 import swmr_test from './swmr_test.mjs';
+import compound_write from './create_compound_dataset.mjs';
 
 let tests = [];
 const add_tests = (tests_in) => { /*global*/ tests = tests.concat(tests_in)}
@@ -47,6 +48,7 @@ add_tests(vlen_test);
 add_tests(track_order);
 add_tests(libver_test);
 add_tests(swmr_test);
+add_tests(compound_write);
 
 let passed = true;
 async function run_test(test) {
