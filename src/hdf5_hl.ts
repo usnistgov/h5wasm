@@ -589,7 +589,13 @@ const TypedArray_to_dtype = new Map([
 type SliceElement = number | null;
 type Slice = [] | [SliceElement] | [SliceElement, SliceElement] | [SliceElement, SliceElement, SliceElement];
 
-export type GuessableDataTypes = TypedArray | number | number[] | string | string[] | Reference | Reference[] | RegionReference | RegionReference[];
+export type GuessableDataTypes =
+  | TypedArray
+  | number | number[]
+  | string | string[]
+  | Reference | Reference[]
+  | RegionReference | RegionReference[]
+  | Map<string, any>; // Uses 'any' to prevent deep TS recursive reference errors, but expects GuessableDataTypes
 
 function guess_dtype(data: GuessableDataTypes): string {
   if (ArrayBuffer.isView(data)) {
@@ -616,6 +622,74 @@ function guess_dtype(data: GuessableDataTypes): string {
     }
     else if (arr_data.every((d) => d instanceof Reference)) {
       return 'Reference';
+    }
+  }
+  throw new Error("unguessable type for data");
+}
+
+export function guess_metadata(data: GuessableDataTypes): Metadata {
+  const baseMeta: Partial<Metadata> = { vlen: false, signed: false, littleEndian: true };
+
+  if (data instanceof Map) {
+    let offset = 0;
+    const members: CompoundMember[] = [];
+
+    for (const [name, value] of data.entries()) {
+      // Recursively guess the metadata for this specific column/member
+      const memberMeta = guess_metadata(value);
+
+      members.push({
+        ...memberMeta,
+        name,
+        offset
+      } as CompoundMember);
+
+      // Increment the running offset by the size of this member
+      offset += memberMeta.size;
+    }
+
+    return {
+      ...baseMeta,
+      type: Module.H5T_class_t.H5T_COMPOUND.value,
+      compound_type: { members, nmembers: members.length },
+      size: offset // Total size of the packed compound element
+    } as Metadata;
+  }
+
+  if (ArrayBuffer.isView(data)) {
+    const cname = data.constructor.name;
+    switch (cname) {
+      case 'Float32Array': return { ...baseMeta, type: Module.H5T_class_t.H5T_FLOAT.value, size: 4 } as Metadata;
+      case 'Float64Array': return { ...baseMeta, type: Module.H5T_class_t.H5T_FLOAT.value, size: 8 } as Metadata;
+      case 'Int8Array': return { ...baseMeta, type: Module.H5T_class_t.H5T_INTEGER.value, size: 1, signed: true } as Metadata;
+      case 'Int16Array': return { ...baseMeta, type: Module.H5T_class_t.H5T_INTEGER.value, size: 2, signed: true } as Metadata;
+      case 'Int32Array': return { ...baseMeta, type: Module.H5T_class_t.H5T_INTEGER.value, size: 4, signed: true } as Metadata;
+      case 'BigInt64Array': return { ...baseMeta, type: Module.H5T_class_t.H5T_INTEGER.value, size: 8, signed: true } as Metadata;
+      case 'Uint8Array':
+      case 'Uint8ClampedArray': return { ...baseMeta, type: Module.H5T_class_t.H5T_INTEGER.value, size: 1 } as Metadata;
+      case 'Uint16Array': return { ...baseMeta, type: Module.H5T_class_t.H5T_INTEGER.value, size: 2 } as Metadata;
+      case 'Uint32Array': return { ...baseMeta, type: Module.H5T_class_t.H5T_INTEGER.value, size: 4 } as Metadata;
+      case 'BigUint64Array': return { ...baseMeta, type: Module.H5T_class_t.H5T_INTEGER.value, size: 8 } as Metadata;
+      default: throw new Error("DataView not supported directly for write");
+    }
+  }
+  else {
+    // then it is an array or a single value...
+    const arr_data = ((Array.isArray(data)) ? data : [data]);
+    if (arr_data.every(Number.isInteger)) {
+      return { ...baseMeta, type: Module.H5T_class_t.H5T_INTEGER.value, size: 4, signed: true } as Metadata;
+    }
+    else if (arr_data.every((d) => (typeof d == 'number'))) {
+      return { ...baseMeta, type: Module.H5T_class_t.H5T_FLOAT.value, size: 8 } as Metadata;
+    }
+    else if (arr_data.every((d) => (typeof d == 'string'))) {
+      return { ...baseMeta, type: Module.H5T_class_t.H5T_STRING.value, size: 4, vlen: true } as Metadata;
+    }
+    else if (arr_data.every((d) => d instanceof RegionReference)) {
+      return { ...baseMeta, type: Module.H5T_class_t.H5T_REFERENCE.value, size: Module.SIZEOF_DSET_REGION_REF } as Metadata;
+    }
+    else if (arr_data.every((d) => d instanceof Reference)) {
+      return { ...baseMeta, type: Module.H5T_class_t.H5T_REFERENCE.value, size: Module.SIZEOF_OBJ_REF } as Metadata;
     }
   }
   throw new Error("unguessable type for data");
@@ -740,8 +814,8 @@ abstract class HasAttrs {
 
 
   create_attribute(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: Dtype | null) {
-    const final_dtype = dtype ?? guess_dtype(data);
-    let metadata = dtype_to_metadata(final_dtype);
+    let metadata = dtype ? dtype_to_metadata(dtype) : guess_metadata(data);
+
     if (!metadata.littleEndian) {
       throw new Error("create_attribute with big-endian dtype is not supported");
     }
@@ -895,8 +969,7 @@ export class Group extends HasAttrs {
       track_order?: boolean,
   }): Dataset {
     const { name, data, shape, dtype, maxshape, chunks, compression, compression_opts, track_order } = args;
-    const final_dtype = dtype ?? guess_dtype(data);
-    let metadata = dtype_to_metadata(final_dtype);
+    let metadata = dtype ? dtype_to_metadata(dtype) : guess_metadata(data);
     if (compression && !chunks) {
       throw new Error("cannot specify compression without chunks");
     }
