@@ -777,6 +777,75 @@ int create_group(hid_t loc_id, std::string grp_name_string, const bool track_ord
     return (int)status;
 }
 
+hid_t create_h5_datatype_from_metadata(val metadata) {
+    int dtype = metadata["type"].as<int>();
+    int dsize = metadata["size"].as<int>();
+    bool is_signed = metadata["signed"].isTrue();
+    bool is_vlstr = metadata["vlen"].isTrue();
+
+    hid_t filetype = -1;
+
+    if (dtype == H5T_STRING) {
+        size_t str_size = (is_vlstr) ? H5T_VARIABLE : dsize;
+        filetype = H5Tcopy(H5T_FORTRAN_S1);
+        H5Tset_size(filetype, str_size);
+        H5Tset_cset(filetype, H5T_CSET_UTF8);
+    }
+    else if (dtype == H5T_INTEGER) {
+        filetype = H5Tcopy(H5T_NATIVE_INT);
+        H5Tset_size(filetype, dsize);
+        H5Tset_sign(filetype, (H5T_sign_t)is_signed);
+    }
+    else if (dtype == H5T_FLOAT) {
+        if (dsize == 4) {
+            filetype = H5Tcopy(H5T_NATIVE_FLOAT);
+        } else if (dsize == 8) {
+            filetype = H5Tcopy(H5T_NATIVE_DOUBLE);
+        } else {
+            throw_error("Float size not supported");
+        }
+    }
+    else if (dtype == H5T_REFERENCE) {
+        if (dsize == sizeof(hobj_ref_t)) {
+            filetype = H5Tcopy(H5T_STD_REF_OBJ);
+        } else if (dsize == sizeof(hdset_reg_ref_t)) {
+            filetype = H5Tcopy(H5T_STD_REF_DSETREG);
+        } else {
+            throw_error("Reference size not supported");
+        }
+    }
+    else if (dtype == H5T_COMPOUND) {
+        filetype = H5Tcreate(H5T_COMPOUND, dsize);
+        val members = metadata["compound_type"]["members"];
+        int nmembers = metadata["compound_type"]["nmembers"].as<int>();
+
+        for (int i = 0; i < nmembers; i++) {
+            val member = members[i];
+            std::string name = member["name"].as<std::string>();
+            size_t offset = member["offset"].as<size_t>();
+
+            // Recursively determine the HDF5 type of this member
+            hid_t member_type_id = create_h5_datatype_from_metadata(member);
+            H5Tinsert(filetype, name.c_str(), offset, member_type_id);
+            H5Tclose(member_type_id); // Clean up the temporary identifier
+        }
+    }
+    // *NOTE*: H5T_ARRAY for write is not yet implemented.
+    // else if (dtype == H5T_ARRAY) {
+    //     val array_type = metadata["array_type"];
+    //     hid_t base_tid = create_h5_datatype_from_metadata(array_type);
+    //
+    //     std::vector<hsize_t> dims = vecFromJSArray<hsize_t>(metadata["shape"]);
+    //     filetype = H5Tarray_create2(base_tid, dims.size(), dims.data());
+    //     H5Tclose(base_tid); // Clean up the temporary identifier
+    // }
+    else {
+        throw_error("data type not supported");
+    }
+    
+    return filetype;
+}
+
 herr_t setup_dataset(val metadata, hid_t *filetype, hid_t *space, hid_t *dcpl)
 {
     herr_t status = 0;
@@ -822,50 +891,8 @@ herr_t setup_dataset(val metadata, hid_t *filetype, hid_t *space, hid_t *dcpl)
         H5Pset_attr_creation_order(*dcpl, H5P_CRT_ORDER_TRACKED | H5P_CRT_ORDER_INDEXED);
     }
 
-    int dtype = metadata["type"].as<int>();
-    int dsize = metadata["size"].as<int>();
-    bool is_signed = metadata["signed"].isTrue();
-    bool is_vlstr = metadata["vlen"].isTrue();
+    *filetype = create_h5_datatype_from_metadata(metadata);
 
-    if (dtype == H5T_STRING) {
-        size_t str_size = (is_vlstr) ? H5T_VARIABLE : dsize;
-
-        *filetype = H5Tcopy(H5T_FORTRAN_S1);
-        // assume that dsize for strings is non-null-padded
-        status = H5Tset_size(*filetype, str_size);
-        status = H5Tset_cset(*filetype, H5T_CSET_UTF8);
-    }
-    else if (dtype == H5T_INTEGER)
-    {
-        *filetype = H5Tcopy(H5T_NATIVE_INT);
-        status = H5Tset_size(*filetype, dsize);
-        status = H5Tset_sign(*filetype, (H5T_sign_t)is_signed);
-    }
-    else if (dtype == H5T_FLOAT)
-    {
-        if (dsize == 4) {
-            *filetype = H5Tcopy(H5T_NATIVE_FLOAT);
-        }
-        else if (dsize == 8) {
-            *filetype = H5Tcopy(H5T_NATIVE_DOUBLE);
-        }
-        else {
-            throw_error("data type not supported");
-        }
-    }
-    else if (dtype == H5T_REFERENCE)
-    {
-        if (dsize == sizeof(hobj_ref_t)) {
-            *filetype = H5Tcopy(H5T_STD_REF_OBJ);
-        }
-        else if (dsize == sizeof(hdset_reg_ref_t)) {
-            *filetype = H5Tcopy(H5T_STD_REF_DSETREG);
-        }
-    }
-    else
-    {
-        throw_error("data type not supported");
-    }
     return status;
 }
 
