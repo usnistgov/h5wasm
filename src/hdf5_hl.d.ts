@@ -26,12 +26,16 @@ export type LIBVER_BOUNDS = LIBVER_BOUND | [LIBVER_BOUND, LIBVER_BOUND];
 export declare function convertToLibverString(value: number): LIBVER_BOUND;
 export type OutputData = TypedArray | string | number | bigint | boolean | Reference | RegionReference | OutputData[];
 export type JSONCompatibleOutputData = string | number | boolean | JSONCompatibleOutputData[];
+export type CompoundMemberDtype = [string, Dtype] | [string, Dtype, number[]];
+export type CompoundDtype = CompoundMemberDtype[];
+export type ArrayDtype = [string, number[]];
 export type Dtype = string | {
     compound_type: CompoundTypeMetadata;
 } | {
     array_type: Metadata;
-};
+} | CompoundDtype | ArrayDtype;
 export type { Metadata, Filter, CompoundMember, CompoundTypeMetadata, EnumTypeMetadata };
+export declare function dtype_to_metadata(dtype: Dtype): Metadata;
 type TypedArray = Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | BigInt64Array | BigUint64Array | Float32Array | Float64Array;
 /**
  * Describes an array slice.
@@ -42,7 +46,8 @@ type TypedArray = Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint
  **/
 type SliceElement = number | null;
 type Slice = [] | [SliceElement] | [SliceElement, SliceElement] | [SliceElement, SliceElement, SliceElement];
-export type GuessableDataTypes = TypedArray | number | number[] | string | string[] | Reference | Reference[] | RegionReference | RegionReference[];
+export type GuessableDataTypes = TypedArray | number | number[] | string | string[] | Reference | Reference[] | RegionReference | RegionReference[] | Map<string, any>;
+export declare function guess_metadata(data: GuessableDataTypes): Metadata;
 declare enum OBJECT_TYPE {
     DATASET = "Dataset",
     GROUP = "Group",
@@ -93,7 +98,7 @@ declare abstract class HasAttrs {
     get parent(): Group;
     get_attribute(name: string, json_compatible: true): JSONCompatibleOutputData;
     get_attribute(name: string, json_compatible: false): OutputData;
-    create_attribute(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null): void;
+    create_attribute(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: Dtype | null): void;
     delete_attribute(name: string): number;
     create_reference(): Reference;
     dereference(ref: RegionReference): DatasetRegion;
@@ -120,7 +125,7 @@ export declare class Group extends HasAttrs {
         name: string;
         data: GuessableDataTypes;
         shape?: number[] | null;
-        dtype?: string | null;
+        dtype?: Dtype | null;
         maxshape?: (number | null)[] | null;
         chunks?: number[] | null;
         compression?: (number | 'gzip');

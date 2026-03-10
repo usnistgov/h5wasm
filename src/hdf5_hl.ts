@@ -1,4 +1,4 @@
-import type {Status, Metadata, H5Module, CompoundMember, CompoundTypeMetadata, EnumTypeMetadata, Filter} from "./hdf5_util_helpers.js";
+import type {Status, Metadata, WriteMetadata, H5Module, CompoundMember, CompoundTypeMetadata, EnumTypeMetadata, Filter} from "./hdf5_util_helpers.js";
 
 import ModuleFactory from './hdf5_util.js';
 
@@ -148,7 +148,10 @@ function getAccessor(type: 0 | 1, size: Metadata["size"], signed: Metadata["sign
 
 export type OutputData = TypedArray | string | number | bigint | boolean | Reference | RegionReference | OutputData[];
 export type JSONCompatibleOutputData = string | number | boolean | JSONCompatibleOutputData[];
-export type Dtype = string | {compound_type: CompoundTypeMetadata} | {array_type: Metadata};
+export type CompoundMemberDtype = [string, Dtype] | [string, Dtype, number[]];
+export type CompoundDtype = CompoundMemberDtype[];
+export type ArrayDtype = [string, number[]];
+export type Dtype = string | {compound_type: CompoundTypeMetadata} | {array_type: Metadata} | CompoundDtype | ArrayDtype;
 export type { Metadata, Filter, CompoundMember, CompoundTypeMetadata, EnumTypeMetadata };
 
 function process_data(data: Uint8Array, metadata: Metadata, json_compatible: true): JSONCompatibleOutputData;
@@ -313,11 +316,22 @@ const H5S_UNLIMITED = 18446744073709551615n; // not exportable by emscripten_bin
 function prepare_data(data: any, metadata: Metadata, shape?: number[] | bigint[] | null, maxshape?: (number | null)[] | null | undefined): {data: Uint8Array | string[], shape: bigint[], maxshape: (bigint | null)[] } {
   // for data being sent to Module
 
-  // set shape to size of array if it is not specified:
   let final_shape: bigint[];
   let final_maxshape: (bigint | null)[] | null;
+
   if (shape === undefined || shape === null) {
-    if (data != null && data.length != null && !(typeof data === 'string')) {
+    if (data instanceof Map) {
+      // For maps, try to grab the length of the first column to guess the shape
+      let guessed_len = 1;
+      for (const col of data.values()) {
+        if (col && col.length !== undefined && !(typeof col === 'string')) {
+          guessed_len = col.length;
+          break;
+        }
+      }
+      final_shape = [BigInt(guessed_len)];
+    }
+    else if (data != null && data.length != null && !(typeof data === 'string')) {
       final_shape = [BigInt(data.length)];
     }
     else {
@@ -335,13 +349,15 @@ function prepare_data(data: any, metadata: Metadata, shape?: number[] | bigint[]
     final_maxshape = maxshape.map((dim) => ((dim === null) ? H5S_UNLIMITED : BigInt(dim)));
   }
 
-  data = (Array.isArray(data) || ArrayBuffer.isView(data)) ? data : [data];
+  data = (Array.isArray(data) || ArrayBuffer.isView(data) || data instanceof Map) ? data : [data];
   let total_size = Number(final_shape.reduce((previous, current) => current * previous, 1n));
 
-  if (data.length != total_size) {
-    throw `Error: shape ${final_shape} does not match number of elements in data`;
+  if (!(data instanceof Map)) {
+    if (data.length != total_size) {
+      throw new Error(`Error: shape ${final_shape} does not match number of elements in data`);
+    }
   }
-  //assert(data.length == total_size)
+
   let output: Uint8Array | string[];
 
   if (metadata.type === Module.H5T_class_t.H5T_STRING.value) {
@@ -380,6 +396,40 @@ function prepare_data(data: any, metadata: Metadata, shape?: number[] | bigint[]
     output = new Uint8Array(metadata.size * total_size);
     (data as Reference[]).forEach((r, i) => (output as Uint8Array).set(r.ref_data, i*metadata.size));
   }
+  else if (metadata.type === Module.H5T_class_t.H5T_COMPOUND.value) {
+    const { size, compound_type } = metadata as { size: number, compound_type: CompoundTypeMetadata };
+    output = new Uint8Array(total_size * size);
+
+    const member_buffers = new Map<string, Uint8Array>();
+    const map_data = data as Map<string, any>;
+
+    // Recursively convert each column into its raw flat bytes
+    for (const member of compound_type.members) {
+      if (member.vlen) {
+        throw new Error(`Writing VLEN strings inside compound types requires pointers in Wasm heap and is not currently supported.`);
+      }
+      const column_data = map_data.get(member.name);
+
+      // The recursive call will validate the column length matches the total shape
+      const prepared = prepare_data(column_data, member as Metadata, shape, maxshape);
+      member_buffers.set(member.name, prepared.data as Uint8Array);
+    }
+
+    // Interleave the columns into the final Array of Structures buffer
+    for (let i = 0; i < total_size; i++) {
+      const row_offset = i * size;
+      for (const member of compound_type.members) {
+        const col_buf = member_buffers.get(member.name)!;
+        const m_size = member.size;
+
+        // Grab the bytes for the i-th element of this specific member
+        const element_bytes = col_buf.subarray(i * m_size, (i + 1) * m_size);
+
+        // Write it into the compound struct memory space
+        (output as Uint8Array).set(element_bytes, row_offset + member.offset);
+      }
+    }
+  }
   else {
     throw new Error(`data with type ${metadata.type} can not be prepared for write`);
   }
@@ -416,10 +466,17 @@ function metadata_to_dtype(metadata: Metadata): Dtype {
     return ((littleEndian) ? "<" : ">") + fmt;
   }
   else if (type == Module.H5T_class_t.H5T_COMPOUND.value) {
-    return { compound_type: compound_type as CompoundTypeMetadata};
+    const ct = compound_type as CompoundTypeMetadata;
+    return ct.members.map((member): CompoundMemberDtype => {
+      if (member.type === Module.H5T_class_t.H5T_ARRAY.value && member.array_type) {
+        return [member.name, metadata_to_dtype(member.array_type as Metadata), member.array_type.shape as number[]];
+      }
+      return [member.name, metadata_to_dtype(member)];
+    });
   }
-  else if (type === Module.H5T_class_t.H5T_ARRAY.value ) {
-    return { array_type: array_type as Metadata }
+  else if (type === Module.H5T_class_t.H5T_ARRAY.value) {
+    const at = array_type as Metadata;
+    return [metadata_to_dtype(at) as string, at.shape as number[]];
   }
   else if (type === Module.H5T_class_t.H5T_REFERENCE.value) {
     return (metadata.ref_type === 'object') ? "Reference" : "RegionReference";
@@ -429,39 +486,104 @@ function metadata_to_dtype(metadata: Metadata): Dtype {
   }
 }
 
-function dtype_to_metadata(dtype_str: string) {
-  let metadata = { vlen: false, signed: false } as Metadata;
-  if (dtype_str === "Reference" || dtype_str === "RegionReference") {
-    metadata.type = Module.H5T_class_t.H5T_REFERENCE.value;
-    metadata.size = (dtype_str === "Reference") ? Module.SIZEOF_OBJ_REF : Module.SIZEOF_DSET_REGION_REF;
-    metadata.littleEndian = true;
-  }
-  else {
-    let match = dtype_str.match(/^([<>|]?)([bhiqefdsBHIQS])([0-9]*)$/);
-    if (match == null) {
-      throw dtype_str + " is not a recognized dtype"
-    }
-    let [full, endianness, typestr, length] = match;
-    metadata.littleEndian = (endianness != '>');
-    if (fmts_int.has(typestr.toLowerCase())) {
-      metadata.type = Module.H5T_class_t.H5T_INTEGER.value;
-      metadata.size = (fmts_int.get(typestr.toLowerCase()) as number);
-      metadata.signed = (typestr.toLowerCase() == typestr);
-    }
-    else if (fmts_float.has(typestr)) {
-      metadata.type = Module.H5T_class_t.H5T_FLOAT.value;
-      metadata.size = (fmts_float.get(typestr) as number);
-    }
-    else if (typestr.toUpperCase() === 'S') {
-      metadata.type = Module.H5T_class_t.H5T_STRING.value;
-      metadata.size = (length == "") ? 4 : parseInt(length, 10);
-      metadata.vlen = (length == "");
+export function dtype_to_metadata(dtype: Dtype): Metadata {
+  let metadata = { vlen: false, signed: false, littleEndian: true } as Metadata;
+
+  if (typeof dtype === 'string') {
+    // Simple string dtype: '<i8', '<f4', 'S10', 'Reference', etc.
+    if (dtype === "Reference" || dtype === "RegionReference") {
+      metadata.type = Module.H5T_class_t.H5T_REFERENCE.value;
+      metadata.size = (dtype === "Reference") ? Module.SIZEOF_OBJ_REF : Module.SIZEOF_DSET_REGION_REF;
     }
     else {
-      throw "should never happen"
+      const match = dtype.match(/^([<>|]?)([bhiqefdsBHIQS])([0-9]*)$/);
+      if (match == null) {
+        throw dtype + " is not a recognized dtype";
+      }
+      const [, endianness, typestr, length] = match;
+      metadata.littleEndian = (endianness != '>');
+      if (fmts_int.has(typestr.toLowerCase())) {
+        metadata.type = Module.H5T_class_t.H5T_INTEGER.value;
+        metadata.size = (fmts_int.get(typestr.toLowerCase()) as number);
+        metadata.signed = (typestr.toLowerCase() == typestr);
+      }
+      else if (fmts_float.has(typestr)) {
+        metadata.type = Module.H5T_class_t.H5T_FLOAT.value;
+        metadata.size = (fmts_float.get(typestr) as number);
+      }
+      else if (typestr.toUpperCase() === 'S') {
+        metadata.type = Module.H5T_class_t.H5T_STRING.value;
+        metadata.size = (length == "") ? 4 : parseInt(length, 10);
+        metadata.vlen = (length == "");
+      }
+      else {
+        throw "should never happen";
+      }
     }
   }
-  return metadata
+  else if (Array.isArray(dtype)) {
+    if (Array.isArray(dtype[0])) {
+      // CompoundDtype: [[name, dtype], [name, dtype, shape], ...]
+      // Packed layout (no padding): offsets are a simple running sum of sizes.
+      // HDF5 compound types are explicitly laid out, so packing is valid and
+      // matches what h5py produces by default.
+      const compound = dtype as CompoundDtype;
+      let offset = 0;
+      const members: CompoundMember[] = compound.map(([name, memberDtype, arrayShape]) => {
+        let memberMeta: Metadata;
+        if (arrayShape !== undefined) {
+          const baseMeta = dtype_to_metadata(memberDtype);
+          const nelems = (arrayShape as number[]).reduce((a, b) => a * b, 1);
+          memberMeta = {
+            ...baseMeta,
+            type: Module.H5T_class_t.H5T_ARRAY.value,
+            array_type: baseMeta,
+            shape: arrayShape as number[],
+            size: baseMeta.size * nelems,
+          } as Metadata;
+        }
+        else {
+          memberMeta = dtype_to_metadata(memberDtype);
+        }
+        const member = { ...memberMeta, name, offset } as CompoundMember;
+        offset += memberMeta.size;
+        return member;
+      });
+      metadata.type = Module.H5T_class_t.H5T_COMPOUND.value;
+      metadata.compound_type = { members, nmembers: members.length };
+      metadata.size = offset;
+    }
+    else {
+      // ArrayDtype: [dtype_str, shape]
+      const [base_dtype_str, shape] = dtype as ArrayDtype;
+      const baseMeta = dtype_to_metadata(base_dtype_str);
+      const nelems = (shape as number[]).reduce((a, b) => a * b, 1);
+      metadata.type = Module.H5T_class_t.H5T_ARRAY.value;
+      metadata.array_type = baseMeta;
+      metadata.shape = shape as number[];
+      metadata.size = baseMeta.size * nelems;
+    }
+  }
+  else {
+    // Legacy object forms: { compound_type: ... } | { array_type: ... }
+    if ('compound_type' in dtype) {
+      const ct = (dtype as {compound_type: CompoundTypeMetadata}).compound_type;
+      metadata.type = Module.H5T_class_t.H5T_COMPOUND.value;
+      metadata.compound_type = ct;
+      metadata.size = ct.members.reduce((sum, m) => Math.max(sum, m.offset + m.size), 0);
+    }
+    else {
+      const at = (dtype as {array_type: Metadata}).array_type;
+      const shape = at.shape as number[];
+      const nelems = shape.reduce((a, b) => a * b, 1);
+      metadata.type = Module.H5T_class_t.H5T_ARRAY.value;
+      metadata.array_type = at;
+      metadata.shape = shape;
+      metadata.size = at.size * nelems;
+    }
+  }
+
+  return metadata;
 }
 
 type TypedArray =
@@ -514,7 +636,13 @@ const TypedArray_to_dtype = new Map([
 type SliceElement = number | null;
 type Slice = [] | [SliceElement] | [SliceElement, SliceElement] | [SliceElement, SliceElement, SliceElement];
 
-export type GuessableDataTypes = TypedArray | number | number[] | string | string[] | Reference | Reference[] | RegionReference | RegionReference[];
+export type GuessableDataTypes =
+  | TypedArray
+  | number | number[]
+  | string | string[]
+  | Reference | Reference[]
+  | RegionReference | RegionReference[]
+  | Map<string, any>; // Uses 'any' to prevent deep TS recursive reference errors, but expects GuessableDataTypes
 
 function guess_dtype(data: GuessableDataTypes): string {
   if (ArrayBuffer.isView(data)) {
@@ -541,6 +669,74 @@ function guess_dtype(data: GuessableDataTypes): string {
     }
     else if (arr_data.every((d) => d instanceof Reference)) {
       return 'Reference';
+    }
+  }
+  throw new Error("unguessable type for data");
+}
+
+export function guess_metadata(data: GuessableDataTypes): Metadata {
+  const baseMeta: Partial<Metadata> = { vlen: false, signed: false, littleEndian: true };
+
+  if (data instanceof Map) {
+    let offset = 0;
+    const members: CompoundMember[] = [];
+
+    for (const [name, value] of data.entries()) {
+      // Recursively guess the metadata for this specific column/member
+      const memberMeta = guess_metadata(value);
+
+      members.push({
+        ...memberMeta,
+        name,
+        offset
+      } as CompoundMember);
+
+      // Increment the running offset by the size of this member
+      offset += memberMeta.size;
+    }
+
+    return {
+      ...baseMeta,
+      type: Module.H5T_class_t.H5T_COMPOUND.value,
+      compound_type: { members, nmembers: members.length },
+      size: offset // Total size of the packed compound element
+    } as Metadata;
+  }
+
+  if (ArrayBuffer.isView(data)) {
+    const cname = data.constructor.name;
+    switch (cname) {
+      case 'Float32Array': return { ...baseMeta, type: Module.H5T_class_t.H5T_FLOAT.value, size: 4 } as Metadata;
+      case 'Float64Array': return { ...baseMeta, type: Module.H5T_class_t.H5T_FLOAT.value, size: 8 } as Metadata;
+      case 'Int8Array': return { ...baseMeta, type: Module.H5T_class_t.H5T_INTEGER.value, size: 1, signed: true } as Metadata;
+      case 'Int16Array': return { ...baseMeta, type: Module.H5T_class_t.H5T_INTEGER.value, size: 2, signed: true } as Metadata;
+      case 'Int32Array': return { ...baseMeta, type: Module.H5T_class_t.H5T_INTEGER.value, size: 4, signed: true } as Metadata;
+      case 'BigInt64Array': return { ...baseMeta, type: Module.H5T_class_t.H5T_INTEGER.value, size: 8, signed: true } as Metadata;
+      case 'Uint8Array':
+      case 'Uint8ClampedArray': return { ...baseMeta, type: Module.H5T_class_t.H5T_INTEGER.value, size: 1 } as Metadata;
+      case 'Uint16Array': return { ...baseMeta, type: Module.H5T_class_t.H5T_INTEGER.value, size: 2 } as Metadata;
+      case 'Uint32Array': return { ...baseMeta, type: Module.H5T_class_t.H5T_INTEGER.value, size: 4 } as Metadata;
+      case 'BigUint64Array': return { ...baseMeta, type: Module.H5T_class_t.H5T_INTEGER.value, size: 8 } as Metadata;
+      default: throw new Error("DataView not supported directly for write");
+    }
+  }
+  else {
+    // then it is an array or a single value...
+    const arr_data = ((Array.isArray(data)) ? data : [data]);
+    if (arr_data.every(Number.isInteger)) {
+      return { ...baseMeta, type: Module.H5T_class_t.H5T_INTEGER.value, size: 4, signed: true } as Metadata;
+    }
+    else if (arr_data.every((d) => (typeof d == 'number'))) {
+      return { ...baseMeta, type: Module.H5T_class_t.H5T_FLOAT.value, size: 8 } as Metadata;
+    }
+    else if (arr_data.every((d) => (typeof d == 'string'))) {
+      return { ...baseMeta, type: Module.H5T_class_t.H5T_STRING.value, size: 4, vlen: true } as Metadata;
+    }
+    else if (arr_data.every((d) => d instanceof RegionReference)) {
+      return { ...baseMeta, type: Module.H5T_class_t.H5T_REFERENCE.value, size: Module.SIZEOF_DSET_REGION_REF } as Metadata;
+    }
+    else if (arr_data.every((d) => d instanceof Reference)) {
+      return { ...baseMeta, type: Module.H5T_class_t.H5T_REFERENCE.value, size: Module.SIZEOF_OBJ_REF } as Metadata;
     }
   }
   throw new Error("unguessable type for data");
@@ -664,25 +860,27 @@ abstract class HasAttrs {
   }
 
 
-  create_attribute(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: string | null) {
-    const final_dtype = dtype ?? guess_dtype(data);
-    let metadata = dtype_to_metadata(final_dtype);
+  create_attribute(name: string, data: GuessableDataTypes, shape?: number[] | null, dtype?: Dtype | null) {
+    let metadata = dtype ? dtype_to_metadata(dtype) : guess_metadata(data);
+
     if (!metadata.littleEndian) {
       throw new Error("create_attribute with big-endian dtype is not supported");
     }
     const {data: prepared_data, shape: guessed_shape} = prepare_data(data, metadata, shape, shape);
     const final_shape = shape?.map(BigInt) ?? guessed_shape;
+    const attr_metadata: WriteMetadata = {
+      ...metadata,
+      shape: final_shape,
+      maxshape: final_shape // setup_dataset handles maxshape; attributes can just mirror shape
+    };
+
     if (metadata.vlen) {
       Module.create_vlen_str_attribute(
         this.file_id,
         this.path,
         name,
         prepared_data as string[],
-        final_shape,
-        metadata.type,
-        metadata.size,
-        metadata.signed,
-        metadata.vlen
+        attr_metadata
       );
     }
     else {
@@ -694,11 +892,7 @@ abstract class HasAttrs {
           this.path,
           name,
           BigInt(data_ptr),
-          final_shape,
-          metadata.type,
-          metadata.size,
-          metadata.signed,
-          metadata.vlen
+          attr_metadata
         );
       } finally {
         Module._free(data_ptr);
@@ -814,7 +1008,7 @@ export class Group extends HasAttrs {
       name: string,
       data: GuessableDataTypes,
       shape?: number[] | null,
-      dtype?: string | null,
+      dtype?: Dtype | null,
       maxshape?: (number | null)[] | null,
       chunks?: number[] | null,
       compression?: (number | 'gzip'),
@@ -822,8 +1016,7 @@ export class Group extends HasAttrs {
       track_order?: boolean,
   }): Dataset {
     const { name, data, shape, dtype, maxshape, chunks, compression, compression_opts, track_order } = args;
-    const final_dtype = dtype ?? guess_dtype(data);
-    let metadata = dtype_to_metadata(final_dtype);
+    let metadata = dtype ? dtype_to_metadata(dtype) : guess_metadata(data);
     if (compression && !chunks) {
       throw new Error("cannot specify compression without chunks");
     }
@@ -865,22 +1058,24 @@ export class Group extends HasAttrs {
       compression_opts_out = [];
     }
 
+    const ds_metadata = {
+      ...metadata,
+      shape: final_shape,
+      maxshape: final_maxshape,
+      chunks: final_chunks,
+      compression: compression_id,
+      compression_opts: compression_opts_out,
+      track_order: track_order ?? false
+    };
+
     if (metadata.vlen) {
       Module.create_vlen_str_dataset(
         this.file_id,
         this.path + "/" + name,
         prepared_data as string[],
-        final_shape,
-        final_maxshape,
-        final_chunks,
-        metadata.type,
-        metadata.size,
-        metadata.signed,
-        metadata.vlen,
-        track_order ?? false,
+        ds_metadata
       );
-    }
-    else {
+    } else {
       let data_ptr = check_malloc((prepared_data as Uint8Array).byteLength);
       try {
         Module.HEAPU8.set(prepared_data as Uint8Array, data_ptr);
@@ -888,16 +1083,7 @@ export class Group extends HasAttrs {
           this.file_id,
           this.path + "/" + name,
           BigInt(data_ptr),
-          final_shape,
-          final_maxshape,
-          final_chunks,
-          metadata.type,
-          metadata.size,
-          metadata.signed,
-          metadata.vlen,
-          compression_id,
-          compression_opts_out,
-          track_order ?? false
+          ds_metadata
         );
       } finally {
         Module._free(data_ptr);
