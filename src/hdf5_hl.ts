@@ -316,11 +316,22 @@ const H5S_UNLIMITED = 18446744073709551615n; // not exportable by emscripten_bin
 function prepare_data(data: any, metadata: Metadata, shape?: number[] | bigint[] | null, maxshape?: (number | null)[] | null | undefined): {data: Uint8Array | string[], shape: bigint[], maxshape: (bigint | null)[] } {
   // for data being sent to Module
 
-  // set shape to size of array if it is not specified:
   let final_shape: bigint[];
   let final_maxshape: (bigint | null)[] | null;
+
   if (shape === undefined || shape === null) {
-    if (data != null && data.length != null && !(typeof data === 'string')) {
+    if (data instanceof Map) {
+      // For maps, try to grab the length of the first column to guess the shape
+      let guessed_len = 1;
+      for (const col of data.values()) {
+        if (col && col.length !== undefined && !(typeof col === 'string')) {
+          guessed_len = col.length;
+          break;
+        }
+      }
+      final_shape = [BigInt(guessed_len)];
+    }
+    else if (data != null && data.length != null && !(typeof data === 'string')) {
       final_shape = [BigInt(data.length)];
     }
     else {
@@ -338,13 +349,15 @@ function prepare_data(data: any, metadata: Metadata, shape?: number[] | bigint[]
     final_maxshape = maxshape.map((dim) => ((dim === null) ? H5S_UNLIMITED : BigInt(dim)));
   }
 
-  data = (Array.isArray(data) || ArrayBuffer.isView(data)) ? data : [data];
+  data = (Array.isArray(data) || ArrayBuffer.isView(data) || data instanceof Map) ? data : [data];
   let total_size = Number(final_shape.reduce((previous, current) => current * previous, 1n));
 
-  if (data.length != total_size) {
-    throw `Error: shape ${final_shape} does not match number of elements in data`;
+  if (!(data instanceof Map)) {
+    if (data.length != total_size) {
+      throw new Error(`Error: shape ${final_shape} does not match number of elements in data`);
+    }
   }
-  //assert(data.length == total_size)
+
   let output: Uint8Array | string[];
 
   if (metadata.type === Module.H5T_class_t.H5T_STRING.value) {
@@ -382,6 +395,40 @@ function prepare_data(data: any, metadata: Metadata, shape?: number[] | bigint[]
   else if (metadata.type === Module.H5T_class_t.H5T_REFERENCE.value) {
     output = new Uint8Array(metadata.size * total_size);
     (data as Reference[]).forEach((r, i) => (output as Uint8Array).set(r.ref_data, i*metadata.size));
+  }
+  else if (metadata.type === Module.H5T_class_t.H5T_COMPOUND.value) {
+    const { size, compound_type } = metadata as { size: number, compound_type: CompoundTypeMetadata };
+    output = new Uint8Array(total_size * size);
+
+    const member_buffers = new Map<string, Uint8Array>();
+    const map_data = data as Map<string, any>;
+
+    // Recursively convert each column into its raw flat bytes
+    for (const member of compound_type.members) {
+      if (member.vlen) {
+        throw new Error(`Writing VLEN strings inside compound types requires pointers in Wasm heap and is not currently supported.`);
+      }
+      const column_data = map_data.get(member.name);
+
+      // The recursive call will validate the column length matches the total shape
+      const prepared = prepare_data(column_data, member as Metadata, shape, maxshape);
+      member_buffers.set(member.name, prepared.data as Uint8Array);
+    }
+
+    // Interleave the columns into the final Array of Structures buffer
+    for (let i = 0; i < total_size; i++) {
+      const row_offset = i * size;
+      for (const member of compound_type.members) {
+        const col_buf = member_buffers.get(member.name)!;
+        const m_size = member.size;
+
+        // Grab the bytes for the i-th element of this specific member
+        const element_bytes = col_buf.subarray(i * m_size, (i + 1) * m_size);
+
+        // Write it into the compound struct memory space
+        (output as Uint8Array).set(element_bytes, row_offset + member.offset);
+      }
+    }
   }
   else {
     throw new Error(`data with type ${metadata.type} can not be prepared for write`);
