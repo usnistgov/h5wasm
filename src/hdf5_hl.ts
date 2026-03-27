@@ -390,7 +390,7 @@ function prepare_data(data: any, metadata: Metadata, shape?: number[] | bigint[]
       }
       typed_array = new accessor(data);
     }
-    output = new Uint8Array(typed_array.buffer);
+    output = new Uint8Array(typed_array.buffer, typed_array.byteOffset, typed_array.byteLength);
   }
   else if (metadata.type === Module.H5T_class_t.H5T_REFERENCE.value) {
     output = new Uint8Array(metadata.size * total_size);
