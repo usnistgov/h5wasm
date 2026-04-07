@@ -41,6 +41,7 @@ The Emscripten filesystem is important for operations, and it can be accessed af
   - [Library version bounds (libver)](#library-version-bounds-libver)
 - [Web Helpers](#web-helpers)
 - [Persistent file store (web)](#persistent-file-store-web)
+- [Using in Electron app](#using-in-electron-app)
 
 # QuickStart
 
@@ -554,4 +555,32 @@ FS.syncfs(true, (e) => {console.log(e)});
 
 // to push all current files in /home/web_user to IndexedDB, e.g. when closing your application:
 FS.syncfs(false, (e) => {console.log(e)})
+```
+
+## Using in Electron app
+If using the nodejs build in an Electron app (for direct filesystem access through`NODERAWFS`),
+you will run into an issue where the `emscripten` environment-checking code fails, because the 
+`navigator` object is defined in the runtime environment even though it's not a web environment. 
+
+To work around this, you have to undefine `navigator` before initializing the library, then you can
+redefine it after initialization, as seen below:
+
+```javascript
+let h5wasm;
+const navigator_object = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+if (navigator_object?.configurable) {
+  Object.defineProperty(globalThis, 'navigator', {
+    value: undefined,
+    configurable: true,
+  });
+}
+try {
+  h5wasm = await import('h5wasm/node');
+  await h5wasm.ready;
+}
+finally {
+  if (navigator_object?.configurable) {
+    Object.defineProperty(globalThis, 'navigator', navigator_object);
+  }
+}
 ```
