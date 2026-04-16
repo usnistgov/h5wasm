@@ -1,27 +1,11 @@
+[![DOI](https://zenodo.org/badge/401916491.svg)](https://doi.org/10.5281/zenodo.14624863)
+
 # h5wasm
 a zero-dependency WebAssembly-powered library for [reading](#reading) and [writing](#writing) HDF5 files from javascript
 
-(built on the [HDF5 C API](http://portal.hdfgroup.org/pages/viewpage.action?pageId=50073943))
-
-The built binaries (esm and node) will be attached to the [latest release](https://github.com/usnistgov/h5wasm/releases/latest/) as h5wasm-{version}.tgz
-
-The wasm-compiled libraries `libhdf5.a`, `libhdf5_cpp.a` ... and the related `include/` folder are retrieved from [libhdf5-wasm](https://github.com/usnistgov/libhdf5-wasm) during the build.
-
-Instead of importing a namespace "*", it is now possible to import the important h5wasm components in an object, from the default export:
-```js
-// in hdf5_hl.ts:
-export const h5wasm = {
-    File,
-    Group,
-    Dataset,
-    Datatype,
-    DatasetRegion,
-    ready,
-    ACCESS_MODES
-}
-```
-
-The Emscripten filesystem is important for operations, and it can be accessed after the WASM is loaded as below.
+- built on the [HDF5 C API](https://www.hdfgroup.org/solutions/hdf5/) through the [libhdf5-wasm project](https://github.com/usnistgov/libhdf5-wasm)
+- compression plugins supported through [h5wasm-plugins](https://github.com/h5wasm/h5wasm-plugins), for more info see the [Plugins](#plugins) section below
+- interaction with files through the Emscripten filesystem, which can be used with various backends (e.g. in-memory, IndexedDB, or the host filesystem in nodejs and Electron)
 
 ## Contents
 
@@ -36,12 +20,14 @@ The Emscripten filesystem is important for operations, and it can be accessed af
   - [Writing](#writing)
   - [Writing Compound Datatypes](#writing-compound-datatypes)
   - [Editing](#editing)
+  - [Plugins](#plugins)
   - [SWMR (single writer multiple readers)](#swmr-single-writer-multiple-readers)
   - [Links](#links)
   - [Library version bounds (libver)](#library-version-bounds-libver)
 - [Web Helpers](#web-helpers)
 - [Persistent file store (web)](#persistent-file-store-web)
 - [Using in Electron app](#using-in-electron-app)
+- [Plugins](#plugins)
 
 # QuickStart
 
@@ -405,6 +391,16 @@ let f = new h5wasm.File("myfile.h5", "a");
 f.create_attribute("new_attr", "something wicked this way comes");
 f.close()
 ```
+
+### Plugins
+To use additional compression filters (such as Blosc, BZip2, LZF, or Zstd) that are not 
+built into the core HDF5 library, you can add the h5wasm-plugins package. Read and write operations are supported on all plugins.
+
+Installation:
+```bash
+npm i h5wasm-plugins
+```
+The plugin package is developed and maintained at https://github.com/h5wasm/h5wasm-plugins.
 
 ### SWMR (single writer multiple readers)
 
