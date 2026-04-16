@@ -1,4 +1,4 @@
-[![DOI](https://zenodo.org/badge/401916491.svg)](https://doi.org/10.5281/zenodo.14624863)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19255851.svg)](https://doi.org/10.5281/zenodo.14624863)
 
 # h5wasm
 a zero-dependency WebAssembly-powered library for [reading](#reading) and [writing](#writing) HDF5 files from javascript
