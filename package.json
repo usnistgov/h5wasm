@@ -40,6 +40,6 @@
   "license": "SEE LICENSE IN LICENSE.txt",
   "devDependencies": {
     "esbuild": "^0.25.0",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.2"
   }
 }
