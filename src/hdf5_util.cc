@@ -794,6 +794,7 @@ hid_t create_h5_datatype_from_metadata(val metadata) {
     else if (dtype == H5T_INTEGER) {
         filetype = H5Tcopy(H5T_NATIVE_INT);
         H5Tset_size(filetype, dsize);
+        H5Tset_precision(filetype, dsize * 8);
         H5Tset_sign(filetype, (H5T_sign_t)is_signed);
     }
     else if (dtype == H5T_FLOAT) {
