@@ -787,9 +787,16 @@ hid_t create_h5_datatype_from_metadata(val metadata) {
 
     if (dtype == H5T_STRING) {
         size_t str_size = (is_vlstr) ? H5T_VARIABLE : dsize;
-        filetype = H5Tcopy(H5T_FORTRAN_S1);
-        H5Tset_size(filetype, str_size);
-        H5Tset_cset(filetype, H5T_CSET_UTF8);
+        int cset = metadata["cset"].isUndefined() ? H5T_CSET_UTF8 : metadata["cset"].as<int>();
+        if (cset == H5T_CSET_ASCII) {
+            filetype = H5Tcopy(H5T_C_S1);
+            H5Tset_size(filetype, str_size);
+            H5Tset_cset(filetype, H5T_CSET_ASCII);
+        } else {
+            filetype = H5Tcopy(H5T_FORTRAN_S1);
+            H5Tset_size(filetype, str_size);
+            H5Tset_cset(filetype, H5T_CSET_UTF8);
+        }
     }
     else if (dtype == H5T_INTEGER) {
         filetype = H5Tcopy(H5T_NATIVE_INT);

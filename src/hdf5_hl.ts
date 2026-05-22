@@ -449,7 +449,8 @@ function metadata_to_dtype(metadata: Metadata): Dtype {
   const { type, size, littleEndian, signed, compound_type, array_type, vlen } = metadata;
   if (type == Module.H5T_class_t.H5T_STRING.value) {
     let length_str = vlen ? "" : String(size);
-    return `S${length_str}`;
+    const prefix = (metadata.cset === 0) ? 'A' : 'S';
+    return `${prefix}${length_str}`;
   }
   else if (type == Module.H5T_class_t.H5T_INTEGER.value) {
     let fmt = int_fmts.get(size);
@@ -490,13 +491,14 @@ export function dtype_to_metadata(dtype: Dtype): Metadata {
   let metadata = { vlen: false, signed: false, littleEndian: true } as Metadata;
 
   if (typeof dtype === 'string') {
-    // Simple string dtype: '<i8', '<f4', 'S10', 'Reference', etc.
+    // Simple string dtype: '<i8', '<f4', 'S10', 'A10', 'Reference', etc.
+    // 'S' = UTF-8 string (FORTRAN_S1, SPACEPAD), 'A' = ASCII string (C_S1, NULLTERM)
     if (dtype === "Reference" || dtype === "RegionReference") {
       metadata.type = Module.H5T_class_t.H5T_REFERENCE.value;
       metadata.size = (dtype === "Reference") ? Module.SIZEOF_OBJ_REF : Module.SIZEOF_DSET_REGION_REF;
     }
     else {
-      const match = dtype.match(/^([<>|]?)([bhiqefdsBHIQS])([0-9]*)$/);
+      const match = dtype.match(/^([<>|]?)([bhiqefdsBHIQSaA])([0-9]*)$/);
       if (match == null) {
         throw dtype + " is not a recognized dtype";
       }
@@ -511,10 +513,11 @@ export function dtype_to_metadata(dtype: Dtype): Metadata {
         metadata.type = Module.H5T_class_t.H5T_FLOAT.value;
         metadata.size = (fmts_float.get(typestr) as number);
       }
-      else if (typestr.toUpperCase() === 'S') {
+      else if (typestr.toUpperCase() === 'S' || typestr.toUpperCase() === 'A') {
         metadata.type = Module.H5T_class_t.H5T_STRING.value;
         metadata.size = (length == "") ? 4 : parseInt(length, 10);
         metadata.vlen = (length == "");
+        metadata.cset = (typestr.toUpperCase() === 'A') ? 0 : 1;
       }
       else {
         throw "should never happen";
