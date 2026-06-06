@@ -44,3 +44,15 @@ with h5py.File("vlen.h5", "w") as f:
     vlen_array[0] = [0]
     vlen_array[1] = [0, 1]
     vlen_array[2] = [0, 1, 2]
+
+    # Multi-element 1D vlen-of-uint8: one variable-length byte "blob" per
+    # element. Used to exercise *sliced* vlen reads, where the read buffer holds
+    # only the selected `count` hvl_t structs but the reclaim must not walk the
+    # full N-element dataspace (doing so frees garbage pointers past the buffer
+    # end -> heap corruption). N is deliberately large so any over-walk lands
+    # well past the buffer. Each element i is the blob [i, i+1, ..., 2i]
+    # (length i+1) so sliced values are individually verifiable.
+    N = 16
+    uint8_blobs = f.create_dataset("uint8_blobs", shape=(N,), dtype=h5py.vlen_dtype(np.uint8))
+    for i in range(N):
+        uint8_blobs[i] = np.arange(i + 1, dtype=np.uint8) + np.uint8(i)

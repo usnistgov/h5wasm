@@ -129,6 +129,7 @@ export interface H5Module extends EmscriptenModule {
     AsciiToString(ptr: number): string,
     H5T_class_t: H5T_class_t,
     reclaim_vlen_memory(file_id: BigInt, obj_name: string, attr_name: string, data_ptr: bigint): Status;
+    reclaim_vlen_memory_count(file_id: BigInt, obj_name: string, attr_name: string, data_ptr: bigint, count: bigint[]): Status;
     get_attribute_data(file_id: BigInt, obj_name: string, attr_name: string, arg3: bigint): Status;
     FS: FS.FileSystemType,
     get_keys_vector(group_id: bigint, H5_index_t?: number): string[],

@@ -697,22 +697,36 @@ int set_dataset_data(hid_t loc_id, const std::string& dataset_name_string, val c
     return read_write_dataset_data(loc_id, dataset_name_string, count_out, offset_out, stride_out, wdata_uint64, true);
 }
 
-int reclaim_vlen_memory(hid_t loc_id, const std::string& object_name_string, const std::string& attribute_name_string, uint64_t rdata_uint64)
+// Reclaim the variable-length allocations HDF5 made inside `rdata` while reading
+// a vlen dataset or attribute. When `count` is non-null it is the shape of a
+// hyperslab slice that was read: the buffer then holds only product(count)
+// hvl_t structs, so we must reclaim a matching `count`-sized dataspace rather
+// than the dataset's full extent. H5Treclaim frees one element per selected
+// point in the dataspace; handing it the full N-element dataspace for a
+// count-sized buffer walks (and frees) past the buffer end -> heap corruption.
+// `count` is only meaningful for datasets; attributes are always read whole.
+static int reclaim_vlen_memory_impl(hid_t loc_id, const char *object_name, const char *attribute_name, void *rdata, const std::vector<hsize_t> *count)
 {
     hid_t ds_id;
     hid_t attr_id;
     hid_t dspace;
     hid_t dtype;
     herr_t status;
-    const char *object_name = object_name_string.c_str();
-    const char *attribute_name = attribute_name_string.c_str();
-    void *rdata = (void *)rdata_uint64;
 
-    if (attribute_name_string == "") {
+    if (attribute_name[0] == '\0') {
         // then it's a dataset!
         ds_id = H5Dopen2(loc_id, object_name, H5P_DEFAULT);
-        dspace = H5Dget_space(ds_id);
         dtype = H5Dget_type(ds_id);
+        if (count != nullptr) {
+            // A hyperslab slice was read: reclaim exactly the selected count,
+            // whose "all" selection has product(count) points to match the buffer.
+            // (count->empty() is the rank-0 case; pass nullptr dims defensively
+            // to avoid indexing an empty vector.)
+            dspace = H5Screate_simple((int)count->size(), count->empty() ? nullptr : count->data(), nullptr);
+        }
+        else {
+            dspace = H5Dget_space(ds_id);
+        }
         H5Dclose(ds_id);
     }
     else {
@@ -727,6 +741,22 @@ int reclaim_vlen_memory(hid_t loc_id, const std::string& object_name_string, con
     H5Sclose(dspace);
     H5Tclose(dtype);
     return (int)status;
+}
+
+int reclaim_vlen_memory(hid_t loc_id, const std::string& object_name_string, const std::string& attribute_name_string, uint64_t rdata_uint64)
+{
+    return reclaim_vlen_memory_impl(loc_id, object_name_string.c_str(), attribute_name_string.c_str(), (void *)rdata_uint64, nullptr);
+}
+
+// Variant for hyperslab slices: `count_out` is the slice shape (one entry per
+// dataset dimension). embind does not honor C++ default arguments, so this is a
+// separate binding rather than an optional parameter on reclaim_vlen_memory,
+// keeping the original 4-argument function (whole-dataset and attribute reads)
+// fully backward compatible.
+int reclaim_vlen_memory_count(hid_t loc_id, const std::string& object_name_string, const std::string& attribute_name_string, uint64_t rdata_uint64, val count_out)
+{
+    std::vector<hsize_t> count = convertJSArrayToNumberVector<hsize_t>(count_out);
+    return reclaim_vlen_memory_impl(loc_id, object_name_string.c_str(), attribute_name_string.c_str(), (void *)rdata_uint64, &count);
 }
 
 int get_attribute_data(hid_t loc_id, const std::string& group_name_string, const std::string& attribute_name_string, uint64_t rdata_uint64)
@@ -1434,6 +1464,7 @@ EMSCRIPTEN_BINDINGS(hdf5)
     function("set_dataset_data", &set_dataset_data);
     function("get_attribute_data", &get_attribute_data);
     function("reclaim_vlen_memory", &reclaim_vlen_memory);
+    function("reclaim_vlen_memory_count", &reclaim_vlen_memory_count);
     function("create_group", &create_group);
     function("create_dataset", &create_dataset);
     function("resize_dataset", &resize_dataset);

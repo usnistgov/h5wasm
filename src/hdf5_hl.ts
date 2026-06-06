@@ -1276,7 +1276,10 @@ export class Dataset extends HasAttrs {
       processed = process_data(data, metadata, false);
     } finally {
       if (metadata.vlen || metadata.type === Module.H5T_class_t.H5T_VLEN.value) {
-        Module.reclaim_vlen_memory(this.file_id, this.path, "", BigInt(data_ptr));
+        // The hyperslab read filled only `count` hvl_t structs, so reclaim a
+        // matching count-sized dataspace. Using the 4-arg reclaim here (full
+        // dataset extent) would free past the buffer end -> heap corruption.
+        Module.reclaim_vlen_memory_count(this.file_id, this.path, "", BigInt(data_ptr), count);
       }
       Module._free(data_ptr);
     }
