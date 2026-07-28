@@ -21,6 +21,27 @@ endif()
 set(HDF5_DIR ${libhdf5-wasm_SOURCE_DIR}/cmake)
 find_package(HDF5 REQUIRED CONFIG)
 
+# Whether to allow eval-based dynamic execution (DYNAMIC_EXECUTION=1).
+# This is required for libhdf5's H5PL_load() to dlopen filter plugin .so
+# files from the WASM filesystem. Without it, every external filter plugin
+# (blosc2, zstd, bitshuffle, lz4, bz2, jpeg, zfp, bitround, bitgroom)
+# silently fails to decode and returns garbage bytes — see
+# the issue body for a minimal repro.
+#
+# Default OFF preserves the strict-CSP behavior introduced in PR #106
+# (no 'unsafe-eval' needed). Builds for environments that need full
+# h5wasm-plugins codec support should set this ON:
+#     emcmake cmake .. -DH5WASM_ALLOW_DYNAMIC_EXECUTION=ON
+option(H5WASM_ALLOW_DYNAMIC_EXECUTION
+       "Allow eval-based dynamic execution (required for H5PL plugin dlopen)"
+       OFF)
+if (H5WASM_ALLOW_DYNAMIC_EXECUTION)
+    set(DYNAMIC_EXECUTION_FLAG "-s DYNAMIC_EXECUTION=1")
+else()
+    set(DYNAMIC_EXECUTION_FLAG "-s DYNAMIC_EXECUTION=0")
+endif()
+
+
 add_executable(hdf5_util src/hdf5_util.cc)
 target_link_libraries(hdf5_util hdf5::hdf5_hl-static)
 
@@ -61,7 +82,7 @@ set_target_properties(hdf5_util PROPERTIES
     -s MAIN_MODULE=2 \
     -s ALLOW_TABLE_GROWTH=1 \
     -s ALLOW_MEMORY_GROWTH=1 \
-    -s DYNAMIC_EXECUTION=0 \
+    ${DYNAMIC_EXECUTION_FLAG} \
     -s STACK_SIZE=2097152 \
     -s WASM_BIGINT \
     -s ENVIRONMENT=web,worker \
@@ -84,7 +105,7 @@ set_target_properties(hdf5_util_node PROPERTIES
     -s NODEJS_CATCH_REJECTION=0 \
     -s ALLOW_TABLE_GROWTH=1 \
     -s ALLOW_MEMORY_GROWTH=1 \
-    -s DYNAMIC_EXECUTION=0 \
+    ${DYNAMIC_EXECUTION_FLAG} \
     -s STACK_SIZE=2097152 \
     -s WASM_BIGINT \
     -s NODERAWFS=1 \
