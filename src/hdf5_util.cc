@@ -310,6 +310,14 @@ val get_attribute_names(hid_t loc_id, const std::string& obj_name_string)
     return names;
 }
 
+// Whether `dtype` is a 2-byte float in the IEEE binary16 layout Float16Array
+// holds, as opposed to bfloat16, whose 8-bit exponent it would misread.
+bool is_ieee_float16(hid_t dtype)
+{
+    return H5Tget_class(dtype) == H5T_FLOAT && H5Tget_size(dtype) == 2 &&
+           (H5Tequal(dtype, H5T_IEEE_F16LE) > 0 || H5Tequal(dtype, H5T_IEEE_F16BE) > 0);
+}
+
 val get_dtype_metadata(hid_t dtype)
 {
 
@@ -337,9 +345,15 @@ val get_dtype_metadata(hid_t dtype)
     // the bytes as halves.
     if (dtype_class == H5T_FLOAT && size == 2)
     {
-        htri_t is_le = H5Tequal(dtype, H5T_IEEE_F16LE);
-        htri_t is_be = H5Tequal(dtype, H5T_IEEE_F16BE);
-        attr.set("ieee_float16", (bool)(is_le > 0 || is_be > 0));
+        attr.set("ieee_float16", is_ieee_float16(dtype));
+    }
+    else if (dtype_class == H5T_COMPLEX)
+    {
+        // A complex is read as two components, so it is the base float that has
+        // to be an IEEE half -- H5T_COMPLEX_IEEE_F16LE is a legal 4-byte type.
+        hid_t base_tid = H5Tget_super(dtype);
+        attr.set("ieee_float16", is_ieee_float16(base_tid));
+        H5Tclose(base_tid);
     }
 
     if (dtype_class == H5T_COMPOUND)
@@ -885,6 +899,18 @@ hid_t create_h5_datatype_from_metadata(val metadata) {
             hid_t member_type_id = create_h5_datatype_from_metadata(member);
             H5Tinsert(filetype, name.c_str(), offset, member_type_id);
             H5Tclose(member_type_id); // Clean up the temporary identifier
+        }
+    }
+    else if (dtype == H5T_COMPLEX) {
+        // The two components are equal-sized, so the base float is half the itemsize.
+        if (dsize == 4) {
+            filetype = H5Tcomplex_create(H5T_IEEE_F16LE);
+        } else if (dsize == 8) {
+            filetype = H5Tcomplex_create(H5T_NATIVE_FLOAT);
+        } else if (dsize == 16) {
+            filetype = H5Tcomplex_create(H5T_NATIVE_DOUBLE);
+        } else {
+            throw_error("Complex size not supported");
         }
     }
     // *NOTE*: H5T_ARRAY for write is not yet implemented.
@@ -1540,6 +1566,7 @@ EMSCRIPTEN_BINDINGS(hdf5)
         .value("H5T_ENUM", H5T_ENUM)           //      = 8,  /**< enumeration types                       */
         .value("H5T_VLEN", H5T_VLEN)           //      = 9,  /**< variable-Length types                   */
         .value("H5T_ARRAY", H5T_ARRAY)         //     = 10, /**< array types                             */
+        .value("H5T_COMPLEX", H5T_COMPLEX)     //   = 11, /**< complex number types                    */
         ;
 
     //constant("H5L_type_t", H5L_type_t);

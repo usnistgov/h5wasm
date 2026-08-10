@@ -79,3 +79,31 @@ with h5py.File("float16.h5", "w") as f:
     space = h5py.h5s.create_simple(bits.shape)
     dset = h5py.h5d.create(f.id, b"bfloat16", bfloat16, space)
     dset.write(h5py.h5s.ALL, h5py.h5s.ALL, bits, mtype=bfloat16)
+
+with h5py.File("complex.h5", "w") as f:
+    # Native complex (H5T_COMPLEX, new in HDF5 2.0). An explicit COMPLEX_IEEE_*
+    # type is what selects it; a plain numpy complex dtype still maps to the
+    # legacy {r, i} compound. Each array's byte order must match its file type:
+    # HDF5 2.0 has no conversion path that byte-swaps a native complex.
+    # Every component is exactly representable in float32.
+    cplx64 = np.array([1 + 2j, 3 - 4j, 5.5 + 6.25j], dtype=np.complex128)
+    cplx32 = np.array([1.5 - 2.5j, 0.25 + 4j, -8 + 0.125j], dtype=np.complex64)
+
+    for name, file_type, data in [
+        ("z_f64le", h5py.h5t.COMPLEX_IEEE_F64LE, cplx64.astype("<c16")),
+        ("z_f64be", h5py.h5t.COMPLEX_IEEE_F64BE, cplx64.astype(">c16")),
+        ("z_f32le", h5py.h5t.COMPLEX_IEEE_F32LE, cplx32.astype("<c8")),
+        ("z_f32be", h5py.h5t.COMPLEX_IEEE_F32BE, cplx32.astype(">c8")),
+    ]:
+        f.create_dataset(name, data=data, dtype=file_type)
+
+    # A complex of two IEEE halves is a legal 4-byte HDF5 type, but numpy's
+    # smallest complex is complex64, so write the interleaved halves as raw bytes.
+    for name, file_type, order in [
+        ("z_f16le", h5py.h5t.COMPLEX_IEEE_F16LE, "<f2"),
+        ("z_f16be", h5py.h5t.COMPLEX_IEEE_F16BE, ">f2"),
+    ]:
+        components = np.array([1.5, -2.5, 0.25, 4, -8, 0.125], dtype=order)
+        space = h5py.h5s.create_simple((components.size // 2,))
+        dset = h5py.h5d.create(f.id, name.encode(), file_type, space)
+        dset.write(h5py.h5s.ALL, h5py.h5s.ALL, components.view(np.uint32), mtype=file_type)
