@@ -118,7 +118,7 @@ function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_com
   return processed;
 }
 
-function getAccessor(type: 0 | 1, size: Metadata["size"], signed: Metadata["signed"]): TypedArrayConstructor {
+function getAccessor(type: 0 | 1, size: Metadata["size"], signed: Metadata["signed"], ieee_float16?: Metadata["ieee_float16"]): TypedArrayConstructor {
   if (type === 0) {
     if (size === 8) {
       return (signed) ? BigInt64Array : BigUint64Array;
@@ -139,6 +139,22 @@ function getAccessor(type: 0 | 1, size: Metadata["size"], signed: Metadata["sign
     }
     else if (size === 4) {
       return Float32Array;
+    }
+    else if (size === 2) {
+      // Width alone does not identify an IEEE half: HDF5 also predefines
+      // bfloat16, whose 8-bit exponent would be read as a half's 5-bit one and
+      // silently yield wrong numbers. Only the layout Float16Array holds is
+      // accepted.
+      if (!ieee_float16) {
+        throw new Error("2-byte float is not IEEE binary16 (bfloat16 is not supported)");
+      }
+      // Looked up per call rather than cached at module load, so a runtime that
+      // gains the global later (a polyfill loaded after h5wasm) still works.
+      const ctor = (globalThis as { Float16Array?: MaybeFloat16ArrayConstructor }).Float16Array;
+      if (ctor === undefined) {
+        throw new Error("float16 requires Float16Array, missing in this runtime");
+      }
+      return ctor;
     }
     else {
       throw new Error(`Float${size * 8} not supported`);
@@ -198,7 +214,7 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
   }
   else if (type === Module.H5T_class_t.H5T_INTEGER.value || type === Module.H5T_class_t.H5T_FLOAT.value) {
     const { size, signed} = metadata;
-    const accessor = getAccessor(type, size, signed);
+    const accessor = getAccessor(type, size, signed, metadata.ieee_float16);
     output_data = new accessor(data.buffer as ArrayBuffer);
     if (json_compatible) {
       output_data = [...output_data];
@@ -378,7 +394,7 @@ function prepare_data(data: any, metadata: Metadata, shape?: number[] | bigint[]
   }
   else if (metadata.type === Module.H5T_class_t.H5T_INTEGER.value || metadata.type === Module.H5T_class_t.H5T_FLOAT.value) {
     const {type, size, signed} = metadata;
-    const accessor = getAccessor(type, size, signed);
+    const accessor = getAccessor(type, size, signed, metadata.ieee_float16);
     let typed_array: ArrayBufferView;
     if (data instanceof accessor) {
       typed_array = data;
@@ -512,6 +528,11 @@ export function dtype_to_metadata(dtype: Dtype): Metadata {
       else if (fmts_float.has(typestr)) {
         metadata.type = Module.H5T_class_t.H5T_FLOAT.value;
         metadata.size = (fmts_float.get(typestr) as number);
+        if (metadata.size === 2) {
+          // 'e' is numpy's IEEE half, and that is the only 2-byte float this
+          // writes, so say so for the accessor's benefit.
+          metadata.ieee_float16 = true;
+        }
       }
       else if (typestr.toUpperCase() === 'S' || typestr.toUpperCase() === 'A') {
         metadata.type = Module.H5T_class_t.H5T_STRING.value;
@@ -589,6 +610,17 @@ export function dtype_to_metadata(dtype: Dtype): Metadata {
   return metadata;
 }
 
+// Pull Float16Array's types out of the ambient global rather than naming them
+// directly. Named directly, they would compile only under `lib: es2025` or
+// later and every consumer of the emitted .d.ts would inherit that floor; via
+// `typeof globalThis` they resolve where the lib declares them and collapse to
+// `never` where it does not, so the declarations stay portable. Named after the
+// same construct in @types/ndarray.
+type MaybeFloat16Array =
+  InstanceType<typeof globalThis extends { Float16Array: infer C } ? C : never>;
+type MaybeFloat16ArrayConstructor =
+  typeof globalThis extends { Float16Array: infer C } ? C : never;
+
 type TypedArray =
   | Int8Array
   | Uint8Array
@@ -599,6 +631,7 @@ type TypedArray =
   | Uint32Array
   | BigInt64Array
   | BigUint64Array
+  | MaybeFloat16Array
   | Float32Array
   | Float64Array;
 
@@ -612,6 +645,7 @@ type TypedArrayConstructor =
   | Uint32ArrayConstructor
   | BigInt64ArrayConstructor
   | BigUint64ArrayConstructor
+  | MaybeFloat16ArrayConstructor
   | Float32ArrayConstructor
   | Float64ArrayConstructor;
 
@@ -625,6 +659,7 @@ const TypedArray_to_dtype = new Map([
   ['Int16Array', '<h'],
   ['Int32Array', '<i'],
   ['BigInt64Array', '<q'],
+  ['Float16Array', '<e'],
   ['Float32Array', '<f'],
   ['Float64Array', '<d']
 ])
@@ -709,6 +744,7 @@ export function guess_metadata(data: GuessableDataTypes): Metadata {
   if (ArrayBuffer.isView(data)) {
     const cname = data.constructor.name;
     switch (cname) {
+      case 'Float16Array': return { ...baseMeta, type: Module.H5T_class_t.H5T_FLOAT.value, size: 2, ieee_float16: true } as Metadata;
       case 'Float32Array': return { ...baseMeta, type: Module.H5T_class_t.H5T_FLOAT.value, size: 4 } as Metadata;
       case 'Float64Array': return { ...baseMeta, type: Module.H5T_class_t.H5T_FLOAT.value, size: 8 } as Metadata;
       case 'Int8Array': return { ...baseMeta, type: Module.H5T_class_t.H5T_INTEGER.value, size: 1, signed: true } as Metadata;

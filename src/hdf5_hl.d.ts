@@ -36,7 +36,10 @@ export type Dtype = string | {
 } | CompoundDtype | ArrayDtype;
 export type { Metadata, Filter, CompoundMember, CompoundTypeMetadata, EnumTypeMetadata };
 export declare function dtype_to_metadata(dtype: Dtype): Metadata;
-type TypedArray = Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | BigInt64Array | BigUint64Array | Float32Array | Float64Array;
+type MaybeFloat16Array = InstanceType<typeof globalThis extends {
+    Float16Array: infer C;
+} ? C : never>;
+type TypedArray = Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | BigInt64Array | BigUint64Array | MaybeFloat16Array | Float32Array | Float64Array;
 /**
  * Describes an array slice.
  * `[]` - all data

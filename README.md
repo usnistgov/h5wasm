@@ -18,6 +18,7 @@ a zero-dependency WebAssembly-powered library for [reading](#reading) and [writi
   - [Opening a file](#opening-a-file)
   - [Reading](#reading)
   - [Writing](#writing)
+  - [Half-precision (float16)](#half-precision-float16)
   - [Writing Compound Datatypes](#writing-compound-datatypes)
   - [Editing](#editing)
   - [Plugins](#plugins)
@@ -177,7 +178,7 @@ data.dtype
 data.shape
 // (2) [48, 128]
 
-// data are loaded into a matching TypedArray in javascript if one exists, otherwise raw bytes are returned (there is no Float16Array, for instance).  In this case the matching type is Int32Array
+// data are loaded into a matching TypedArray in javascript where one exists; datatype classes with no javascript equivalent yield raw bytes instead.  In this case the matching type is Int32Array
 data.value
 /*
 Int32Array(6144) [0, 0, 0, 2, 2, 2, 3, 1, 1, 7, 3, 5, 7, 8, 9, 21, 43, 38, 47, 8, 8, 7, 3, 6, 1, 7, 3, 7, 47, 94, 91, 99, 76, 81, 86, 112, 98, 103, 85, 100, 83, 122, 111, 123, 136, 129, 134, 164, 130, 164, 176, 191, 200, 211, 237, 260, 304, 198, 32, 9, 5, 2, 6, 5, 8, 6, 25, 219, 341, 275, 69, 11, 4, 5, 5, 45, 151, 154, 141, 146, 108, 107, 105, 113, 99, 101, 96, 84, 86, 77, 78, 107, 73, 80, 105, 65, 75, 79, 62, 31, …]
@@ -291,6 +292,32 @@ new_file.get("entry").attrs["fixed"]
 new_file.close()
 
 ```
+
+### Half-precision (float16)
+
+Half-precision floats (`H5T_IEEE_F16LE`, dtype `'<e'`, `numpy.float16`) are read into and written from a
+[`Float16Array`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float16Array),
+just as `'<f'` maps to `Float32Array`:
+
+```javascript
+// dtype is guessed from the TypedArray, as for any other float size
+new_file.create_dataset({name: "half", data: new Float16Array([1.5, -2.5])});
+new_file.get("half").dtype
+// '<e'
+new_file.get("half").value
+// Float16Array(2) [1.5, -2.5]
+
+// or write plain numbers with an explicit dtype; values are rounded to the
+// nearest representable half on the way in
+new_file.create_dataset({name: "rounded", data: [0.1], dtype: '<e'});
+new_file.get("rounded").value
+// Float16Array(1) [0.0999755859375]
+```
+
+`Float16Array` is newer than the other TypedArrays ([browser support](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float16Array#browser_compatibility)).
+Where the runtime does not provide it, reading or writing float16 data throws an error saying so, rather
+than returning raw bytes that look like numbers; `dtype` and `metadata` still report the type, so a
+float16 dataset can be identified before its values are touched.
 
 ### Writing Compound Datatypes
 You can write HDF5 Compound Datatypes (`H5T_COMPOUND`) for both datasets and attributes by passing a JavaScript `Map` representing a Structure of Arrays (SoA).

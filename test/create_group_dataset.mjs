@@ -22,17 +22,22 @@ async function create_typedarray_datasets() {
     ['Int16Array', '<h'],
     ['Int32Array', '<i'],
     ['BigInt64Array', '<q'],
+    ['Float16Array', '<e'],
     ['Float64Array', '<d'],
     ['Float32Array', '<f'],
   ])
 
+  // Float16Array arrived later than the rest of the family, so skip it where the
+  // runtime lacks it rather than failing the whole table.
+  const available = [...TypedArray_to_dtype].filter(([name]) => name in globalThis);
+
   if (!(existsSync(PATH))) {
     mkdirSync(PATH);
   }
-  
+
   let write_file = new h5wasm.File(FILEPATH, "w");
 
-  for (let typed_arrayname of TypedArray_to_dtype.keys()) {
+  for (let [typed_arrayname] of available) {
     let write_values = (/^Big/.test(typed_arrayname)) ? VALUES.map(BigInt) : VALUES;
     let data = new globalThis[typed_arrayname](write_values);
     write_file.create_dataset({name: typed_arrayname, data: data});
@@ -41,7 +46,7 @@ async function create_typedarray_datasets() {
   write_file.close();
 
   let read_file = new h5wasm.File(FILEPATH, "r");
-  for (let [name, dtype] of TypedArray_to_dtype.entries()) {
+  for (let [name, dtype] of available) {
     let dset = read_file.get(name);
     assert.equal(dset.dtype, dtype);
     assert.deepEqual([...dset.value].map(Number), VALUES);
