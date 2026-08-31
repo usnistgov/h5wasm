@@ -330,6 +330,18 @@ val get_dtype_metadata(hid_t dtype)
         attr.set("strpad", (int)(H5Tget_strpad(dtype)));
     }
 
+    // A 2-byte float is not necessarily an IEEE half: HDF5 also predefines
+    // bfloat16, which has the same width but an 8-bit exponent and 7-bit
+    // mantissa. Only the IEEE layout matches Float16Array, so report which one
+    // this is and let the accessor refuse the rest rather than reinterpreting
+    // the bytes as halves.
+    if (dtype_class == H5T_FLOAT && size == 2)
+    {
+        htri_t is_le = H5Tequal(dtype, H5T_IEEE_F16LE);
+        htri_t is_be = H5Tequal(dtype, H5T_IEEE_F16BE);
+        attr.set("ieee_float16", (bool)(is_le > 0 || is_be > 0));
+    }
+
     if (dtype_class == H5T_COMPOUND)
     {
         val compound_type = val::object();
@@ -835,7 +847,14 @@ hid_t create_h5_datatype_from_metadata(val metadata) {
         H5Tset_sign(filetype, (H5T_sign_t)is_signed);
     }
     else if (dtype == H5T_FLOAT) {
-        if (dsize == 4) {
+        if (dsize == 2) {
+            // There is no native half type available here: emscripten's clang
+            // rejects _Float16 on wasm32, so HDF5 is built with
+            // H5_HAVE__FLOAT16 undefined and H5T_NATIVE_FLOAT16, though
+            // declared, is never initialized. IEEE_F16LE is an explicitly
+            // sized little-endian layout, which is what Float16Array holds.
+            filetype = H5Tcopy(H5T_IEEE_F16LE);
+        } else if (dsize == 4) {
             filetype = H5Tcopy(H5T_NATIVE_FLOAT);
         } else if (dsize == 8) {
             filetype = H5Tcopy(H5T_NATIVE_DOUBLE);

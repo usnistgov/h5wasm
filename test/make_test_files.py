@@ -56,3 +56,26 @@ with h5py.File("vlen.h5", "w") as f:
     uint8_blobs = f.create_dataset("uint8_blobs", shape=(N,), dtype=h5py.vlen_dtype(np.uint8))
     for i in range(N):
         uint8_blobs[i] = np.arange(i + 1, dtype=np.uint8) + np.uint8(i)
+
+with h5py.File("float16.h5", "w") as f:
+    # IEEE half precision, as numpy/h5py write it. Every value here is exactly
+    # representable in float16, so readers can compare without a tolerance:
+    # 65504 is the largest finite half, 2**-14 the smallest normal, and 2**-24
+    # the smallest subnormal.
+    halves = np.array([[1.0, -2.5, 0.5], [65504.0, 2.0**-14, 2.0**-24]], dtype="<f2")
+    f.create_dataset("half", data=halves)
+    f.create_dataset("half_scalar", data=np.float16(0.125))
+    f.create_dataset("bigendian_half", data=np.array([3.0, 2.0, 1.0], dtype=">f2"))
+    f["half"].attrs.create("half_attr", np.array([1.5, -0.25], dtype="<f2"))
+    # bfloat16 is also a 2-byte H5T_FLOAT, but with an 8-bit exponent and 7-bit
+    # mantissa instead of 5 and 10. Reading it as an IEEE half would silently
+    # give wrong numbers, so h5wasm must refuse it. numpy has no bfloat16 and
+    # h5py exposes no predefined one, so build the type and write raw bits.
+    bfloat16 = h5py.h5t.IEEE_F16LE.copy()
+    bfloat16.set_fields(15, 7, 8, 0, 7)
+    bfloat16.set_ebias(0x7F)
+    # bfloat16 is the top 16 bits of the float32 with the same value
+    bits = (np.array([1.0, 2.0, -1.0], dtype="<f4").view("<u4") >> 16).astype("<u2")
+    space = h5py.h5s.create_simple(bits.shape)
+    dset = h5py.h5d.create(f.id, b"bfloat16", bfloat16, space)
+    dset.write(h5py.h5s.ALL, h5py.h5s.ALL, bits, mtype=bfloat16)
