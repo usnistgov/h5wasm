@@ -315,9 +315,11 @@ new_file.get("rounded").value
 ```
 
 `Float16Array` is newer than the other TypedArrays ([browser support](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float16Array#browser_compatibility)).
-Where the runtime does not provide it, reading or writing float16 data throws an error saying so, rather
-than returning raw bytes that look like numbers; `dtype` and `metadata` still report the type, so a
-float16 dataset can be identified before its values are touched.
+Where the runtime does not provide it, reading float16 data returns the raw `Uint8Array` and warns on the
+console, as h5wasm does for any datatype it cannot represent; writing throws, since there is no
+constructor to round the values with. The same applies to `bfloat16`, which HDF5 also stores as a 2-byte
+float but which JavaScript has no container for. `dtype` and `metadata` always report the type, so a
+caller can identify these datasets and decode the bytes itself.
 
 ### Writing Compound Datatypes
 You can write HDF5 Compound Datatypes (`H5T_COMPOUND`) for both datasets and attributes by passing a JavaScript `Map` representing a Structure of Arrays (SoA).

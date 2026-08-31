@@ -33,6 +33,21 @@ function tmpfile(name) {
   return join(PATH, name);
 }
 
+// Run `body`, returning what it produced alongside anything it wrote to
+// console.warn. The warning is the only signal that a fallback happened, so it
+// has to be asserted on rather than left to scroll past in the test output.
+function capturing_warnings(body) {
+  const saved = console.warn;
+  const warnings = [];
+  console.warn = (...args) => warnings.push(args.join(' '));
+  try {
+    return { result: body(), warnings };
+  }
+  finally {
+    console.warn = saved;
+  }
+}
+
 async function read_float16() {
   await h5wasm.ready;
   const f = new h5wasm.File('./test/float16.h5', 'r');
@@ -73,8 +88,9 @@ async function read_float16() {
 // A 2-byte float is not necessarily an IEEE half. bfloat16 has the same width
 // with an 8-bit exponent, so reading it through Float16Array would return
 // plausible but wrong numbers (bfloat16 1.0 is 0x3F80, which is 1.875 as a
-// half) rather than failing. It must throw instead.
-async function reject_bfloat16() {
+// half). JavaScript has no bfloat16 container, so the raw bytes come back
+// instead, as they do for any other datatype h5wasm cannot represent.
+async function bfloat16_falls_back_to_bytes() {
   await h5wasm.ready;
   const f = new h5wasm.File('./test/float16.h5', 'r');
   const dset = f.get('bfloat16');
@@ -86,9 +102,12 @@ async function reject_bfloat16() {
   assert.equal(dset.metadata.ieee_float16, false);
   assert.equal(f.get('half').metadata.ieee_float16, true);
 
-  assert.throws(() => dset.value, /not IEEE binary16/,
-    'reading bfloat16 should refuse rather than reinterpret the bytes');
-  assert.throws(() => dset.to_array(), /not IEEE binary16/);
+  const { result, warnings } = capturing_warnings(() => dset.value);
+  assert.ok(result instanceof Uint8Array,
+    'reading bfloat16 should hand back bytes rather than reinterpret them');
+  // 1.0, 2.0 and -1.0 as little-endian bfloat16: 0x3F80, 0x4000, 0xBF80.
+  assert.deepEqual([...result], [0x80, 0x3f, 0x00, 0x40, 0x80, 0xbf]);
+  assert.deepEqual(warnings.map((w) => /not IEEE binary16/.test(w)), [true]);
 
   f.close();
 }
@@ -200,25 +219,38 @@ async function float16_roundtrip_property() {
   unlinkSync(FILEPATH);
 }
 
-// On runtimes without Float16Array there is no container to hand back, so both
-// directions must fail loudly and say what is missing -- never silently return
-// raw 2-byte patterns dressed up as numbers.
+// On runtimes without Float16Array there is no container to hand the values
+// back in, so reads fall back to the raw 2-byte patterns and warn. Writing has
+// no such fallback -- without the constructor there is nothing to round the
+// numbers with -- so it still fails loudly and says what is missing.
 async function float16_without_runtime_support() {
   await h5wasm.ready;
   const FILEPATH = tmpfile('float16_unsupported.h5');
+
+  // HALVES as little-endian IEEE halves: 0x3C00, 0xC100, 0x3800, 0x7BFF,
+  // 0x0400 (smallest normal) and 0x0001 (smallest subnormal).
+  const HALF_BYTES = [0x00, 0x3c, 0x00, 0xc1, 0x00, 0x38, 0xff, 0x7b, 0x00, 0x04, 0x01, 0x00];
 
   await without_float16array(() => {
     const f = new h5wasm.File('./test/float16.h5', 'r');
     const dset = f.get('half');
 
-    // Metadata does not need the container, so it still describes the type.
+    // Metadata does not need the container, so it still describes the type,
+    // leaving a caller free to decode the bytes itself.
     assert.equal(dset.dtype, '<e');
     assert.equal(dset.metadata.size, 2);
 
-    assert.throws(() => dset.value, /Float16Array/,
+    const read = capturing_warnings(() => dset.value);
+    assert.ok(read.result instanceof Uint8Array);
+    assert.deepEqual([...read.result], HALF_BYTES);
+    assert.deepEqual(read.warnings.map((w) => /Float16Array/.test(w)), [true],
       'reading float16 data should name the missing global');
-    assert.throws(() => dset.to_array(), /Float16Array/);
-    assert.throws(() => dset.attrs['half_attr'].value, /Float16Array/);
+
+    const attr = capturing_warnings(() => dset.attrs['half_attr'].value);
+    assert.ok(attr.result instanceof Uint8Array);
+    // 1.5 and -0.25 as little-endian halves: 0x3E00 and 0xB400.
+    assert.deepEqual([...attr.result], [0x00, 0x3e, 0x00, 0xb4]);
+    assert.deepEqual(attr.warnings.map((w) => /Float16Array/.test(w)), [true]);
     f.close();
 
     const write_file = new h5wasm.File(FILEPATH, 'w');
@@ -231,7 +263,7 @@ async function float16_without_runtime_support() {
 }
 
 // The tests that need a real Float16Array only run where the runtime has one;
-// the error path is asserted on every runtime, including this one.
+// the fallback path is asserted on every runtime, including this one.
 const supported = typeof globalThis.Float16Array === 'function';
 export const tests = [
   ...(supported ? [
@@ -244,8 +276,8 @@ export const tests = [
       test: read_bigendian_float16,
     },
     {
-      description: 'Reject bfloat16 rather than reading it as an IEEE half',
-      test: reject_bfloat16,
+      description: 'Read bfloat16 as raw bytes rather than as an IEEE half',
+      test: bfloat16_falls_back_to_bytes,
     },
     {
       description: 'Create float16 dataset and attribute from Float16Array',
@@ -261,7 +293,7 @@ export const tests = [
     },
   ] : []),
   {
-    description: 'Float16 without runtime Float16Array throws for read and write',
+    description: 'Float16 without runtime Float16Array reads bytes and refuses to write',
     test: float16_without_runtime_support,
   },
 ];

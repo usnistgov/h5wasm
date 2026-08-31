@@ -118,7 +118,11 @@ function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_com
   return processed;
 }
 
-function getAccessor(type: 0 | 1, size: Metadata["size"], signed: Metadata["signed"], ieee_float16?: Metadata["ieee_float16"]): TypedArrayConstructor {
+// The TypedArray that views this datatype's raw bytes, or a string saying why
+// JavaScript has none. Reads fall back to the raw bytes, as they do for every
+// other datatype JavaScript cannot represent; writes have nothing to fall back
+// to and throw.
+function getAccessor(type: 0 | 1, size: Metadata["size"], signed: Metadata["signed"], ieee_float16?: Metadata["ieee_float16"]): TypedArrayConstructor | string {
   if (type === 0) {
     if (size === 8) {
       return (signed) ? BigInt64Array : BigUint64Array;
@@ -146,18 +150,18 @@ function getAccessor(type: 0 | 1, size: Metadata["size"], signed: Metadata["sign
       // silently yield wrong numbers. Only the layout Float16Array holds is
       // accepted.
       if (!ieee_float16) {
-        throw new Error("2-byte float is not IEEE binary16 (bfloat16 is not supported)");
+        return "2-byte float is not IEEE binary16 (bfloat16 is not supported)";
       }
       // Looked up per call rather than cached at module load, so a runtime that
       // gains the global later (a polyfill loaded after h5wasm) still works.
       const ctor = (globalThis as { Float16Array?: MaybeFloat16ArrayConstructor }).Float16Array;
       if (ctor === undefined) {
-        throw new Error("float16 requires Float16Array, missing in this runtime");
+        return "float16 requires Float16Array, missing in this runtime";
       }
       return ctor;
     }
     else {
-      throw new Error(`Float${size * 8} not supported`);
+      return `Float${size * 8} not supported`;
     }
   }
 }
@@ -215,11 +219,18 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
   else if (type === Module.H5T_class_t.H5T_INTEGER.value || type === Module.H5T_class_t.H5T_FLOAT.value) {
     const { size, signed} = metadata;
     const accessor = getAccessor(type, size, signed, metadata.ieee_float16);
-    output_data = new accessor(data.buffer as ArrayBuffer);
-    if (json_compatible) {
-      output_data = [...output_data];
-      if (accessor === BigInt64Array || accessor === BigUint64Array) {
-        output_data = output_data.map(Number);
+    if (typeof accessor === "string") {
+      console.warn(`${accessor}: returning the raw bytes`);
+      known_type = false;
+      output_data = data;
+    }
+    else {
+      output_data = new accessor(data.buffer as ArrayBuffer);
+      if (json_compatible) {
+        output_data = [...output_data];
+        if (accessor === BigInt64Array || accessor === BigUint64Array) {
+          output_data = output_data.map(Number);
+        }
       }
     }
   }
@@ -395,6 +406,9 @@ function prepare_data(data: any, metadata: Metadata, shape?: number[] | bigint[]
   else if (metadata.type === Module.H5T_class_t.H5T_INTEGER.value || metadata.type === Module.H5T_class_t.H5T_FLOAT.value) {
     const {type, size, signed} = metadata;
     const accessor = getAccessor(type, size, signed, metadata.ieee_float16);
+    if (typeof accessor === "string") {
+      throw new Error(accessor);
+    }
     let typed_array: ArrayBufferView;
     if (data instanceof accessor) {
       typed_array = data;
