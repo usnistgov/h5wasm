@@ -14,7 +14,8 @@ export interface H5T_class_t {
     H5T_REFERENCE: {value: 7},     // = 7,  /**< reference types                         */
     H5T_ENUM: {value: 8},          // = 8,  /**< enumeration types                       */
     H5T_VLEN: {value: 9},          // = 9,  /**< variable-Length types                   */
-    H5T_ARRAY: {value: 10}         // = 10, /**< array types                             */
+    H5T_ARRAY: {value: 10},        // = 10, /**< array types                             */
+    H5T_COMPLEX: {value: 11}       // = 11, /**< complex number types                    */
 }
 
 export interface Metadata {

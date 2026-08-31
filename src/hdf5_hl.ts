@@ -208,6 +208,21 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
     }
   }
 
+  else if (type === Module.H5T_class_t.H5T_COMPLEX.value) {
+    // Native complex numbers are stored as interleaved real and imaginary
+    // components of the base float type: [re0, im0, re1, im1, ...]. Expose that
+    // layout directly, exactly as an equivalent float array would be, so the
+    // components keep their storage precision (Float32Array for complex64) and
+    // large datasets stay cheap. `to_array` nests the trailing [real, imag].
+    // H5T_COMPLEX only wraps a float, and its two components are equal-sized,
+    // so the base float size is always half the complex itemsize.
+    const accessor = getAccessor(Module.H5T_class_t.H5T_FLOAT.value, metadata.size / 2, true);
+    output_data = new accessor(data.buffer as ArrayBuffer);
+    if (json_compatible) {
+      output_data = [...output_data];
+    }
+  }
+
   else if (type === Module.H5T_class_t.H5T_COMPOUND.value) {
     const { size, compound_type } = <{size: Metadata["size"], compound_type: CompoundTypeMetadata}>metadata;
     let n = Math.floor(data.byteLength / size);
@@ -291,7 +306,11 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
   }
 
   // if metadata.shape.length == 0 or metadata.shape is undefined...
-  if (known_type && (Array.isArray(output_data) || ArrayBuffer.isView(output_data)) && !shape?.length) {
+  // A scalar complex is exempt: both of its components make up the one value,
+  // so unwrapping to the first would drop the imaginary part. It stays a
+  // two-element component array, and `to_array` pairs it as for any other shape.
+  const is_complex = type === Module.H5T_class_t.H5T_COMPLEX.value;
+  if (known_type && !is_complex && (Array.isArray(output_data) || ArrayBuffer.isView(output_data)) && !shape?.length) {
     output_data = output_data[0];
   }
 
@@ -313,6 +332,13 @@ function isH5PYBooleanEnum(enum_type: EnumTypeMetadata) {
 
 const H5S_UNLIMITED = 18446744073709551615n; // not exportable by emscripten_bindings because it's outside int32 range
 
+// Number of dataset elements `data` represents. A native complex element is two
+// interleaved float components, so it takes two numbers of the flat input.
+function element_count(data: ArrayLike<unknown>, metadata: Metadata): number {
+  const is_complex = (metadata.type === Module.H5T_class_t.H5T_COMPLEX.value);
+  return (is_complex) ? data.length / 2 : data.length;
+}
+
 function prepare_data(data: any, metadata: Metadata, shape?: number[] | bigint[] | null, maxshape?: (number | null)[] | null | undefined): {data: Uint8Array | string[], shape: bigint[], maxshape: (bigint | null)[] } {
   // for data being sent to Module
 
@@ -332,7 +358,7 @@ function prepare_data(data: any, metadata: Metadata, shape?: number[] | bigint[]
       final_shape = [BigInt(guessed_len)];
     }
     else if (data != null && data.length != null && !(typeof data === 'string')) {
-      final_shape = [BigInt(data.length)];
+      final_shape = [BigInt(element_count(data, metadata))];
     }
     else {
       final_shape = [];
@@ -353,7 +379,7 @@ function prepare_data(data: any, metadata: Metadata, shape?: number[] | bigint[]
   let total_size = Number(final_shape.reduce((previous, current) => current * previous, 1n));
 
   if (!(data instanceof Map)) {
-    if (data.length != total_size) {
+    if (element_count(data, metadata) != total_size) {
       throw new Error(`Error: shape ${final_shape} does not match number of elements in data`);
     }
   }
@@ -395,6 +421,21 @@ function prepare_data(data: any, metadata: Metadata, shape?: number[] | bigint[]
   else if (metadata.type === Module.H5T_class_t.H5T_REFERENCE.value) {
     output = new Uint8Array(metadata.size * total_size);
     (data as Reference[]).forEach((r, i) => (output as Uint8Array).set(r.ref_data, i*metadata.size));
+  }
+  else if (metadata.type === Module.H5T_class_t.H5T_COMPLEX.value) {
+    // Write the interleaved base-float layout HDF5 expects, from the same flat
+    // [re0, im0, re1, im1, ...] sequence reading returns -- as for every other
+    // type, data is flat and `shape` carries the structure. The base float size
+    // is always half the complex itemsize.
+    const accessor = getAccessor(Module.H5T_class_t.H5T_FLOAT.value, metadata.size / 2, true);
+    const flat = data as ArrayLike<number>;
+    // Reuse the caller's buffer when it already has the exact target layout.
+    const components = (flat instanceof accessor) ? flat as Float32Array | Float64Array
+      : new accessor(flat.length) as Float32Array | Float64Array;
+    if (components !== flat) {
+      components.set(flat);
+    }
+    output = new Uint8Array(components.buffer, components.byteOffset, components.byteLength);
   }
   else if (metadata.type === Module.H5T_class_t.H5T_COMPOUND.value) {
     const { size, compound_type } = metadata as { size: number, compound_type: CompoundTypeMetadata };
@@ -479,6 +520,11 @@ function metadata_to_dtype(metadata: Metadata): Dtype {
     const at = array_type as Metadata;
     return [metadata_to_dtype(at) as string, at.shape as number[]];
   }
+  else if (type === Module.H5T_class_t.H5T_COMPLEX.value) {
+    // numpy-style complex typecode, sized by the full itemsize: c8 = two
+    // float32 (complex64), c16 = two float64 (complex128).
+    return ((littleEndian) ? "<" : ">") + "c" + String(size);
+  }
   else if (type === Module.H5T_class_t.H5T_REFERENCE.value) {
     return (metadata.ref_type === 'object') ? "Reference" : "RegionReference";
   }
@@ -496,6 +542,20 @@ export function dtype_to_metadata(dtype: Dtype): Metadata {
     if (dtype === "Reference" || dtype === "RegionReference") {
       metadata.type = Module.H5T_class_t.H5T_REFERENCE.value;
       metadata.size = (dtype === "Reference") ? Module.SIZEOF_OBJ_REF : Module.SIZEOF_DSET_REGION_REF;
+    }
+    else if (/^[<>|]?c[0-9]+$/.test(dtype)) {
+      // numpy-style complex typecode: 'c8' = complex64, 'c16' = complex128.
+      // `length` is the full itemsize; each component is half of it. Only the
+      // two IEEE base floats HDF5 has a native complex type for are valid, so
+      // reject the rest here rather than at the accessor or in C++.
+      const [, endianness, length] = dtype.match(/^([<>|]?)c([0-9]+)$/) as RegExpMatchArray;
+      const size = parseInt(length, 10);
+      if (size !== 8 && size !== 16) {
+        throw new Error(`${dtype} is not a recognized dtype: complex must be c8 or c16`);
+      }
+      metadata.littleEndian = (endianness != '>');
+      metadata.type = Module.H5T_class_t.H5T_COMPLEX.value;
+      metadata.size = size;
     }
     else {
       const match = dtype.match(/^([<>|]?)([bhiqefdsBHIQSaA])([0-9]*)$/);
@@ -826,7 +886,7 @@ export class Attribute {
     if (!isIterable(json_value) || typeof json_value === "string" || shape === null) {
       return json_value;
     }
-    return create_nested_array(json_value, shape);
+    return create_nested_array(json_value, nesting_shape(metadata));
   }
 }
 
@@ -1330,7 +1390,7 @@ export class Dataset extends HasAttrs {
     if (!isIterable(json_value) || typeof json_value === "string" || shape === null) {
       return json_value;
     }
-    let nested =  create_nested_array(json_value, shape);
+    let nested =  create_nested_array(json_value, nesting_shape(metadata));
     return nested;
   }
 
@@ -1477,6 +1537,14 @@ function create_nested_array(value: JSONCompatibleOutputData[], shape: number[])
     output = new_output;
   }
   return output;
+}
+
+// Shape to nest a flat value by. Native complex values are a flat interleaved
+// [re, im, ...] sequence, so they carry one extra trailing axis of 2 relative
+// to the dataspace: `to_array` yields [real, imag] at the innermost level.
+function nesting_shape(metadata: Metadata): number[] {
+  const shape = metadata.shape as number[];
+  return (metadata.type === Module.H5T_class_t.H5T_COMPLEX.value) ? shape.concat([2]) : shape;
 }
 
 export const h5wasm = {

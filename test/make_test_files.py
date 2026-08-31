@@ -56,3 +56,28 @@ with h5py.File("vlen.h5", "w") as f:
     uint8_blobs = f.create_dataset("uint8_blobs", shape=(N,), dtype=h5py.vlen_dtype(np.uint8))
     for i in range(N):
         uint8_blobs[i] = np.arange(i + 1, dtype=np.uint8) + np.uint8(i)
+
+with h5py.File("complex.h5", "w") as f:
+    # Native complex datasets (H5T_COMPLEX, class 11, new in HDF5 2.0). Passing
+    # a native complex type as `dtype` is what selects it: h5py still maps a
+    # plain numpy complex dtype to the legacy {r, i} compound by default. Both
+    # component precisions and both byte orders, so that reading this file
+    # checks h5wasm against the reference library rather than its own writer.
+    #
+    # Each array's byte order must match its file type. HDF5 2.0 has no
+    # conversion path that byte-swaps a native complex, so handing native-endian
+    # data to a big-endian dataset fails with "no appropriate function for
+    # conversion path"; matching the orders means no conversion is needed.
+    #
+    # Every component is exactly representable in float32, so tests reading
+    # this file can assert exact equality.
+    cplx64 = np.array([1 + 2j, 3 - 4j, 5.5 + 6.25j], dtype=np.complex128)
+    cplx32 = np.array([1.5 - 2.5j, 0.25 + 4j, -8 + 0.125j], dtype=np.complex64)
+
+    for name, file_type, data in [
+        ("z_f64le", h5py.h5t.COMPLEX_IEEE_F64LE, cplx64.astype("<c16")),
+        ("z_f64be", h5py.h5t.COMPLEX_IEEE_F64BE, cplx64.astype(">c16")),
+        ("z_f32le", h5py.h5t.COMPLEX_IEEE_F32LE, cplx32.astype("<c8")),
+        ("z_f32be", h5py.h5t.COMPLEX_IEEE_F32BE, cplx32.astype(">c8")),
+    ]:
+        f.create_dataset(name, data=data, dtype=file_type)

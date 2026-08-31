@@ -383,6 +383,31 @@ const slice_data = new Map([
 new_file.get("particles").write_slice([[1, 3]], slice_data);
 ```
 
+### Complex Datatypes
+The native HDF5 complex number datatype (`H5T_COMPLEX`, introduced in HDF5 2.0) stores interleaved real and imaginary components of a base float type. `value` exposes that layout directly, as a typed array of components — `Float64Array` for complex128, `Float32Array` for complex64 — so components keep their storage precision and large datasets need no per-element allocation:
+```javascript
+new_file.get("z").value;
+/*
+Float64Array [1, 2, 3, -4, 5.5, 6.25]
+*/
+```
+`to_array()` recovers the `[real, imag]` pairing as the innermost axis, nesting by shape as usual. For a dataset of shape `[3]`:
+```javascript
+new_file.get("z").to_array();
+/*
+[[1, 2], [3, -4], [5.5, 6.25]]
+*/
+```
+Write complex datasets and attributes by passing the numpy-style dtype `<c16` (complex128, two float64 components) or `<c8` (complex64, two float32 components). Data is the flat interleaved sequence — exactly what `value` returns, so values read from a file can be written straight back — with `shape` giving the complex shape, as for every other type:
+```javascript
+new_file.create_dataset({
+  name: "z",
+  data: new Float64Array([1, 2, 3, -4, 5.5, 6.25]),
+  shape: [3],
+  dtype: "<c16"
+});
+```
+
 ### Editing
 One can also open an existing file and write to it:
 ```js
