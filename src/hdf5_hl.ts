@@ -166,6 +166,37 @@ function getAccessor(type: 0 | 1, size: Metadata["size"], signed: Metadata["sign
   }
 }
 
+// Native complex values are exposed as the interleaved [re, im, ...] components
+// HDF5 stores, so each element is two numbers of the base float type -- which,
+// the two components being equal-sized, is half the itemsize wide. Everything
+// the library does with H5T_COMPLEX follows from those two facts.
+function isComplex(metadata: Metadata): boolean {
+  return metadata.type === Module.H5T_class_t.H5T_COMPLEX.value;
+}
+
+function isNumericType(type: Metadata["type"]): boolean {
+  return type === Module.H5T_class_t.H5T_INTEGER.value
+    || type === Module.H5T_class_t.H5T_FLOAT.value
+    || type === Module.H5T_class_t.H5T_COMPLEX.value;
+}
+
+function getNumericAccessor(metadata: Metadata): TypedArrayConstructor | string {
+  const { type, size, signed, ieee_float16 } = metadata;
+  return (isComplex(metadata))
+    ? getAccessor(Module.H5T_class_t.H5T_FLOAT.value, size / 2, signed, ieee_float16)
+    : getAccessor(type as 0 | 1, size, signed, ieee_float16);
+}
+
+function componentsPerElement(metadata: Metadata): number {
+  return (isComplex(metadata)) ? 2 : 1;
+}
+
+// One extra trailing axis for complex, so `to_array` yields [real, imag] innermost.
+function nestingShape(metadata: Metadata): number[] {
+  const shape = metadata.shape as number[];
+  return (isComplex(metadata)) ? [...shape, 2] : shape;
+}
+
 export type OutputData = TypedArray | string | number | bigint | boolean | Reference | RegionReference | OutputData[];
 export type JSONCompatibleOutputData = string | number | boolean | JSONCompatibleOutputData[];
 export type CompoundMemberDtype = [string, Dtype] | [string, Dtype, number[]];
@@ -216,9 +247,8 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
       // length = output_data.length;
     }
   }
-  else if (type === Module.H5T_class_t.H5T_INTEGER.value || type === Module.H5T_class_t.H5T_FLOAT.value) {
-    const { size, signed} = metadata;
-    const accessor = getAccessor(type, size, signed, metadata.ieee_float16);
+  else if (isNumericType(type)) {
+    const accessor = getNumericAccessor(metadata);
     if (typeof accessor === "string") {
       console.warn(`${accessor}: returning the raw bytes`);
       known_type = false;
@@ -318,7 +348,9 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
   }
 
   // if metadata.shape.length == 0 or metadata.shape is undefined...
-  if (known_type && (Array.isArray(output_data) || ArrayBuffer.isView(output_data)) && !shape?.length) {
+  // Only a container holding exactly one value unwraps to it: a scalar complex
+  // holds two components that together make up its one value.
+  if (known_type && !shape?.length && (Array.isArray(output_data) || ArrayBuffer.isView(output_data)) && output_data.length === 1) {
     output_data = output_data[0];
   }
 
@@ -359,7 +391,7 @@ function prepare_data(data: any, metadata: Metadata, shape?: number[] | bigint[]
       final_shape = [BigInt(guessed_len)];
     }
     else if (data != null && data.length != null && !(typeof data === 'string')) {
-      final_shape = [BigInt(data.length)];
+      final_shape = [BigInt(data.length / componentsPerElement(metadata))];
     }
     else {
       final_shape = [];
@@ -380,7 +412,7 @@ function prepare_data(data: any, metadata: Metadata, shape?: number[] | bigint[]
   let total_size = Number(final_shape.reduce((previous, current) => current * previous, 1n));
 
   if (!(data instanceof Map)) {
-    if (data.length != total_size) {
+    if (data.length / componentsPerElement(metadata) != total_size) {
       throw new Error(`Error: shape ${final_shape} does not match number of elements in data`);
     }
   }
@@ -403,9 +435,8 @@ function prepare_data(data: any, metadata: Metadata, shape?: number[] | bigint[]
       output = data;
     }
   }
-  else if (metadata.type === Module.H5T_class_t.H5T_INTEGER.value || metadata.type === Module.H5T_class_t.H5T_FLOAT.value) {
-    const {type, size, signed} = metadata;
-    const accessor = getAccessor(type, size, signed, metadata.ieee_float16);
+  else if (isNumericType(metadata.type)) {
+    const accessor = getNumericAccessor(metadata);
     if (typeof accessor === "string") {
       throw new Error(accessor);
     }
@@ -496,6 +527,10 @@ function metadata_to_dtype(metadata: Metadata): Dtype {
     let fmt = float_fmts.get(size);
     return ((littleEndian) ? "<" : ">") + fmt;
   }
+  else if (type === Module.H5T_class_t.H5T_COMPLEX.value) {
+    // sized by the full itemsize, as numpy does: c8 = two float32, c16 = two float64
+    return ((littleEndian) ? "<" : ">") + "c" + String(size);
+  }
   else if (type == Module.H5T_class_t.H5T_COMPOUND.value) {
     const ct = compound_type as CompoundTypeMetadata;
     return ct.members.map((member): CompoundMemberDtype => {
@@ -528,7 +563,7 @@ export function dtype_to_metadata(dtype: Dtype): Metadata {
       metadata.size = (dtype === "Reference") ? Module.SIZEOF_OBJ_REF : Module.SIZEOF_DSET_REGION_REF;
     }
     else {
-      const match = dtype.match(/^([<>|]?)([bhiqefdsBHIQSaA])([0-9]*)$/);
+      const match = dtype.match(/^([<>|]?)([bhiqefdcsBHIQSaA])([0-9]*)$/);
       if (match == null) {
         throw dtype + " is not a recognized dtype";
       }
@@ -547,6 +582,17 @@ export function dtype_to_metadata(dtype: Dtype): Metadata {
           // writes, so say so for the accessor's benefit.
           metadata.ieee_float16 = true;
         }
+      }
+      else if (typestr === 'c') {
+        // numpy complex typecode, sized by the full itemsize: 'c4' is two
+        // float16, 'c8' two float32, 'c16' two float64. No wider base float has
+        // a TypedArray to read its components with.
+        metadata.type = Module.H5T_class_t.H5T_COMPLEX.value;
+        metadata.size = parseInt(length, 10);
+        if (![4, 8, 16].includes(metadata.size)) {
+          throw new Error(`${dtype} is not a recognized dtype: complex must be c4, c8 or c16`);
+        }
+        metadata.ieee_float16 = (metadata.size === 4);
       }
       else if (typestr.toUpperCase() === 'S' || typestr.toUpperCase() === 'A') {
         metadata.type = Module.H5T_class_t.H5T_STRING.value;
@@ -876,7 +922,7 @@ export class Attribute {
     if (!isIterable(json_value) || typeof json_value === "string" || shape === null) {
       return json_value;
     }
-    return create_nested_array(json_value, shape);
+    return create_nested_array(json_value, nestingShape(metadata));
   }
 }
 
@@ -1380,7 +1426,7 @@ export class Dataset extends HasAttrs {
     if (!isIterable(json_value) || typeof json_value === "string" || shape === null) {
       return json_value;
     }
-    let nested =  create_nested_array(json_value, shape);
+    let nested =  create_nested_array(json_value, nestingShape(metadata));
     return nested;
   }
 

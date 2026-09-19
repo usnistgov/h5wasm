@@ -1,4 +1,7 @@
 # Changelog
+## Unreleased
+### Added
+* Support for the native HDF5 complex datatype (`H5T_COMPLEX`, new in HDF5 2.0). Complex datasets and attributes read as a typed array of interleaved components (`Float64Array` for complex128, `Float32Array` for complex64, `Float16Array` for complex32), with `to_array()` pairing `[real, imag]` as the innermost axis. Writes take the same flat form under the `<c4`, `<c8` and `<c16` dtypes.
 ## v0.8.11 2026-01-08
 ## Fixed
 * remove deprecated setting that disables import.meta in ES6 builds by @bmaranville in https://github.com/usnistgov/h5wasm/pull/116
