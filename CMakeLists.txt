@@ -77,6 +77,8 @@ set_target_properties(hdf5_util PROPERTIES
 
 add_executable(hdf5_util_node src/hdf5_util.cc)
 target_link_libraries(hdf5_util_node hdf5::hdf5_hl-static)
+# No -s ASSERTIONS=1 here: it adds a startup check that throws if navigator.userAgent
+# looks like a browser, which breaks loading in Electron preload scripts (#132).
 set_target_properties(hdf5_util_node PROPERTIES
     LINK_FLAGS "-O2 --bind  \
     -s MAIN_MODULE=2 \
@@ -92,7 +94,6 @@ set_target_properties(hdf5_util_node PROPERTIES
     -s ENVIRONMENT=node \
     -s SINGLE_FILE \
     -s EXPORT_ES6=1 \
-    -s ASSERTIONS=1 \
     -s EXPORTED_RUNTIME_METHODS=\"['ccall', 'cwrap', 'FS', 'AsciiToString', 'UTF8ToString', 'HEAPU8']\" \
     -s EXPORTED_FUNCTIONS=\"${EXPORTED_FUNCTIONS_STRING}\""
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/node
