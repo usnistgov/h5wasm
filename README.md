@@ -14,6 +14,7 @@ a zero-dependency WebAssembly-powered library for [reading](#reading) and [writi
   - [Worker usage](#worker-usage)
   - [Browser target (build system)](#browser-target-build-system)
   - [Node.js](#nodejs)
+    - [Lazy loading a remote file (Node.js, Deno)](#lazy-loading-a-remote-file-nodejs-deno)
 - [User Guide](#user-guide)
   - [Opening a file](#opening-a-file)
   - [Reading](#reading)
@@ -113,6 +114,15 @@ File {
   mode: 'r'
 }
 */
+```
+
+### Lazy loading a remote file (Node.js, Deno)
+`FS.createLazyFile` only works in browser Web Workers. On a server, `create_lazy_url_file` fetches
+only the parts HDF5 reads from a URL that supports HTTP Range requests (e.g. a presigned S3 URL):
+```js
+import { create_lazy_url_file } from "h5wasm/lazy_file";
+const lazy = await create_lazy_url_file("https://example.com/big.h5", "big.h5");
+const f = new h5wasm.File(lazy.filename, "r"); // using the default "h5wasm" build
 ```
 
 # User Guide
