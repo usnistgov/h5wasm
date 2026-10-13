@@ -5,7 +5,14 @@ import ModuleFactory from './hdf5_util.js';
 export var Module: H5Module; //: H5WasmModule = null;
 export var FS: (FS.FileSystemType | null) = null;
 
-const ready = ModuleFactory({ noInitialRun: true }).then(result => { Module = result; FS = Module.FS; return Module });
+const ready = ModuleFactory({ noInitialRun: true }).then(result => {
+  Module = result;
+  FS = Module.FS;
+  if (typeof XMLHttpRequest === "undefined") { // otherwise it fails later with a cryptic TypeError
+    FS.createLazyFile = () => { throw new Error("FS.createLazyFile needs XMLHttpRequest (browser workers); on servers see create_lazy_url_file"); };
+  }
+  return Module;
+});
 export { ready };
 
 export const ACCESS_MODES = {

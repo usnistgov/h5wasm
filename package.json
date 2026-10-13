@@ -15,14 +15,18 @@
     "./node": {
       "types": "./src/hdf5_hl.d.ts",
       "import": "./dist/node/hdf5_hl.js"
+    },
+    "./lazy_file": {
+      "types": "./src/lazy_file.d.ts",
+      "import": "./dist/esm/lazy_file.js"
     }
   },
   "scripts": {
     "build": "npm run build_esm && npm run build_node && npm run build_types && npm run build_iife",
-    "build_esm": "tsc src/hdf5_hl.ts src/file_handlers.ts --strict --outDir dist/esm --target es2020",
+    "build_esm": "tsc src/hdf5_hl.ts src/file_handlers.ts src/lazy_file.ts --strict --outDir dist/esm --target es2020",
     "build_node": "tsc src/hdf5_hl.ts --outDir dist/node --target es2020 --allowJs --esModuleInterop",
     "build_iife": "esbuild --bundle dist/esm/hdf5_hl.js --outfile=dist/iife/h5wasm.js --format=iife --global-name=h5wasm",
-    "build_types": "tsc --declaration --strict --emitDeclarationOnly src/hdf5_hl.ts --target es2020",
+    "build_types": "tsc --declaration --strict --emitDeclarationOnly src/hdf5_hl.ts src/lazy_file.ts --target es2020",
     "test": "node ./test/test.mjs"
   },
   "repository": {
