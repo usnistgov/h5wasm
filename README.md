@@ -400,6 +400,12 @@ new_file.get("nested_particles").value;
 ]
 */
 ```
+#### Reading Compound Datatypes as a Map
+`value_as_map` (or `slice(ranges, {compound_as_map: true})`) returns a `Map` of columns instead, with one entry per record: `TypedArray`s for integer/float members, nested `Map`s for nested compounds, and plain `Array`s otherwise.
+```javascript
+new_file.get("particles").value_as_map; // Map(2) { 'id' => Int32Array(3) [10, 20, 30], 'velocity' => Float64Array(3) [1.1, 2.2, 3.3] }
+```
+
 #### Slicing Compound Datasets
 You can overwrite subsets of an existing compound dataset using `write_slice`. Simply pass a `Map` containing the updated columnar arrays sized exactly to the dimensions of the slice you are replacing:
 ```javascript

@@ -79,3 +79,14 @@ with h5py.File("float16.h5", "w") as f:
     space = h5py.h5s.create_simple(bits.shape)
     dset = h5py.h5d.create(f.id, b"bfloat16", bfloat16, space)
     dset.write(h5py.h5s.ALL, h5py.h5s.ALL, bits, mtype=bfloat16)
+
+with h5py.File("compound.h5", "w") as f:
+    # packed, so the f8 "temperature" sits unaligned at offset 4
+    position = np.dtype([("x", "<f4"), ("y", "<f4"), ("z", "<f4")])
+    data = np.array(
+        [(i * 10, i + 0.5, i % 3, str(i), (i, -i), (i, 2 * i, 3 * i)) for i in range(4)],
+        dtype=[("id", "<i4"), ("temperature", "<f8"), ("color", h5py.enum_dtype({"R": 0, "G": 1, "B": 2}, basetype="u1")),
+               ("name", h5py.string_dtype()), ("pair", "<i2", (2,)), ("position", position)])
+    f.create_dataset("mixed", data=data)
+    f.create_dataset("scalar", data=data[1])
+    f["mixed"].attrs["position_attr"] = data["position"][:2]
