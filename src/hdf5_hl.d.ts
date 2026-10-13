@@ -26,6 +26,9 @@ export type LIBVER_BOUNDS = LIBVER_BOUND | [LIBVER_BOUND, LIBVER_BOUND];
 export declare function convertToLibverString(value: number): LIBVER_BOUND;
 export type OutputData = TypedArray | string | number | bigint | boolean | Reference | RegionReference | OutputData[];
 export type JSONCompatibleOutputData = string | number | boolean | JSONCompatibleOutputData[];
+/** COMPOUND data as struct-of-arrays: member name => column with one entry per record */
+export type CompoundMap = Map<string, OutputDataOrMap>;
+export type OutputDataOrMap = OutputData | CompoundMap | OutputDataOrMap[];
 export type CompoundMemberDtype = [string, Dtype] | [string, Dtype, number[]];
 export type CompoundDtype = CompoundMemberDtype[];
 export type ArrayDtype = [string, number[]];
@@ -90,6 +93,8 @@ export declare class Attribute {
     constructor(file_id: bigint, path: string, name: string);
     get value(): OutputData | null;
     get json_value(): JSONCompatibleOutputData | null;
+    /** Like value, but COMPOUND data is a CompoundMap of columns */
+    get value_as_map(): OutputDataOrMap | null;
     to_array(): JSONCompatibleOutputData | null;
 }
 declare abstract class HasAttrs {
@@ -166,7 +171,12 @@ export declare class Dataset extends HasAttrs {
     get filters(): Filter[];
     get value(): OutputData | null;
     get json_value(): JSONCompatibleOutputData | null;
+    /** Like value, but COMPOUND data is a CompoundMap of columns */
+    get value_as_map(): OutputDataOrMap | null;
     slice(ranges: Slice[]): OutputData | null;
+    slice(ranges: Slice[], options?: {
+        compound_as_map?: boolean;
+    }): OutputDataOrMap | null;
     write_slice(ranges: Slice[], data: any): void;
     create_region_reference(ranges: Slice[]): RegionReference;
     to_array(): JSONCompatibleOutputData | null;
@@ -181,6 +191,7 @@ export declare class Dataset extends HasAttrs {
     _value_getter(json_compatible?: false): OutputData | null;
     _value_getter(json_compatible: true): JSONCompatibleOutputData | null;
     _value_getter(json_compatible: boolean): OutputData | JSONCompatibleOutputData | null;
+    _value_getter(json_compatible: boolean, compound_as_map: boolean): OutputDataOrMap | JSONCompatibleOutputData | null;
 }
 export declare class DatasetRegion {
     source_dataset: Dataset;

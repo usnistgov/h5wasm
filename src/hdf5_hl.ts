@@ -92,8 +92,8 @@ function check_malloc(nbytes: bigint | number) {
 
 function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_compatible: true): JSONCompatibleOutputData | null;
 function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_compatible: false): OutputData | null;
-function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_compatible: boolean): OutputData | JSONCompatibleOutputData | null;
-function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_compatible: boolean = false): OutputData | JSONCompatibleOutputData | null {
+function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_compatible: boolean, compound_as_map?: boolean): OutputDataOrMap | JSONCompatibleOutputData | null;
+function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_compatible: boolean = false, compound_as_map: boolean = false): OutputDataOrMap | JSONCompatibleOutputData | null {
   let metadata = Module.get_attribute_metadata(file_id, obj_name, attr_name);
   if (!metadata.shape) {
     return null;
@@ -105,7 +105,7 @@ function get_attr(file_id: bigint, obj_name: string, attr_name: string, json_com
   try {
     Module.get_attribute_data(file_id, obj_name, attr_name, BigInt(data_ptr));
     let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
-    processed = process_data(data, metadata, json_compatible);
+    processed = process_data(data, metadata, json_compatible, compound_as_map);
   } finally {
     if (metadata.vlen) {
       Module.reclaim_vlen_memory(file_id, obj_name, attr_name, BigInt(data_ptr));
@@ -168,6 +168,9 @@ function getAccessor(type: 0 | 1, size: Metadata["size"], signed: Metadata["sign
 
 export type OutputData = TypedArray | string | number | bigint | boolean | Reference | RegionReference | OutputData[];
 export type JSONCompatibleOutputData = string | number | boolean | JSONCompatibleOutputData[];
+/** COMPOUND data as struct-of-arrays: member name => column with one entry per record */
+export type CompoundMap = Map<string, OutputDataOrMap>;
+export type OutputDataOrMap = OutputData | CompoundMap | OutputDataOrMap[];
 export type CompoundMemberDtype = [string, Dtype] | [string, Dtype, number[]];
 export type CompoundDtype = CompoundMemberDtype[];
 export type ArrayDtype = [string, number[]];
@@ -177,11 +180,12 @@ export type { Metadata, Filter, CompoundMember, CompoundTypeMetadata, EnumTypeMe
 function process_data(data: Uint8Array, metadata: Metadata, json_compatible: true): JSONCompatibleOutputData;
 function process_data(data: Uint8Array, metadata: Metadata, json_compatible: false): OutputData;
 function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boolean): OutputData | JSONCompatibleOutputData;
-function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boolean = false): OutputData | JSONCompatibleOutputData {
+function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boolean, compound_as_map: boolean): OutputDataOrMap | JSONCompatibleOutputData;
+function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boolean = false, compound_as_map: boolean = false): OutputDataOrMap | JSONCompatibleOutputData {
     // (for data coming out of Module)
   // If an appropriate TypedArray container can be constructed, it will
   // but otherwise returns Uint8Array raw bytes as loaded.
-  let output_data: OutputData;
+  let output_data: OutputDataOrMap;
   let { shape, type } = metadata;
 
   let known_type = true;
@@ -235,6 +239,27 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
     }
   }
 
+  else if (type === Module.H5T_class_t.H5T_COMPOUND.value && compound_as_map) {
+    // struct-of-arrays: gather each member's bytes into one buffer and decode it once
+    const { size, compound_type } = <{size: Metadata["size"], compound_type: CompoundTypeMetadata}>metadata;
+    const n = Math.floor(data.byteLength / size);
+    const output: CompoundMap = new Map();
+    for (const member of compound_type.members) {
+      const bytes = new Uint8Array(n * member.size);
+      for (let i = 0, k = 0; i < n; i++) {
+        for (let j = i * size + member.offset; k < (i + 1) * member.size;) {
+          bytes[k++] = data[j++];
+        }
+      }
+      let column = process_data(bytes, { ...member, shape: [n], total_size: n }, false, true);
+      if (column instanceof Uint8Array && column.length !== n) { // undecoded raw bytes: split per record
+        column = Array.from({ length: n }, (_, i) => bytes.slice(i * member.size, (i + 1) * member.size));
+      }
+      output.set(member.name, column);
+    }
+    return output;
+  }
+
   else if (type === Module.H5T_class_t.H5T_COMPOUND.value) {
     const { size, compound_type } = <{size: Metadata["size"], compound_type: CompoundTypeMetadata}>metadata;
     let n = Math.floor(data.byteLength / size);
@@ -254,11 +279,10 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
   else if (type === Module.H5T_class_t.H5T_ARRAY.value) {
     const { array_type } = <{array_type: Metadata}>metadata;
     shape = (<number[]>shape).concat(<number[]>array_type.shape);
-    array_type.shape = shape;
-    // always convert ARRAY types to base JS types:
-    output_data = process_data(data, array_type, true);
+    // always convert ARRAY types to base JS types (copy: metadata is cached):
+    output_data = process_data(data, { ...array_type, shape }, true);
     if (isIterable(output_data) && typeof output_data !== "string") {
-      output_data = create_nested_array(output_data as JSONCompatibleOutputData[], array_type.shape);
+      output_data = create_nested_array(output_data as JSONCompatibleOutputData[], shape);
     }
   }
 
@@ -870,6 +894,11 @@ export class Attribute {
     return this._json_value;
   }
 
+  /** Like value, but COMPOUND data is a CompoundMap of columns */
+  get value_as_map(): OutputDataOrMap | null {
+    return get_attr(this.file_id, this.path, this.name, false, true);
+  }
+
   to_array(): JSONCompatibleOutputData | null {
     const { json_value, metadata } = this;
     const { shape } = metadata;
@@ -1306,7 +1335,14 @@ export class Dataset extends HasAttrs {
     return this._value_getter(true);
   }
 
-  slice(ranges: Slice[]): OutputData | null {
+  /** Like value, but COMPOUND data is a CompoundMap of columns */
+  get value_as_map(): OutputDataOrMap | null {
+    return this._value_getter(false, true);
+  }
+
+  slice(ranges: Slice[]): OutputData | null;
+  slice(ranges: Slice[], options?: { compound_as_map?: boolean }): OutputDataOrMap | null;
+  slice(ranges: Slice[], options?: { compound_as_map?: boolean }): OutputDataOrMap | null {
     // interpret ranges as [start, stop], with one per dim.
     const metadata = this.metadata;
     // if auto_refresh is on, getting the metadata has triggered a refresh of the dataset_id;
@@ -1319,11 +1355,11 @@ export class Dataset extends HasAttrs {
     const total_size = count.reduce((previous, current) => current * previous, 1n);
     const nbytes = metadata.size * Number(total_size);
     const data_ptr = check_malloc(nbytes);
-    let processed: OutputData;
+    let processed: OutputDataOrMap;
     try {
       Module.get_dataset_data(this.file_id, this.path, count, offset, strides, BigInt(data_ptr));
       let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
-      processed = process_data(data, metadata, false);
+      processed = process_data(data, metadata, false, !!options?.compound_as_map);
     } finally {
       if (metadata.vlen || metadata.type === Module.H5T_class_t.H5T_VLEN.value) {
         // The hyperslab read filled only `count` hvl_t structs, so reclaim a
@@ -1432,7 +1468,8 @@ export class Dataset extends HasAttrs {
   _value_getter(json_compatible?: false): OutputData | null;
   _value_getter(json_compatible: true): JSONCompatibleOutputData | null;
   _value_getter(json_compatible: boolean): OutputData | JSONCompatibleOutputData | null;
-  _value_getter(json_compatible=false): OutputData | JSONCompatibleOutputData | null {
+  _value_getter(json_compatible: boolean, compound_as_map: boolean): OutputDataOrMap | JSONCompatibleOutputData | null;
+  _value_getter(json_compatible=false, compound_as_map=false): OutputDataOrMap | JSONCompatibleOutputData | null {
     let metadata = this.metadata;
     if (!metadata.shape) {
       return null
@@ -1441,11 +1478,11 @@ export class Dataset extends HasAttrs {
     // if auto_refresh is on, getting the metadata has triggered a refresh of the dataset_id;
     let nbytes = metadata.size * metadata.total_size;
     let data_ptr = check_malloc(nbytes);
-    let processed: OutputData;
+    let processed: OutputDataOrMap;
     try {
       Module.get_dataset_data(this.file_id, this.path, null, null, null, BigInt(data_ptr));
       let data = Module.HEAPU8.slice(data_ptr, data_ptr + nbytes);
-      processed = process_data(data, metadata, json_compatible);
+      processed = process_data(data, metadata, json_compatible, compound_as_map);
     } finally {
       if (metadata.vlen) {
         Module.reclaim_vlen_memory(this.file_id, this.path, "", BigInt(data_ptr));
