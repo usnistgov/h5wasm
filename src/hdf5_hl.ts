@@ -190,7 +190,7 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
     if (metadata.vlen) {
       let output: string[] = [];
       let reader = (metadata.cset == 1) ? Module.UTF8ToString : Module.AsciiToString;
-      let ptrs = new Uint32Array(data.buffer);
+      let ptrs = (Module.SIZEOF_POINTER === 8) ? Array.from(new BigUint64Array(data.buffer), Number) : new Uint32Array(data.buffer);
       for (let ptr of ptrs) {
         output.push(reader(ptr));
       }
@@ -291,7 +291,7 @@ function process_data(data: Uint8Array, metadata: Metadata, json_compatible: boo
   else if (type === Module.H5T_class_t.H5T_VLEN.value) {
     // Data buffer holds HDF5 `hvl_t` struct
     // https://docs.hdfgroup.org/hdf5/v1_12/structhvl__t.html
-    const ptr_pairs = new Uint32Array(data.buffer); // both `size_t` length and pointer are 4-byte-long
+    const ptr_pairs = (Module.SIZEOF_POINTER === 8) ? Array.from(new BigUint64Array(data.buffer), Number) : new Uint32Array(data.buffer); // `size_t` length and pointer, 4 bytes each (8 on wasm64)
     const ptr_pairs_length = ptr_pairs.length;
     const vlen_type = metadata.vlen_type as Metadata;
     const { size } = vlen_type;
@@ -783,7 +783,7 @@ export function guess_metadata(data: GuessableDataTypes): Metadata {
       return { ...baseMeta, type: Module.H5T_class_t.H5T_FLOAT.value, size: 8 } as Metadata;
     }
     else if (arr_data.every((d) => (typeof d == 'string'))) {
-      return { ...baseMeta, type: Module.H5T_class_t.H5T_STRING.value, size: 4, vlen: true } as Metadata;
+      return { ...baseMeta, type: Module.H5T_class_t.H5T_STRING.value, size: Module.SIZEOF_POINTER, vlen: true } as Metadata;
     }
     else if (arr_data.every((d) => d instanceof RegionReference)) {
       return { ...baseMeta, type: Module.H5T_class_t.H5T_REFERENCE.value, size: Module.SIZEOF_DSET_REGION_REF } as Metadata;

@@ -12,7 +12,7 @@ async function vlen_test() {
     shape: [],
     maxshape: [],
     chunks: null,
-    size: 8,
+    size: 2 * Module.SIZEOF_POINTER, // sizeof(hvl_t): 8 on wasm32, 16 on wasm64
     total_size: 1,
     signed: true,
     littleEndian: true,
@@ -31,7 +31,7 @@ async function vlen_test() {
     shape: [3],
     maxshape: [3],
     chunks: null,
-    size: 8,
+    size: 2 * Module.SIZEOF_POINTER, // sizeof(hvl_t): 8 on wasm32, 16 on wasm64
     total_size: 3,
     signed: false,
     littleEndian: true,

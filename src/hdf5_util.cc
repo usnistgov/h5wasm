@@ -16,8 +16,9 @@
 
 using namespace emscripten;
 
+// Under MEMORY64, EM_JS pointer args arrive as BigInt; Number() is a no-op on wasm32.
 EM_JS(void, throw_error, (const char *string_error), {
-    throw new Error(UTF8ToString(string_error));
+    throw new Error(UTF8ToString(Number(string_error)));
 });
 
 // void throw_error(const char *string_error) {
@@ -417,7 +418,7 @@ val get_dtype_metadata(hid_t dtype)
     bool littleEndian = (order == H5T_ORDER_LE);
     attr.set("vlen", (bool)H5Tis_variable_str(dtype));
     attr.set("littleEndian", littleEndian);
-    attr.set("size", size);
+    attr.set("size", (double)size); // size_t is BigInt in wasm64 embind
 
     return attr;
 }
@@ -879,7 +880,7 @@ hid_t create_h5_datatype_from_metadata(val metadata) {
         for (int i = 0; i < nmembers; i++) {
             val member = members[i];
             std::string name = member["name"].as<std::string>();
-            size_t offset = member["offset"].as<size_t>();
+            size_t offset = (size_t)member["offset"].as<double>();
 
             // Recursively determine the HDF5 type of this member
             hid_t member_type_id = create_h5_datatype_from_metadata(member);
@@ -1583,7 +1584,8 @@ EMSCRIPTEN_BINDINGS(hdf5)
     constant("H5Z_FILTER_SCALEOFFSET", H5Z_FILTER_SCALEOFFSET);
     constant("H5Z_FILTER_RESERVED", H5Z_FILTER_RESERVED);
     constant("H5Z_FILTER_MAX", H5Z_FILTER_MAX);
-    constant("MAXIMUM_MEMORY", emscripten_get_heap_max());
+    constant("MAXIMUM_MEMORY", (double)emscripten_get_heap_max());
+    constant("SIZEOF_POINTER", (int)sizeof(void *)); // 4 for wasm32, 8 for wasm64
 
     register_vector<std::string>("vector<string>");
 }
