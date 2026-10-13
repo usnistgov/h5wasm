@@ -26,6 +26,7 @@ import compound_write from './create_compound_dataset.mjs';
 import subarray_write_test from './subarray_write_test.mjs';
 import string_cset_test from './string_cset_test.mjs';
 import float16_test from './float16_test.mjs';
+import read_write_errors from './read_write_errors.mjs';
 
 let tests = [];
 const add_tests = (tests_in) => { /*global*/ tests = tests.concat(tests_in)}
@@ -55,6 +56,7 @@ add_tests(compound_write);
 add_tests(subarray_write_test);
 add_tests(string_cset_test);
 add_tests(float16_test);
+add_tests(read_write_errors);
 
 let passed = true;
 async function run_test(test) {

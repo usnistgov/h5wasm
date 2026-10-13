@@ -20,6 +20,25 @@ EM_JS(void, throw_error, (const char *string_error), {
     throw new Error(UTF8ToString(string_error));
 });
 
+// prefix + text of an HDF5 error stack; call it before other H5 calls clear the stack.
+// static, because throw_error unwinds past C++ destructors
+const char *error_stack_message(hid_t estack, const std::string& prefix)
+{
+    static std::string message;
+    message = prefix;
+    FILE *error_file = tmpfile();
+    if (error_file != NULL) {
+        H5Eprint2(estack, error_file);
+        rewind(error_file);
+        char line[256];
+        while (fgets(line, sizeof(line), error_file) != NULL) {
+            message += line;
+        }
+        fclose(error_file);
+    }
+    return message.c_str();
+}
+
 // void throw_error(const char *string_error) {
 //     throw std::runtime_error(string_error);
 // }
@@ -690,12 +709,14 @@ int read_write_dataset_data(hid_t loc_id, const std::string& dataset_name_string
     else {
         status = H5Dread(ds_id, memtype, memspace, dspace, H5P_DEFAULT, rwdata);
     }
+    const char *error = (status < 0) ? error_stack_message(H5E_DEFAULT, std::string(write ? "error writing" : "error reading") + " dataset \"" + dataset_name_string + "\":\n") : NULL;
 
     H5Dclose(ds_id);
     H5Sclose(dspace);
     H5Sclose(memspace);
     H5Tclose(dtype);
     H5Tclose(memtype);
+    if (error != NULL) throw_error(error);
     return (int)status;
 }
 
@@ -798,10 +819,12 @@ int get_attribute_data(hid_t loc_id, const std::string& group_name_string, const
     }
 
     status = H5Aread(attr_id, memtype, rdata);
+    const char *error = (status < 0) ? error_stack_message(H5E_DEFAULT, "error reading attribute \"" + attribute_name_string + "\" of \"" + group_name_string + "\":\n") : NULL;
 
     H5Aclose(attr_id);
     H5Tclose(dtype);
     H5Tclose(memtype);
+    if (error != NULL) throw_error(error);
     return (int)status;
 }
 
@@ -1424,27 +1447,19 @@ int get_region_data(hid_t loc_id, val ref_data_in, uint64_t rdata_uint64)
         memspace = H5Screate_simple(1, &total_size, nullptr);
     }
     status = H5Dread(ds_id, memtype, memspace, dspace, H5P_DEFAULT, rdata);
+    const char *error = (status < 0) ? error_stack_message(H5E_DEFAULT, "error reading dataset region:\n") : NULL;
     H5Dclose(ds_id);
     H5Sclose(dspace);
     H5Sclose(memspace);
     H5Tclose(dtype);
     H5Tclose(memtype);
+    if (error != NULL) throw_error(error);
     return (int)status;
 }
 
 herr_t throwing_error_handler(hid_t estack, void *client_data)
 {
-    FILE *error_file = tmpfile();
-    herr_t status = H5Eprint2(estack, error_file);
-    rewind(error_file);
-    std::stringstream output_stream;
-    char line[256];
-    while (fgets(line, sizeof(line), error_file) != NULL) {
-        output_stream << line;
-    }
-    std::string error_message = output_stream.str();
-    throw_error(error_message.c_str());
-    fclose(error_file);
+    throw_error(error_stack_message(estack, ""));
     return 0;
 }
 
