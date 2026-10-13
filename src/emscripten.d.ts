@@ -94,6 +94,7 @@ interface EmscriptenModule {
     preloadedAudios: any;
 
     _malloc(size: number): number;
+    _calloc(num: number, size: number): number;
     _free(ptr: number): void;
 }
 

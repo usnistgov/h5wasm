@@ -83,7 +83,8 @@ function check_malloc(nbytes: bigint | number) {
     throw new Error(`Requested allocation of ${nbytes} bytes exceeds maximum memory of ${max_memory} bytes`);
   }
   const safe_nbytes = Number(nbytes);
-  const ptr = Module._malloc(safe_nbytes);
+  // zeroed, so a failed read never leaves garbage for reclaim_vlen_memory to free
+  const ptr = Module._calloc(safe_nbytes, 1);
   if (ptr === 0) {
     throw new Error(`Memory allocation of ${safe_nbytes} bytes failed`);
   }

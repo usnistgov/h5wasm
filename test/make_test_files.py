@@ -79,3 +79,9 @@ with h5py.File("float16.h5", "w") as f:
     space = h5py.h5s.create_simple(bits.shape)
     dset = h5py.h5d.create(f.id, b"bfloat16", bfloat16, space)
     dset.write(h5py.h5s.ALL, h5py.h5s.ALL, bits, mtype=bfloat16)
+
+with h5py.File("unavailable_filter.h5", "w") as f:
+    # h5wasm has no LZF filter, so reads fail; data must compress (LZF is optional)
+    data = np.repeat(np.arange(1, 17, dtype="<f4"), 16).reshape(16, 16)
+    f.create_dataset("lzf", data=data, compression="lzf")
+    f.create_dataset("lzf_vlen_str", data=["abc"] * 256, dtype=h5py.string_dtype(), compression="lzf")
