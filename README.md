@@ -550,6 +550,7 @@ Optional, to support uploads and downloads
 
 ```js
 import {uploader, download, UPLOADED_FILES} from "https://cdn.jsdelivr.net/npm/h5wasm@latest/dist/esm/file_handlers.js";
+// or from the npm package: import {uploader, download, UPLOADED_FILES} from "h5wasm/file_handlers";
 //
 // Attach to a file input element:
 // will save to Module.FS (memfs) with the name of the uploaded file

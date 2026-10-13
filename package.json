@@ -15,6 +15,10 @@
     "./node": {
       "types": "./src/hdf5_hl.d.ts",
       "import": "./dist/node/hdf5_hl.js"
+    },
+    "./file_handlers": {
+      "types": "./src/file_handlers.d.ts",
+      "import": "./dist/esm/file_handlers.js"
     }
   },
   "scripts": {
@@ -22,7 +26,7 @@
     "build_esm": "tsc src/hdf5_hl.ts src/file_handlers.ts --strict --outDir dist/esm --target es2020",
     "build_node": "tsc src/hdf5_hl.ts --outDir dist/node --target es2020 --allowJs --esModuleInterop",
     "build_iife": "esbuild --bundle dist/esm/hdf5_hl.js --outfile=dist/iife/h5wasm.js --format=iife --global-name=h5wasm",
-    "build_types": "tsc --declaration --strict --emitDeclarationOnly src/hdf5_hl.ts --target es2020",
+    "build_types": "tsc --declaration --strict --emitDeclarationOnly src/hdf5_hl.ts src/file_handlers.ts --target es2020",
     "test": "node ./test/test.mjs"
   },
   "repository": {
