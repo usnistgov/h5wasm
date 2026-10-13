@@ -6,3 +6,6 @@ h5wasm*.tgz
 experiment**
 emsdk-cache
 test/tmp/
+# ship only .d.ts from src/ so typings resolve to hdf5_hl.d.ts, not hdf5_hl.ts
+src/*.ts
+!src/*.d.ts
