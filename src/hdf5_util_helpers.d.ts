@@ -108,6 +108,7 @@ export interface H5Module extends EmscriptenModule {
     H5Z_FILTER_RESERVED: 256;
     H5Z_FILTER_MAX: 65535;
     MAXIMUM_MEMORY: number;
+    SIZEOF_POINTER: 4 | 8;
     create_group(file_id: bigint, name: string, track_order?: boolean): number;
     create_vlen_str_dataset(file_id: bigint, dset_name: string, prepared_data: any, metadata: WriteMetadata): number;
     get_dataset_data(file_id: bigint, path: string, count: bigint[] | null, offset: bigint[] | null, strides: bigint[] | null, rdata_ptr: bigint): number;
